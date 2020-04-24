@@ -31,8 +31,11 @@ RATE_DIVIDER = 10 ** 18
 # Supply variables
 mining_epoch: public(int128)
 next_reduction_time: public(timestamp)
+start_epoch_time: public(timestamp)
 rate: public(uint256)
 last_rate: public(uint256)
+
+start_epoch_supply: uint256
 
 
 @public
@@ -47,9 +50,11 @@ def __init__(_name: string[64], _symbol: string[32], _decimals: uint256, _supply
     log.Transfer(ZERO_ADDRESS, msg.sender, init_supply)
 
     self.mining_epoch = 0
+    self.start_epoch_time = block.timestamp
     self.next_reduction_time = block.timestamp + RATE_REDUCTION_TIME
     self.rate = INITIAL_RATE
     self.last_rate = 0
+    self.start_epoch_supply = init_supply
 
 
 @public
@@ -57,12 +62,21 @@ def update_mining_parameters():
     # Everyone can do this but only once per epoch
     assert block.timestamp >= self.next_reduction_time
 
-    self.next_reduction_time += RATE_REDUCTION_TIME
+    _old_reduction_time: uint256 = self.next_reduction_time
+    self.start_epoch_time = _old_reduction_time
+    self.next_reduction_time = _old_reduction_time + RATE_REDUCTION_TIME
     self.mining_epoch += 1
 
     _rate: uint256 = self.rate
     self.last_rate = _rate
     self.rate = _rate * RATE_DIVIDER / RATE_REDUCTION_COEFFICIENT
+
+    self.start_epoch_supply += _rate * (block.timestamp - _old_reduction_time)
+
+
+@private
+def available_supply() -> uint256:
+    return self.start_epoch_supply + (block.timestamp - self.start_epoch_time) * self.rate
 
 
 @public
