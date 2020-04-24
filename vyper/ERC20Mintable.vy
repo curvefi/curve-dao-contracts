@@ -26,7 +26,7 @@ YEAR: constant(uint256) = 86400 * 365
 INITIAL_RATE: constant(uint256) = BILLION / YEAR
 RATE_REDUCTION_TIME: constant(uint256) = YEAR
 RATE_REDUCTION_COEFFICIENT: constant(uint256) = 1414213562373095168  # sqrt(2) * 1e18
-RATE_DIVIDER = 10 ** 18
+RATE_DENOMINATOR = 10 ** 18
 
 # Supply variables
 mining_epoch: public(int128)
@@ -57,10 +57,9 @@ def __init__(_name: string[64], _symbol: string[32], _decimals: uint256, _supply
     self.start_epoch_supply = init_supply
 
 
-@public
+@private
 def update_mining_parameters():
-    # Everyone can do this but only once per epoch
-    assert block.timestamp >= self.next_reduction_time
+    # Any mining call must also call this if it is required
 
     _old_reduction_time: uint256 = self.next_reduction_time
     self.start_epoch_time = _old_reduction_time
@@ -69,12 +68,21 @@ def update_mining_parameters():
 
     _rate: uint256 = self.rate
     self.last_rate = _rate
-    self.rate = _rate * RATE_DIVIDER / RATE_REDUCTION_COEFFICIENT
+    self.rate = _rate * RATE_DENOMINATOR / RATE_REDUCTION_COEFFICIENT
 
-    self.start_epoch_supply += _rate * (block.timestamp - _old_reduction_time)
+    self.start_epoch_supply += _rate * RATE_REDUCTION_TIME
+
+
+@public
+def update_mining_parameters():
+    # Everyone can do this but only once per epoch
+    # Total supply becomes slightly larger if this function is called late
+    assert block.timestamp >= self.next_reduction_time
+    self._update_mining_parameters()
 
 
 @private
+@constant
 def available_supply() -> uint256:
     return self.start_epoch_supply + (block.timestamp - self.start_epoch_time) * self.rate
 
