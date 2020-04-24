@@ -1,4 +1,6 @@
-# https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20.md
+"""
+This is an ERC20 with piecewise-linear mining supply.
+"""
 
 from vyper.interfaces import ERC20
 
@@ -11,14 +13,26 @@ name: public(string[64])
 symbol: public(string[32])
 decimals: public(uint256)
 
-# NOTE: By declaring `balanceOf` as public, vyper automatically generates a 'balanceOf()' getter
-#       method to allow access to account balances.
-#       The _KeyType will become a required parameter for the getter and it will return _ValueType.
-#       See: https://vyper.readthedocs.io/en/v0.1.0-beta.8/types.html?highlight=getter#mappings
 balanceOf: public(map(address, uint256))
 allowances: map(address, map(address, uint256))
 total_supply: uint256
 minter: address
+
+# General constants
+BILLION: constant(uint256) = 10 ** 9 * 10 ** 18
+YEAR: constant(uint256) = 86400 * 365
+
+# Supply parameters
+INITIAL_RATE: constant(uint256) = BILLION / YEAR
+RATE_REDUCTION_TIME: constant(uint256) = YEAR
+RATE_REDUCTION_COEFFICIENT: constant(uint256) = 1414213562373095168  # sqrt(2) * 1e18
+RATE_DIVIDER = 10 ** 18
+
+# Supply variables
+mining_epoch: public(int128)
+next_reduction_time: public(timestamp)
+rate: public(uint256)
+last_rate: public(uint256)
 
 
 @public
@@ -31,6 +45,24 @@ def __init__(_name: string[64], _symbol: string[32], _decimals: uint256, _supply
     self.total_supply = init_supply
     self.minter = msg.sender
     log.Transfer(ZERO_ADDRESS, msg.sender, init_supply)
+
+    self.mining_epoch = 0
+    self.next_reduction_time = block.timestamp + RATE_REDUCTION_TIME
+    self.rate = INITIAL_RATE
+    self.last_rate = 0
+
+
+@public
+def update_mining_parameters():
+    # Everyone can do this but only once per epoch
+    assert block.timestamp >= self.next_reduction_time
+
+    self.next_reduction_time += RATE_REDUCTION_TIME
+    self.mining_epoch += 1
+
+    _rate: uint256 = self.rate
+    self.last_rate = _rate
+    self.rate = _rate * RATE_DIVIDER / RATE_REDUCTION_COEFFICIENT
 
 
 @public
@@ -163,3 +195,6 @@ def burnFrom(_to: address, _value: uint256):
     """
     assert msg.sender == self.minter, "Only minter is allowed to burn"
     self._burn(_to, _value)
+
+
+# XXX ability to set symbol and name?
