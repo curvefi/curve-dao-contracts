@@ -1,0 +1,6 @@
+eth-brownie
+vyper
+pytest
+ipython
+pytest-xdist
+pdbpp
