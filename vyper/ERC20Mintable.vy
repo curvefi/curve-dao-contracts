@@ -171,7 +171,7 @@ def approve(_spender : address, _value : uint256) -> bool:
 @public
 def mint(_to: address, _value: uint256):
     """
-    @dev Mint an amount of the token and assigns it to an account. 
+    @dev Mint an amount of the token and assigns it to an account.
          This encapsulates the modification of balances such that the
          proper events are emitted.
     @param _to The account that will receive the created tokens.
@@ -179,6 +179,9 @@ def mint(_to: address, _value: uint256):
     """
     assert msg.sender == self.minter
     assert _to != ZERO_ADDRESS
+
+    if block.timestamp >= self.next_reduction_time:
+        self._update_mining_parameters()
 
     _total_supply: uint256 = self.total_supply + _value
     assert _total_supply <= self.available_supply()
