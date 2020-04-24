@@ -179,7 +179,11 @@ def mint(_to: address, _value: uint256):
     """
     assert msg.sender == self.minter
     assert _to != ZERO_ADDRESS
-    self.total_supply += _value
+
+    _total_supply: uint256 = self.total_supply + _value
+    assert _total_supply <= self.available_supply()
+    self.total_supply += _total_supply
+
     self.balanceOf[_to] += _value
     log.Transfer(ZERO_ADDRESS, _to, _value)
 
