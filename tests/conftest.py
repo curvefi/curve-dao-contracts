@@ -5,6 +5,8 @@ from os.path import realpath, dirname, join
 from .deploy import deploy_contract
 
 CONTRACT_PATH = join(dirname(dirname(realpath(__file__))), 'vyper')
+YEAR = 365 * 86400
+YEAR_1_SUPPLY = 594661989 * 10 ** 18 // YEAR * YEAR
 
 
 def block_timestamp(w3):
@@ -19,12 +21,15 @@ def time_travel(w3, dt):
 def theoretical_supply(w3, token):
     epoch = token.caller.mining_epoch()
     q = 1 / 2 ** .5
-    rdt = 594661989 * 10 ** 18 // (365 * 86400) * (365 * 86400)
     S = 10 ** 9 * 10 ** 18
     if epoch > 0:
-        S += int(rdt * (1 - q ** epoch) / (1 - q))
-    S += (rdt // (365 * 86400)) * (block_timestamp(w3) - token.caller.start_epoch_time() + 1)
+        S += int(YEAR_1_SUPPLY * (1 - q ** epoch) / (1 - q))
+    S += int(YEAR_1_SUPPLY // YEAR * q ** epoch) * (block_timestamp(w3) - token.caller.start_epoch_time() + 1)
     return S
+
+
+def approx(a, b, precision=1e-10):
+    return 2 * abs(a - b) / (a + b) <= precision
 
 
 @pytest.fixture

@@ -31,7 +31,6 @@ RATE_DENOMINATOR: constant(uint256) = 10 ** 18
 mining_epoch: public(int128)
 start_epoch_time: public(uint256)
 rate: public(uint256)
-last_rate: public(uint256)
 
 start_epoch_supply: uint256
 
@@ -50,7 +49,6 @@ def __init__(_name: string[64], _symbol: string[32], _decimals: uint256, _supply
     self.mining_epoch = 0
     self.start_epoch_time = as_unitless_number(block.timestamp)
     self.rate = INITIAL_RATE
-    self.last_rate = 0
     self.start_epoch_supply = init_supply
 
 
@@ -62,7 +60,6 @@ def _update_mining_parameters():
     self.mining_epoch += 1
 
     _rate: uint256 = self.rate
-    self.last_rate = _rate
     self.rate = _rate * RATE_DENOMINATOR / RATE_REDUCTION_COEFFICIENT
 
     self.start_epoch_supply += _rate * RATE_REDUCTION_TIME
@@ -107,22 +104,21 @@ def mintable_in_timeframe(start: uint256, end: uint256) -> uint256:
     assert end < current_epoch_time + RATE_REDUCTION_TIME  # Not too far in future
 
     for i in range(999):  # Curve will not work in 1000 years. Darn!
-        current_end: uint256 = end
-        if current_end < current_epoch_time:
-            continue
-        elif current_end >= current_epoch_time + RATE_REDUCTION_TIME:
-            current_end = current_epoch_time + RATE_REDUCTION_TIME - 1
+        if end >= current_epoch_time:
+            current_end: uint256 = end
+            if current_end >= current_epoch_time + RATE_REDUCTION_TIME:
+                current_end = current_epoch_time + RATE_REDUCTION_TIME - 1
 
-        current_start: uint256 = start
-        if current_start >= current_epoch_time + RATE_REDUCTION_TIME:
-            break
-        elif current_start < current_epoch_time:
-            current_start = current_epoch_time
+            current_start: uint256 = start
+            if current_start >= current_epoch_time + RATE_REDUCTION_TIME:
+                break
+            elif current_start < current_epoch_time:
+                current_start = current_epoch_time
 
-        to_mint += current_rate * (current_end - current_start + 1)
+            to_mint += current_rate * (current_end - current_start + 1)
 
-        if start >= current_epoch_time:
-            break
+            if start >= current_epoch_time:
+                break
 
         current_epoch_time -= RATE_REDUCTION_TIME
         current_rate = current_rate * RATE_REDUCTION_COEFFICIENT / RATE_DENOMINATOR - 1
