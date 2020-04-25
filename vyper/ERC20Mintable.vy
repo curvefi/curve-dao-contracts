@@ -88,6 +88,46 @@ def available_supply() -> uint256:
 
 
 @public
+@constant
+def mintable_in_timeframe(start: timestamp, end: timestamp) -> uint256:
+    """
+    How much supply is mintable from start timestamp till end timestamp
+    """
+    assert start <= end
+    to_mint: uint256 = 0
+    current_epoch: int128 = self.mining_epoch
+    current_epoch_time: uint256 = self.start_epoch_time
+    current_rate: uint256 = self.rate
+
+    # Special case if end is in future (not yet minted) epoch
+    if end >= current_epoch_time + RATE_REDUCTION_TIME:
+        current_epoch_time += RATE_REDUCTION_TIME
+        current_epoch += 1
+        current_rate = current_rate * RATE_DENOMINATOR / RATE_REDUCTION_COEFFICIENT
+
+    assert end < current_epoch_time + RATE_REDUCTION_TIME  # Not too far in future
+
+    for i in range(current_epoch, -1, -1):
+        current_end: uint256 = end
+        if current_end < current_epoch_time:
+            continue
+        elif current_end >= current_epoch_time + RATE_REDUCTION_TIME:
+            current_end = current_epoch_time + RATE_REDUCTION_TIME - 1
+
+        current_start: uint256 = start
+        if current_start >= current_epoch_time + RATE_REDUCTION_TIME:
+            break
+        elif current_start < current_epoch_time:
+            current_start = current_epoch_time
+
+        to_mint += current_rate * (current_end - current_start + 1)
+        current_epoch_time -= RATE_REDUCTION_TIME
+        current_rate = current_rate * RATE_REDUCTION_COEFFICIENT / RATE_DENOMINATOR - 1
+
+    return to_mint
+
+
+@public
 def set_minter(_minter: address):
     assert msg.sender == self.minter
     self.minter = _minter
