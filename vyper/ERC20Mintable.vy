@@ -26,12 +26,12 @@ YEAR: constant(uint256) = 86400 * 365
 INITIAL_RATE: constant(uint256) = BILLION / YEAR
 RATE_REDUCTION_TIME: constant(uint256) = YEAR
 RATE_REDUCTION_COEFFICIENT: constant(uint256) = 1414213562373095168  # sqrt(2) * 1e18
-RATE_DENOMINATOR = 10 ** 18
+RATE_DENOMINATOR: constant(uint256) = 10 ** 18
 
 # Supply variables
 mining_epoch: public(int128)
-next_reduction_time: public(timestamp)
-start_epoch_time: public(timestamp)
+next_reduction_time: public(uint256)
+start_epoch_time: public(uint256)
 rate: public(uint256)
 last_rate: public(uint256)
 
@@ -50,15 +50,15 @@ def __init__(_name: string[64], _symbol: string[32], _decimals: uint256, _supply
     log.Transfer(ZERO_ADDRESS, msg.sender, init_supply)
 
     self.mining_epoch = 0
-    self.start_epoch_time = block.timestamp
-    self.next_reduction_time = block.timestamp + RATE_REDUCTION_TIME
+    self.start_epoch_time = as_unitless_number(block.timestamp)
+    self.next_reduction_time = as_unitless_number(block.timestamp) + RATE_REDUCTION_TIME
     self.rate = INITIAL_RATE
     self.last_rate = 0
     self.start_epoch_supply = init_supply
 
 
 @private
-def update_mining_parameters():
+def _update_mining_parameters():
     # Any mining call must also call this if it is required
 
     _old_reduction_time: uint256 = self.next_reduction_time
@@ -84,12 +84,12 @@ def update_mining_parameters():
 @private
 @constant
 def available_supply() -> uint256:
-    return self.start_epoch_supply + (block.timestamp - self.start_epoch_time) * self.rate
+    return self.start_epoch_supply + as_unitless_number(block.timestamp - self.start_epoch_time) * self.rate
 
 
 @public
 @constant
-def mintable_in_timeframe(start: timestamp, end: timestamp) -> uint256:
+def mintable_in_timeframe(start: uint256, end: uint256) -> uint256:
     """
     How much supply is mintable from start timestamp till end timestamp
     """
@@ -107,7 +107,7 @@ def mintable_in_timeframe(start: timestamp, end: timestamp) -> uint256:
 
     assert end < current_epoch_time + RATE_REDUCTION_TIME  # Not too far in future
 
-    for i in range(current_epoch, -1, -1):
+    for i in range(999):  # Curve will not work in 1000 years. Darn!
         current_end: uint256 = end
         if current_end < current_epoch_time:
             continue
@@ -123,6 +123,7 @@ def mintable_in_timeframe(start: timestamp, end: timestamp) -> uint256:
         to_mint += current_rate * (current_end - current_start + 1)
         current_epoch_time -= RATE_REDUCTION_TIME
         current_rate = current_rate * RATE_REDUCTION_COEFFICIENT / RATE_DENOMINATOR - 1
+        assert current_rate <= INITIAL_RATE
 
     return to_mint
 
