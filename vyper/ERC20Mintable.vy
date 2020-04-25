@@ -78,8 +78,14 @@ def update_mining_parameters():
 
 @private
 @constant
+def _available_supply() -> uint256:
+    return self.start_epoch_supply + as_unitless_number(block.timestamp - self.start_epoch_time + 1) * self.rate
+
+
+@public
+@constant
 def available_supply() -> uint256:
-    return self.start_epoch_supply + as_unitless_number(block.timestamp - self.start_epoch_time) * self.rate
+    return self._available_supply()
 
 
 @public
@@ -90,14 +96,12 @@ def mintable_in_timeframe(start: uint256, end: uint256) -> uint256:
     """
     assert start <= end
     to_mint: uint256 = 0
-    current_epoch: int128 = self.mining_epoch
     current_epoch_time: uint256 = self.start_epoch_time
     current_rate: uint256 = self.rate
 
     # Special case if end is in future (not yet minted) epoch
     if end >= current_epoch_time + RATE_REDUCTION_TIME:
         current_epoch_time += RATE_REDUCTION_TIME
-        current_epoch += 1
         current_rate = current_rate * RATE_DENOMINATOR / RATE_REDUCTION_COEFFICIENT
 
     assert end < current_epoch_time + RATE_REDUCTION_TIME  # Not too far in future
@@ -116,9 +120,13 @@ def mintable_in_timeframe(start: uint256, end: uint256) -> uint256:
             current_start = current_epoch_time
 
         to_mint += current_rate * (current_end - current_start + 1)
+
+        if start >= current_epoch_time:
+            break
+
         current_epoch_time -= RATE_REDUCTION_TIME
         current_rate = current_rate * RATE_REDUCTION_COEFFICIENT / RATE_DENOMINATOR - 1
-        assert current_rate <= INITIAL_RATE
+        assert current_rate <= INITIAL_RATE  # This should never happen
 
     return to_mint
 
@@ -220,7 +228,7 @@ def mint(_to: address, _value: uint256):
         self._update_mining_parameters()
 
     _total_supply: uint256 = self.total_supply + _value
-    assert _total_supply <= self.available_supply()
+    assert _total_supply <= self._available_supply()
     self.total_supply += _total_supply
 
     self.balanceOf[_to] += _value
