@@ -16,6 +16,17 @@ def time_travel(w3, dt):
     return block_timestamp(w3)
 
 
+def theoretical_supply(w3, token):
+    epoch = token.caller.mining_epoch()
+    q = 1 / 2 ** .5
+    rdt = 594661989 // (365 * 86400) * (365 * 86400)
+    S = 10 ** 9 * 10 ** 18
+    if epoch > 0:
+        S += int(rdt * (1 - q ** epoch) / (1 - q))
+    S += (rdt // (365 * 86400)) * (block_timestamp(w3) - token.caller.start_epoch_time() + 1)
+    return S
+
+
 @pytest.fixture
 def tester():
     genesis_params = PyEVMBackend._generate_genesis_params(overrides={'gas_limit': 7 * 10 ** 6})
