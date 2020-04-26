@@ -29,7 +29,7 @@ RATE_DENOMINATOR: constant(uint256) = 10 ** 18
 
 # Supply variables
 mining_epoch: public(int128)
-start_epoch_time: public(uint256)
+start_epoch_time: public(timestamp)
 rate: public(uint256)
 
 start_epoch_supply: uint256
@@ -47,7 +47,7 @@ def __init__(_name: string[64], _symbol: string[32], _decimals: uint256, _supply
     log.Transfer(ZERO_ADDRESS, msg.sender, init_supply)
 
     self.mining_epoch = 0
-    self.start_epoch_time = as_unitless_number(block.timestamp)
+    self.start_epoch_time = block.timestamp
     self.rate = INITIAL_RATE
     self.start_epoch_supply = init_supply
 
@@ -93,7 +93,7 @@ def mintable_in_timeframe(start: uint256, end: uint256) -> uint256:
     """
     assert start <= end
     to_mint: uint256 = 0
-    current_epoch_time: uint256 = self.start_epoch_time
+    current_epoch_time: uint256 = as_unitless_number(self.start_epoch_time)
     current_rate: uint256 = self.rate
 
     # Special case if end is in future (not yet minted) epoch
