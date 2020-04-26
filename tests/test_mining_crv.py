@@ -31,16 +31,16 @@ def test_mintable_in_timeframe(w3, token):
     now = block_timestamp(w3)
     # Check random ranges
     for i in range(20):
-        t0 = randrange(creation_time, now + 1)
+        t0 = randrange(creation_time, now)
         dt = int(10 ** (random() * log10(now - t0)))
         start_epoch = (t0 - creation_time) // YEAR
         end_epoch = (t0 + dt - creation_time) // YEAR
         rate = int(YEAR_1_SUPPLY // YEAR / (2 ** 0.5) ** start_epoch)
 
         if start_epoch == end_epoch:
-            assert approx(token.caller.mintable_in_timeframe(t0, t0 + dt), rate * (dt + 1), 1e-16)
+            assert approx(token.caller.mintable_in_timeframe(t0, t0 + dt), rate * dt, 1e-16)
         else:
-            assert token.caller.mintable_in_timeframe(t0, t0 + dt) < rate * (dt + 1)
+            assert token.caller.mintable_in_timeframe(t0, t0 + dt) < rate * dt
 
 
 def test_mint(w3, token):

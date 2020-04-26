@@ -24,7 +24,7 @@ def theoretical_supply(w3, token):
     S = 10 ** 9 * 10 ** 18
     if epoch > 0:
         S += int(YEAR_1_SUPPLY * (1 - q ** epoch) / (1 - q))
-    S += int(YEAR_1_SUPPLY // YEAR * q ** epoch) * (block_timestamp(w3) - token.caller.start_epoch_time() + 1)
+    S += int(YEAR_1_SUPPLY // YEAR * q ** epoch) * (block_timestamp(w3) - token.caller.start_epoch_time())
     return S
 
 
