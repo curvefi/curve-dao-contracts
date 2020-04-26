@@ -4,25 +4,29 @@ from vyper.interfaces import ERC20
 contract CRV20:
     def current_rate() -> uint256: constant
     def previous_rate() -> uint256: constant
+    def start_epoch_time() -> timestamp: constant
 
 
 token: public(address)
 balanceOf: public(map(address, uint256))
 totalSupply: public(uint256)
 
-# The goal is to be able to calculate ∫(balance/totalSupply dt) from 0 till checkpoint
+# The goal is to be able to calculate ∫(rate * balance / totalSupply dt) from 0 till checkpoint
+# All values are kept in units of being multiplied by 1e18
 # For that, we keep:
 
-# 1e36 * ∫(1/totalSupply dt) from 0 till checkpoint
+# 1e18 * ∫(rate(t) / totalSupply(t) dt) from 0 till checkpoint
 integrate_inv_supply: public(uint256)
 
-# 1e36 * ∫(1/totalSupply dt) from (last_action) till checkpoint
+# 1e18 * ∫(rate(t) / totalSupply(t) dt) from (last_action) till checkpoint
 integrate_inv_supply_of: public(map(address, uint256))
 
 integrate_checkpoint: public(timestamp)
 
-# 1e18 * ∫(balance/totalSupply dt) from 0 till checkpoint
+# ∫(balance * rate(t) / totalSupply(t) dt) from 0 till checkpoint
 integrate_fraction: public(map(address, uint256))
+
+inflation_rate: uint256
 
 # XXX also set_weight_fraction and integrate with * (weight / sum(all_weights))
 
@@ -33,6 +37,7 @@ def __init__(addr: address):
     self.totalSupply = 0
     self.integrate_inv_supply = 0
     self.integrate_checkpoint = block.timestamp
+    self.inflation_rate = CRV20(addr).current_rate()
 
 
 @private
