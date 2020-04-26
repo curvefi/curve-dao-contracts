@@ -45,7 +45,7 @@ def checkpoint(addr: address, old_value: uint256, old_supply: uint256):
 
         if old_value > 0:
             _integrate_inv_supply_of: uint256 = self.integrate_inv_supply_of[addr]
-            self.integrate_fraction[addr] += old_value * (_integrate_inv_supply - _integrate_inv_supply_of)
+            self.integrate_fraction[addr] += old_value * (_integrate_inv_supply - _integrate_inv_supply_of) / 10 ** 18
 
         self.integrate_inv_supply = _integrate_inv_supply
         self.integrate_inv_supply_of[addr] = _integrate_inv_supply
