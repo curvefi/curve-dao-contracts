@@ -76,7 +76,7 @@ def update_mining_parameters():
 @private
 @constant
 def _available_supply() -> uint256:
-    return self.start_epoch_supply + as_unitless_number(block.timestamp - self.start_epoch_time + 1) * self.rate
+    return self.start_epoch_supply + as_unitless_number(block.timestamp - self.start_epoch_time) * self.rate
 
 
 @public
@@ -97,31 +97,31 @@ def mintable_in_timeframe(start: uint256, end: uint256) -> uint256:
     current_rate: uint256 = self.rate
 
     # Special case if end is in future (not yet minted) epoch
-    if end >= current_epoch_time + RATE_REDUCTION_TIME:
+    if end > current_epoch_time + RATE_REDUCTION_TIME:
         current_epoch_time += RATE_REDUCTION_TIME
         current_rate = current_rate * RATE_DENOMINATOR / RATE_REDUCTION_COEFFICIENT
 
-    assert end < current_epoch_time + RATE_REDUCTION_TIME  # Not too far in future
+    assert end <= current_epoch_time + RATE_REDUCTION_TIME  # Not too far in future
 
     for i in range(999):  # Curve will not work in 1000 years. Darn!
-        if end >= current_epoch_time:
+        if end > current_epoch_time:
             current_end: uint256 = end
-            if current_end >= current_epoch_time + RATE_REDUCTION_TIME:
-                current_end = current_epoch_time + RATE_REDUCTION_TIME - 1
+            if current_end > current_epoch_time + RATE_REDUCTION_TIME:
+                current_end = current_epoch_time + RATE_REDUCTION_TIME
 
             current_start: uint256 = start
             if current_start >= current_epoch_time + RATE_REDUCTION_TIME:
-                break
+                break  # We should never get here but what if...
             elif current_start < current_epoch_time:
                 current_start = current_epoch_time
 
-            to_mint += current_rate * (current_end - current_start + 1)  # XXX switch to things without +- 1: timestamps can differ by less than 1 XXX
+            to_mint += current_rate * (current_end - current_start)
 
             if start >= current_epoch_time:
                 break
 
         current_epoch_time -= RATE_REDUCTION_TIME
-        current_rate = current_rate * RATE_REDUCTION_COEFFICIENT / RATE_DENOMINATOR - 1
+        current_rate = current_rate * RATE_REDUCTION_COEFFICIENT / RATE_DENOMINATOR - 1 # double-division with rounding down should've done it anyway
         assert current_rate <= INITIAL_RATE  # This should never happen
 
     return to_mint
