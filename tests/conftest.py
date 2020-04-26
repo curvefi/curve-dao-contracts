@@ -60,3 +60,8 @@ def mock_lp_token(w3):  # Not using the actual Curve contract
     return deploy_contract(
                 w3, 'ERC20LP.vy', w3.eth.accounts[0],
                 b'Curve LP token', b'usdCrv', 18, 10 ** 9)
+
+
+@pytest.fixture
+def liquidity_gauge(w3):
+    return deploy_contract(w3, 'LiquidityGauge.vy', w3.eth.accounts[0])
