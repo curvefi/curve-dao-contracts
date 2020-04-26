@@ -1,11 +1,9 @@
 # This gauge can be used for measuring liquidity and insurance
 from vyper.interfaces import ERC20
 
-# This is not required at all, but let's define here for commentary purposes
-contract LiquidityGauge:
-    def balanceOf(addr: address) -> uint256: constant
-    def totalSupply() -> uint256: constant
-    def integrate_fraction(addr: address, start: uint256, end: uint256) -> uint256: constant
+contract CRV20:
+    def current_rate() -> uint256: constant
+    def previous_rate() -> uint256: constant
 
 
 token: public(address)
