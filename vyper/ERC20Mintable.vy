@@ -22,7 +22,7 @@ minter: address
 YEAR: constant(uint256) = 86400 * 365
 
 # Supply parameters
-INITIAL_RATE: constant(uint256) = 594661989 * 10 ** 18 / YEAR  # leading to 33% premine XXX precision
+INITIAL_RATE: constant(uint256) = 594661989 * 10 ** 18 / YEAR  # leading to 33% premine
 RATE_REDUCTION_TIME: constant(uint256) = YEAR
 RATE_REDUCTION_COEFFICIENT: constant(uint256) = 1414213562373095168  # sqrt(2) * 1e18
 RATE_DENOMINATOR: constant(uint256) = 10 ** 18
