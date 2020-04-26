@@ -58,14 +58,17 @@ def test_mint(w3, token):
             token.functions.mint(owner, to_mint).transact(from_owner)
         # All minted before t0 (including t0)
         # Blocks move by 1 s here, so cannot mint rate + 1
-        to_mint = token.caller.available_supply() - token.caller.totalSupply()
         rate = token.caller.rate()
         with pytest.raises(TransactionFailed):
             # Sometimes rate decreases in this block - that tx will fail too
-            token.functions.mint(owner, to_mint + rate + 1).transact(from_owner)
-        t0 = block_timestamp(w3) + 1
+            if to_mint == 0:
+                token.functions.mint(owner, rate + 1).transact(from_owner)
+            else:
+                # We had a new transaction which didn't mint an extra rate amount
+                token.functions.mint(owner, 2 * rate + 1).transact(from_owner)
+        t0 = block_timestamp(w3)  # Next tx will be in future block which is at least 1 s away
 
-        t1 = time_travel(w3, int(10 ** (random() * log10(300 * 86400)))) + 1  # next block
+        t1 = time_travel(w3, int(10 ** (random() * log10(300 * 86400))))
         balance_before = token.caller.balanceOf(bob)
 
         t_start = randrange(t0, t1 + 1)
@@ -75,8 +78,9 @@ def test_mint(w3, token):
         else:
             dt = 0
         with pytest.raises(TransactionFailed):
-            # -2 (not -1) because mint tx failed and another block has passed
-            non_mintable_value = token.caller.mintable_in_timeframe(t0 - 2, t1)
+            # -2 for two previous mints (failed and nonfailed), -1 for next block,
+            # +1 for t0 (it was in the same block as the last mint) and -1 more into the past
+            non_mintable_value = token.caller.mintable_in_timeframe(t0 - 3, t1)
             token.functions.mint(bob, non_mintable_value).transact(from_owner)
         value = token.caller.mintable_in_timeframe(t_start, t_start + dt)
         value = min(value, int(value * random() * 2))
