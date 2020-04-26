@@ -115,7 +115,7 @@ def mintable_in_timeframe(start: uint256, end: uint256) -> uint256:
             elif current_start < current_epoch_time:
                 current_start = current_epoch_time
 
-            to_mint += current_rate * (current_end - current_start + 1)
+            to_mint += current_rate * (current_end - current_start + 1)  # XXX switch to things without +- 1: timestamps can differ by less than 1 XXX
 
             if start >= current_epoch_time:
                 break
