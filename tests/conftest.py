@@ -51,5 +51,12 @@ def w3(tester):
 @pytest.fixture
 def token(w3):
     return deploy_contract(
-                w3, 'ERC20Mintable.vy', w3.eth.accounts[0],
+                w3, 'ERC20CRV.vy', w3.eth.accounts[0],
                 b'Curve DAO token', b'CRV', 18, 10 ** 9)
+
+
+@pytest.fixture
+def mock_lp_token(w3):  # Not using the actual Curve contract
+    return deploy_contract(
+                w3, 'ERC20LP.vy', w3.eth.accounts[0],
+                b'Curve LP token', b'usdCrv', 18, 10 ** 9)
