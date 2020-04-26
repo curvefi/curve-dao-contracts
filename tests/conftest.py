@@ -63,5 +63,6 @@ def mock_lp_token(w3):  # Not using the actual Curve contract
 
 
 @pytest.fixture
-def liquidity_gauge(w3):
-    return deploy_contract(w3, 'LiquidityGauge.vy', w3.eth.accounts[0])
+def liquidity_gauge(w3, mock_lp_token):
+    return deploy_contract(w3, 'LiquidityGauge.vy', w3.eth.accounts[0],
+                           mock_lp_token.address)
