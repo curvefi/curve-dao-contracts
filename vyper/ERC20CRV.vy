@@ -75,7 +75,7 @@ def update_mining_parameters():
 
 @public
 def start_epoch_time_write() -> timestamp:
-    _start_epoch_time: uint256 = self.start_epoch_time
+    _start_epoch_time: timestamp = self.start_epoch_time
     if block.timestamp >= _start_epoch_time + RATE_REDUCTION_TIME:
         self._update_mining_parameters()
         return self.start_epoch_time
