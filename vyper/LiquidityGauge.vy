@@ -39,7 +39,7 @@ def __init__(addr: address):
     self.integrate_checkpoint = block.timestamp
     self.integrate_inv_supply[0] = 0
     self.epoch_checkpoints[0] = CRV20(addr).start_epoch_time_write()  # XXX do we use these?
-    self.last_epoch_checkpoint = 0
+    self.last_epoch = 0
     self.inflation_rate = CRV20(addr).rate()
 
 
@@ -53,7 +53,7 @@ def checkpoint(addr: address, old_value: uint256, old_supply: uint256):
         _integrate_inv_supply: uint256 = self.integrate_inv_supply[epoch]
         rate: uint256 = self.inflation_rate
 
-        dt: uint = 0
+        dt: uint256 = 0
         # Update integral of 1/supply
         if new_epoch_time > _integrate_checkpoint:
             # Handle going across epochs
@@ -72,12 +72,12 @@ def checkpoint(addr: address, old_value: uint256, old_supply: uint256):
         _integrate_inv_supply += 10 ** 18 * rate * dt / old_supply
 
         # Update user-specific integrals
-        user_epoch: uint256 = epoch
+        user_epoch: int128 = epoch
         user_epoch_time: timestamp = new_epoch_time
         user_checkpoint: timestamp = self.integrate_checkpoint_of[addr]
         _epoch_inv_supply: uint256 = _integrate_inv_supply
         _integrate_inv_supply_of: uint256 = self.integrate_inv_supply_of[addr]
-        _integrate_fraction = self.integrate_fraction[addr]
+        _integrate_fraction: uint256 = self.integrate_fraction[addr]
         for i in range(999):
             # Going no more than 999 epochs (years?) (usually much less)
             if user_checkpoint >= user_epoch_time:
@@ -88,15 +88,15 @@ def checkpoint(addr: address, old_value: uint256, old_supply: uint256):
             else:
                 user_epoch -= 1
                 prev_epoch_inv_supply: uint256 = self.integrate_inv_supply[user_epoch]
-                dI: uint256 = _epoch_inv_supply - prev_epoch_supply
-                _epoch_inv_supply = prev_inv_supply
+                dI: uint256 = _epoch_inv_supply - prev_epoch_inv_supply
+                _epoch_inv_supply = prev_epoch_inv_supply
                 user_epoch_time = self.epoch_checkpoints[user_epoch]
                 _integrate_fraction += old_value * dI / 10 ** 18
 
         self.integrate_inv_supply[epoch] = _integrate_inv_supply
         self.integrate_inv_supply_of[addr] = _integrate_inv_supply
         self.integrate_fraction[addr] = _integrate_fraction
-        self.user_checkpoint[addr] = block.timestamp
+        self.integrate_checkpoint_of[addr] = block.timestamp
         self.integrate_checkpoint = block.timestamp
 
 
