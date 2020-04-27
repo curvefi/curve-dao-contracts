@@ -95,6 +95,7 @@ def available_supply() -> uint256:
     return self._available_supply()
 
 
+# XXX this might end up being not needed
 @public
 @constant
 def mintable_in_timeframe(start: uint256, end: uint256) -> uint256:

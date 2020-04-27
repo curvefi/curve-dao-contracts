@@ -38,7 +38,7 @@ def __init__(addr: address):
     self.totalSupply = 0
     self.integrate_checkpoint = block.timestamp
     self.integrate_inv_supply[0] = 0
-    self.epoch_checkpoints[0] = CRV20(addr).start_epoch_time_write()  # XXX do we use these?
+    self.epoch_checkpoints[0] = CRV20(addr).start_epoch_time_write()
     self.last_epoch = 0
     self.inflation_rate = CRV20(addr).rate()
 
