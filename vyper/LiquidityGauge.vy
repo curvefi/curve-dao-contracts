@@ -72,13 +72,31 @@ def checkpoint(addr: address, old_value: uint256, old_supply: uint256):
         _integrate_inv_supply += 10 ** 18 * rate * dt / old_supply
 
         # Update user-specific integrals
-        # Need to handle going across (multiple) epochs
-        # if old_value > 0:
-        #     _integrate_inv_supply_of: uint256 = self.integrate_inv_supply_of[addr]
-        #     self.integrate_fraction[addr] += old_value * (_integrate_inv_supply - _integrate_inv_supply_of) / 10 ** 18
+        user_epoch: uint256 = epoch
+        user_epoch_time: timestamp = new_epoch_time
+        user_checkpoint: timestamp = self.integrate_checkpoint_of[addr]
+        _epoch_inv_supply: uint256 = _integrate_inv_supply
+        _integrate_inv_supply_of: uint256 = self.integrate_inv_supply_of[addr]
+        _integrate_fraction = self.integrate_fraction[addr]
+        for i in range(999):
+            # Going no more than 999 epochs (years?) (usually much less)
+            if user_checkpoint >= user_epoch_time:
+                # Last cycle => we are in the epoch of the user checkpoint
+                dI: uint256 = _epoch_inv_supply - _integrate_inv_supply_of
+                _integrate_fraction += old_value * dI / 10 ** 18
+                break
+            else:
+                user_epoch -= 1
+                prev_epoch_inv_supply: uint256 = self.integrate_inv_supply[user_epoch]
+                dI: uint256 = _epoch_inv_supply - prev_epoch_supply
+                _epoch_inv_supply = prev_inv_supply
+                user_epoch_time = self.epoch_checkpoints[user_epoch]
+                _integrate_fraction += old_value * dI / 10 ** 18
 
         self.integrate_inv_supply[epoch] = _integrate_inv_supply
         self.integrate_inv_supply_of[addr] = _integrate_inv_supply
+        self.integrate_fraction[addr] = _integrate_fraction
+        self.user_checkpoint[addr] = block.timestamp
         self.integrate_checkpoint = block.timestamp
 
 
