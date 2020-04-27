@@ -66,32 +66,21 @@ def _update_mining_parameters():
 
 
 @public
-@constant
-def current_rate() -> uint256:
-    if self.start_epoch_time + RATE_REDUCTION_TIME > block.timestamp:
-        return self.rate
-    else:
-        return self.rate * RATE_DENOMINATOR / RATE_REDUCTION_COEFFICIENT
-
-
-@public
-@constant
-def previous_rate() -> uint256:
-    # The very first one will be incorrect, but the token will have to exist
-    # before the escrow is deployed
-    # so that's ok
-    if self.start_epoch_time + RATE_REDUCTION_TIME > block.timestamp:
-        return self.rate * RATE_REDUCTION_COEFFICIENT / RATE_DENOMINATOR
-    else:
-        return self.rate
-
-
-@public
 def update_mining_parameters():
     # Everyone can do this but only once per epoch
     # Total supply becomes slightly larger if this function is called late
     assert block.timestamp >= self.start_epoch_time + RATE_REDUCTION_TIME
     self._update_mining_parameters()
+
+
+@public
+def start_epoch_time_write() -> timestamp:
+    _start_epoch_time: uint256 = self.start_epoch_time
+    if block.timestamp >= _start_epoch_time + RATE_REDUCTION_TIME:
+        self._update_mining_parameters()
+        return self.start_epoch_time
+    else:
+        return _start_epoch_time
 
 
 @private

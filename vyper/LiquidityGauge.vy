@@ -2,9 +2,8 @@
 from vyper.interfaces import ERC20
 
 contract CRV20:
-    def current_rate() -> uint256: constant
-    def previous_rate() -> uint256: constant
-    def start_epoch_time() -> timestamp: constant
+    def start_epoch_time_write() -> timestamp: modifying
+    def rate() -> uint256: constant
 
 
 token: public(address)
@@ -39,9 +38,9 @@ def __init__(addr: address):
     self.totalSupply = 0
     self.integrate_checkpoint = block.timestamp
     self.integrate_inv_supply[0] = 0
-    self.epoch_checkpoints[0] = block.timestamp
+    self.epoch_checkpoints[0] = CRV20(addr).start_epoch_time_write()  # XXX do we use these?
     self.last_epoch_checkpoint = 0
-    self.inflation_rate = CRV20(addr).current_rate()
+    self.inflation_rate = CRV20(addr).rate()
 
 
 @private
@@ -50,25 +49,29 @@ def checkpoint(addr: address, old_value: uint256, old_supply: uint256):
     if block.timestamp > _integrate_checkpoint:
         _token: address = self.token
         epoch: int128 = self.last_epoch
-        new_epoch_time: timestamp = CRV20(_token).start_epoch_time()  # XXX updated epoch time instead, this is LAGGING
+        new_epoch_time: timestamp = CRV20(_token).start_epoch_time_write()
         _integrate_inv_supply: uint256 = self.integrate_inv_supply[epoch]
         rate: uint256 = self.inflation_rate
 
         dt: uint = 0
+        # Update integral of 1/supply
         if new_epoch_time > _integrate_checkpoint:
             # Handle going across epochs
             # No less than one checkpoint is expected in 1 year
             dt = as_unitless_number(new_epoch_time - _integrate_checkpoint)
             _integrate_inv_supply += 10 ** 18 * rate * dt / old_supply
-            rate = CRV20(_token).current_rate()
+            self.integrate_inv_supply[epoch] = _integrate_inv_supply
+            rate = CRV20(_token).rate()
             self.inflation_rate = rate
             epoch += 1
             self.last_epoch = epoch
+            self.epoch_checkpoints[epoch] = new_epoch_time
             dt = as_unitless_number(block.timestamp - new_epoch_time)
         else:
             dt = as_unitless_number(block.timestamp - _integrate_checkpoint)
         _integrate_inv_supply += 10 ** 18 * rate * dt / old_supply
 
+        # Update user-specific integrals
         # Need to handle going across (multiple) epochs
         # if old_value > 0:
         #     _integrate_inv_supply_of: uint256 = self.integrate_inv_supply_of[addr]
