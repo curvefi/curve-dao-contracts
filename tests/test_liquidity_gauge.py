@@ -6,6 +6,8 @@ def test_test(w3, mock_lp_token, token, liquidity_gauge):
     alice, bob = w3.eth.accounts[:2]
     from_alice = {'from': alice}
     from_bob = {'from': bob}
+    alice_staked = 0
+    bob_staked = 0
 
     # Let Alice and Bob have about the same token amount
     mock_lp_token.functions.transfer(
@@ -24,10 +26,12 @@ def test_test(w3, mock_lp_token, token, liquidity_gauge):
         if is_withdraw:
             amount = randrange(1, liquidity_gauge.caller.balanceOf(bob) + 1)
             liquidity_gauge.functions.withdraw(amount).transact(from_bob)
+            bob_staked -= amount
         else:
             amount = randrange(1, mock_lp_token.caller.balanceOf(bob) // 10 + 1)
             mock_lp_token.functions.approve(liquidity_gauge.address, amount).transact(from_bob)
             liquidity_gauge.functions.deposit(amount).transact(from_bob)
+            bob_staked += amount
 
         if is_alice:
             # For Alice
@@ -36,7 +40,13 @@ def test_test(w3, mock_lp_token, token, liquidity_gauge):
             if is_withdraw_alice:
                 amount_alice = randrange(1, liquidity_gauge.caller.balanceOf(alice) // 10 + 1)
                 liquidity_gauge.functions.withdraw(amount).transact(from_bob)
+                alice_staked -= amount
             else:
                 amount_alice = randrange(1, mock_lp_token.caller.balanceOf(alice) + 1)
                 mock_lp_token.functions.approve(liquidity_gauge.address, amount_alice).transact(from_alice)
                 liquidity_gauge.functions.deposit(amount_alice).transact(from_alice)
+                bob_staked += amount
+
+        assert liquidity_gauge.caller.balanceOf(alice) == alice_staked
+        assert liquidity_gauge.caller.balanceOf(bob) == bob_staked
+        assert liquidity_gauge.caller.totalSupply() == alice_staked + bob_staked
