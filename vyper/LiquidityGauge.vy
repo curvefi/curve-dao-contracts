@@ -6,7 +6,8 @@ contract CRV20:
     def rate() -> uint256: constant
 
 
-token: public(address)
+crv_token: public(address)
+lp_token: public(address)
 balanceOf: public(map(address, uint256))
 totalSupply: public(uint256)
 
@@ -33,21 +34,22 @@ inflation_rate: uint256
 
 
 @public
-def __init__(addr: address):
-    self.token = addr
+def __init__(crv_addr: address, lp_addr: address):
+    self.crv_token = crv_addr
+    self.lp_token = lp_addr
     self.totalSupply = 0
     self.integrate_checkpoint = block.timestamp
     self.integrate_inv_supply[0] = 0
-    self.epoch_checkpoints[0] = CRV20(addr).start_epoch_time_write()
+    self.epoch_checkpoints[0] = CRV20(crv_addr).start_epoch_time_write()
     self.last_epoch = 0
-    self.inflation_rate = CRV20(addr).rate()
+    self.inflation_rate = CRV20(crv_addr).rate()
 
 
 @private
 def checkpoint(addr: address, old_value: uint256, old_supply: uint256):
     _integrate_checkpoint: timestamp = self.integrate_checkpoint
     if block.timestamp > _integrate_checkpoint:
-        _token: address = self.token
+        _token: address = self.crv_token
         epoch: int128 = self.last_epoch
         new_epoch_time: timestamp = CRV20(_token).start_epoch_time_write()
         _integrate_inv_supply: uint256 = self.integrate_inv_supply[epoch]
@@ -69,7 +71,12 @@ def checkpoint(addr: address, old_value: uint256, old_supply: uint256):
             dt = as_unitless_number(block.timestamp - new_epoch_time)
         else:
             dt = as_unitless_number(block.timestamp - _integrate_checkpoint)
-        _integrate_inv_supply += 10 ** 18 * rate * dt / old_supply
+        if old_supply > 0:
+            # No need to integrate if old_supply == 0
+            # because no one staked then anyway
+            # If old_supply == 1, we can have 1e32 dollars
+            # - should be all right even if we go full Zimbabwe
+            _integrate_inv_supply += 10 ** 18 * rate * dt / old_supply
 
         # Update user-specific integrals
         user_epoch: int128 = epoch
@@ -111,7 +118,7 @@ def deposit(value: uint256):
     self.balanceOf[msg.sender] = old_value + value
     self.totalSupply = old_supply + value
 
-    assert_modifiable(ERC20(self.token).transferFrom(msg.sender, self, value))
+    assert_modifiable(ERC20(self.lp_token).transferFrom(msg.sender, self, value))
     # XXX logs
 
 
@@ -126,5 +133,5 @@ def withdraw(value: uint256):
     self.balanceOf[msg.sender] = old_value - value
     self.totalSupply = old_supply - value
 
-    assert_modifiable(ERC20(self.token).transfer(msg.sender, value))
+    assert_modifiable(ERC20(self.lp_token).transfer(msg.sender, value))
     # XXX logs
