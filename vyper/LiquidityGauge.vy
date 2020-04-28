@@ -46,7 +46,7 @@ def __init__(crv_addr: address, lp_addr: address):
 
 
 @private
-def checkpoint(addr: address, old_value: uint256, old_supply: uint256):
+def _checkpoint(addr: address, old_value: uint256, old_supply: uint256):
     _integrate_checkpoint: timestamp = self.integrate_checkpoint
     if block.timestamp > _integrate_checkpoint:
         _token: address = self.crv_token
@@ -108,12 +108,17 @@ def checkpoint(addr: address, old_value: uint256, old_supply: uint256):
 
 
 @public
+def user_checkpoint():
+    self._checkpoint(msg.sender, self.balanceOf[msg.sender], self.totalSupply)
+
+
+@public
 @nonreentrant('lock')
 def deposit(value: uint256):
     old_value: uint256 = self.balanceOf[msg.sender]
     old_supply: uint256 = self.totalSupply
 
-    self.checkpoint(msg.sender, old_value, old_supply)
+    self._checkpoint(msg.sender, old_value, old_supply)
 
     self.balanceOf[msg.sender] = old_value + value
     self.totalSupply = old_supply + value
@@ -128,7 +133,7 @@ def withdraw(value: uint256):
     old_value: uint256 = self.balanceOf[msg.sender]
     old_supply: uint256 = self.totalSupply
 
-    self.checkpoint(msg.sender, old_value, old_supply)
+    self._checkpoint(msg.sender, old_value, old_supply)
 
     self.balanceOf[msg.sender] = old_value - value
     self.totalSupply = old_supply - value

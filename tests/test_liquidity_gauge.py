@@ -16,7 +16,7 @@ def test_test(w3, mock_lp_token, token, liquidity_gauge):
 
     # Now let's have a loop where Bob always deposit or withdraws,
     # and Alice does so more rarely
-    for i in range(20):
+    for i in range(40):
         is_alice = (random() < 0.2)
         dt = randrange(1, YEAR // 5)
         time_travel(w3, dt)
@@ -39,14 +39,19 @@ def test_test(w3, mock_lp_token, token, liquidity_gauge):
 
             if is_withdraw_alice:
                 amount_alice = randrange(1, liquidity_gauge.caller.balanceOf(alice) // 10 + 1)
-                liquidity_gauge.functions.withdraw(amount).transact(from_bob)
-                alice_staked -= amount
+                liquidity_gauge.functions.withdraw(amount_alice).transact(from_alice)
+                alice_staked -= amount_alice
             else:
                 amount_alice = randrange(1, mock_lp_token.caller.balanceOf(alice) + 1)
                 mock_lp_token.functions.approve(liquidity_gauge.address, amount_alice).transact(from_alice)
                 liquidity_gauge.functions.deposit(amount_alice).transact(from_alice)
-                bob_staked += amount
+                alice_staked += amount_alice
 
         assert liquidity_gauge.caller.balanceOf(alice) == alice_staked
         assert liquidity_gauge.caller.balanceOf(bob) == bob_staked
         assert liquidity_gauge.caller.totalSupply() == alice_staked + bob_staked
+
+        dt = randrange(1, YEAR // 20)
+        time_travel(w3, dt)
+
+        liquidity_gauge.functions.user_checkpoint().transact(from_alice)
