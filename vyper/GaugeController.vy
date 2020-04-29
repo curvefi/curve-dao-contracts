@@ -16,6 +16,9 @@ gauge_relative_weights: public(map(address, uint256))
 type_weights: public(map(int128, uint256))
 total_weight: public(uint256)
 
+start_epoch_time: public(timestamp)
+last_change: public(timestamp)
+
 
 @public
 def __init__(token_address: address):
