@@ -69,3 +69,10 @@ def liquidity_gauge(w3, token, mock_lp_token):
     contract = deploy_contract(w3, 'LiquidityGauge.vy', w3.eth.accounts[0],
                                token.address, mock_lp_token.address)
     return contract
+
+
+@pytest.fixture
+def controller(w3, token):
+    contract = deploy_contract(w3, 'Controller.vy', w3.eth.accounts[0],
+                               token.address)
+    return contract
