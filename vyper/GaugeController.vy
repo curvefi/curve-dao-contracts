@@ -30,3 +30,23 @@ def __init__(token_address: address):
 def transfer_ownership(addr: address):
     assert msg.sender == self.admin
     self.admin = addr
+
+
+@public
+def add_type():
+    assert msg.sender == self.admin
+
+
+@public
+def add_gauge(addr: address, gauge_type: int128, weight: uint256 = 0):
+    assert msg.sender == self.admin
+
+
+@public
+def change_type_weight(type_id: int128, weight: uint256):
+    assert msg.sender == self.admin
+
+
+@public
+def change_gauge_weight(addr: address, weight: uint256):
+    assert msg.sender == self.admin
