@@ -24,7 +24,7 @@ def test_gauge_controller(w3, gauge_controller, liquidity_gauge, three_gauges, t
     assert last_change == gauge_controller.caller.last_change()
     assert gauge_controller.caller.start_epoch_time() == token.caller.start_epoch_time()
 
-    # Check matcing of all patameters and incremental calculations
+    # Check static parameters
     assert gauge_controller.caller.n_gauge_types() == 2
     assert gauge_controller.caller.n_gauges() == 3
     for i in range(3):
@@ -36,3 +36,9 @@ def test_gauge_controller(w3, gauge_controller, liquidity_gauge, three_gauges, t
         assert gauge_controller.caller.gauge_weights(three_gauges[i].address) == gauge_weights[i]
     for i in range(2):
         assert gauge_controller.caller.type_weights(i) == type_weights[i]
+
+    # Check incremental calculations
+    sums = [sum(gauge_weights[:2]), gauge_weights[2]]
+    assert gauge_controller.caller.weight_sums_per_type(0) == sums[0]
+    assert gauge_controller.caller.weight_sums_per_type(1) == sums[1]
+    assert gauge_controller.caller.total_weight() == sum(s * t for s, t in zip(sums, type_weights))
