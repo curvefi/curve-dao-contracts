@@ -65,13 +65,6 @@ def mock_lp_token(w3):  # Not using the actual Curve contract
 
 
 @pytest.fixture
-def liquidity_gauge(w3, token, mock_lp_token):
-    contract = deploy_contract(w3, 'LiquidityGauge.vy', w3.eth.accounts[0],
-                               token.address, mock_lp_token.address)
-    return contract
-
-
-@pytest.fixture
 def gauge_controller(w3, token):
     contract = deploy_contract(w3, 'GaugeController.vy', w3.eth.accounts[0],
                                token.address)
@@ -79,8 +72,15 @@ def gauge_controller(w3, token):
 
 
 @pytest.fixture
-def three_gauges(w3, token, mock_lp_token):
+def liquidity_gauge(w3, token, mock_lp_token, gauge_controller):
+    contract = deploy_contract(w3, 'LiquidityGauge.vy', w3.eth.accounts[0],
+                               token.address, mock_lp_token.address, gauge_controller.address)
+    return contract
+
+
+@pytest.fixture
+def three_gauges(w3, token, mock_lp_token, gauge_controller):
     contracts = [deploy_contract(w3, 'LiquidityGauge.vy', w3.eth.accounts[0],
-                                 token.address, mock_lp_token.address)
+                                 token.address, mock_lp_token.address, gauge_controller.address)
                  for _ in range(3)]
     return contracts

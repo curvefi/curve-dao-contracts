@@ -8,6 +8,7 @@ contract CRV20:
 
 crv_token: public(address)
 lp_token: public(address)
+controller: public(address)
 balanceOf: public(map(address, uint256))
 totalSupply: public(uint256)
 
@@ -34,9 +35,10 @@ inflation_rate: uint256
 
 
 @public
-def __init__(crv_addr: address, lp_addr: address):
+def __init__(crv_addr: address, lp_addr: address, controller_addr: address):
     self.crv_token = crv_addr
     self.lp_token = lp_addr
+    self.controller = controller_addr
     self.totalSupply = 0
     self.integrate_checkpoint = block.timestamp
     self.integrate_inv_supply[0] = 0
