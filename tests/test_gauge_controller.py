@@ -1,4 +1,4 @@
-from .conftest import block_timestamp
+from .conftest import block_timestamp, YEAR, time_travel
 
 
 def test_gauge_controller(w3, gauge_controller, liquidity_gauge, three_gauges, token):
@@ -21,8 +21,9 @@ def test_gauge_controller(w3, gauge_controller, liquidity_gauge, three_gauges, t
     gauge_controller.functions.change_gauge_weight(three_gauges[0].address, gauge_weights[0]).transact(from_admin)
 
     last_change = block_timestamp(w3)
+    epoch_time = token.caller.start_epoch_time()
     assert last_change == gauge_controller.caller.last_change()
-    assert gauge_controller.caller.start_epoch_time() == token.caller.start_epoch_time()
+    assert gauge_controller.caller.start_epoch_time() == epoch_time
 
     # Check static parameters
     assert gauge_controller.caller.n_gauge_types() == 2
@@ -46,3 +47,9 @@ def test_gauge_controller(w3, gauge_controller, liquidity_gauge, three_gauges, t
     for i, t in [(0, 0), (1, 0), (2, 1)]:
         assert gauge_controller.caller.gauge_relative_weight(three_gauges[i].address) ==\
             10 ** 18 * type_weights[t] * gauge_weights[i] // total_weight
+
+    # Go across 1 year and see what happens
+    time_travel(w3, YEAR + YEAR // 10)
+    gauge_controller.functions.last_change_write().transact(from_admin)
+    assert gauge_controller.caller.start_epoch_time() == epoch_time + YEAR
+    assert gauge_controller.caller.last_change() == last_change
