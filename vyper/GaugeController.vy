@@ -58,6 +58,8 @@ def add_type():
 def add_gauge(addr: address, gauge_type: int128, weight: uint256 = 0):
     assert msg.sender == self.admin
     assert (gauge_type >= 0) and (gauge_type < self.n_gauge_types)
+    # If someone adds the same gauge twice, it will override the previous one
+    # That's probably ok
 
     n: int128 = self.n_gauges
     self.n_gauges += 1
