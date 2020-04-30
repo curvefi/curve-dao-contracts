@@ -11,13 +11,12 @@ n_gauges: public(int128)
 gauges: public(map(int128, address))
 gauge_types: public(map(address, int128))
 gauge_weights: public(map(address, uint256))
-gauge_relative_weights: public(map(address, uint256))
 
 type_weights: public(map(int128, uint256))
 weight_sums_per_type: public(map(int128, uint256))
 total_weight: public(uint256)
 
-start_epoch_time: public(timestamp)
+start_epoch_time: public(timestamp)  # XXX
 last_change: public(timestamp)
 
 
@@ -86,3 +85,16 @@ def change_type_weight(type_id: int128, weight: uint256):
 @public
 def change_gauge_weight(addr: address, weight: uint256):
     assert msg.sender == self.admin
+
+    gauge_type: int128 = self.gauge_types[addr]
+    type_weight: uint256 = self.type_weights[gauge_type]
+    old_weight_sums: uint256 = self.weight_sums_per_type[gauge_type]
+    old_total_weight: uint256 = self.total_weight
+    old_weight: uint256 = self.gauge_weights[addr]
+
+    weight_sums: uint256 = old_weight_sums + weight - old_weight
+    self.gauge_weights[addr] = weight
+    self.weight_sums_per_type[gauge_type] = weight_sums
+    self.total_weight = old_total_weight + weight_sums * type_weight - old_weight_sums * type_weight
+
+    self.last_change = block.timestamp
