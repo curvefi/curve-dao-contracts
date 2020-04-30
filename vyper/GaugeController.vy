@@ -1,5 +1,13 @@
 # The contract which controls gauges and issuance of coins through those
 
+contract CRV20:
+    def start_epoch_time_write() -> timestamp: modifying
+
+
+YEAR: constant(uint256) = 86400 * 365
+RATE_REDUCTION_TIME: constant(uint256) = YEAR
+
+
 admin: address  # Can and will be a smart contract
 token: address  # CRV token
 
@@ -16,8 +24,8 @@ type_weights: public(map(int128, uint256))
 weight_sums_per_type: public(map(int128, uint256))
 total_weight: public(uint256)
 
-start_epoch_time: public(timestamp)  # XXX
-last_change: public(timestamp)
+start_epoch_time: public(timestamp)  # Last epoch
+last_change: public(timestamp)  # Not including change of epoch if any
 
 
 @public
@@ -27,6 +35,8 @@ def __init__(token_address: address):
     self.n_gauge_types = 0
     self.n_gauges = 0
     self.total_weight = 0
+    self.last_change = block.timestamp
+    self.start_epoch_time = CRV20(token_address).start_epoch_time_write()
 
 
 @public
@@ -98,3 +108,19 @@ def change_gauge_weight(addr: address, weight: uint256):
     self.total_weight = old_total_weight + weight_sums * type_weight - old_weight_sums * type_weight
 
     self.last_change = block.timestamp
+
+
+@public
+def last_change_write() -> timestamp:
+    _start_epoch_time: timestamp = self.start_epoch_time
+    _last_change: timestamp = self.last_change
+
+    # Bump last epoch if it was changed
+    if block.timestamp >= _start_epoch_time + RATE_REDUCTION_TIME:
+        _start_epoch_time = CRV20(self.token).start_epoch_time_write()
+        self.start_epoch_time = _start_epoch_time
+
+    if _last_change >= _start_epoch_time:
+        return _last_change
+    else:
+        return _start_epoch_time
