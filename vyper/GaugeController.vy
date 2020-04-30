@@ -58,13 +58,15 @@ def add_gauge(addr: address, gauge_type: int128, weight: uint256 = 0):
     self.gauge_weights[addr] = weight
 
     if weight > 0:
-        _type_weight: uint256 = self.type_weights[gauge_type]
-        _total_weight: uint256 = self.total_weight
         self.weight_sums_per_type[gauge_type] += weight
-        _total_weight += _type_weight * weight
-        self.total_weight = _total_weight
-        self.gauge_relative_weights[addr] = 10 ** 18 * _type_weight * weight / _total_weight
+        self.total_weight += self.type_weights[gauge_type] * weight
         self.last_change = block.timestamp
+
+
+@public
+@constant
+def gauge_relative_weight(addr: address) -> uint256:
+    return 10 ** 18 * self.type_weights[self.gauge_types[addr]] * self.gauge_weights[addr] / self.total_weight
 
 
 @public
