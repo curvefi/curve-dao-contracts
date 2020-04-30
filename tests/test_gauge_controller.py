@@ -41,4 +41,8 @@ def test_gauge_controller(w3, gauge_controller, liquidity_gauge, three_gauges, t
     sums = [sum(gauge_weights[:2]), gauge_weights[2]]
     assert gauge_controller.caller.weight_sums_per_type(0) == sums[0]
     assert gauge_controller.caller.weight_sums_per_type(1) == sums[1]
-    assert gauge_controller.caller.total_weight() == sum(s * t for s, t in zip(sums, type_weights))
+    total_weight = sum(s * t for s, t in zip(sums, type_weights))
+    assert gauge_controller.caller.total_weight() == total_weight
+    for i, t in [(0, 0), (1, 0), (2, 1)]:
+        assert gauge_controller.caller.gauge_relative_weight(three_gauges[i].address) ==\
+            10 ** 18 * type_weights[t] * gauge_weights[i] // total_weight
