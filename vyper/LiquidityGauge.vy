@@ -5,6 +5,10 @@ contract CRV20:
     def start_epoch_time_write() -> timestamp: modifying
     def rate() -> uint256: constant
 
+contract Controller:
+    def last_change_write() -> uint256: modifying
+    def gauge_relative_weight(addr: address) -> uint256: constant
+
 
 crv_token: public(address)
 lp_token: public(address)
