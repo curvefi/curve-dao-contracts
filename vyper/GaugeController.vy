@@ -77,27 +77,29 @@ def add_gauge(addr: address, gauge_type: int128, weight: uint256 = 0):
         self.period = p
         l: int128 = self.type_last[gauge_type]
         self.type_last[gauge_type] = p
+        self.gauge_last[n] = p
         old_sum: uint256 = self.weight_sums_per_type[gauge_type][l]
         _type_weight: uint256 = self.type_weights[gauge_type][l]
         if l > 0:
-            # Fill historic gauge weights and sums
+            # Fill historic type weights and sums
             _p: int128 = l
             for _p in range(500):  # If higher (unlikely) - 0 weights
                 _p += 1
-                self.type_weights[gauge_type][_p] = _type_weight
-                self.weight_sums_per_type[gauge_type][_p] = old_sum
                 if _p == p:
                     break
+                self.type_weights[gauge_type][_p] = _type_weight
+                self.weight_sums_per_type[gauge_type][_p] = old_sum
         self.type_weight[gauge_type][p] = _type_weight
         self.gauge_weights[addr][p] = weight
         self.weight_sums_per_type[gauge_type][p] = weight + old_sum
-        self.total_weight += _type_weight * weight
+        self.total_weight[p] = self.total_weight[p-1] + _type_weight * weight
         self.period_timestamp[p] = block.timestamp
 
 
 @public
 @constant
 def gauge_relative_weight(addr: address) -> uint256:
+    # XXX to change
     _total_weight: uint256 = self.total_weight
     if _total_weight > 0:
         return 10 ** 18 * self.type_weights[self.gauge_types[addr]] * self.gauge_weights[addr] / self.total_weight
@@ -109,14 +111,29 @@ def gauge_relative_weight(addr: address) -> uint256:
 def change_type_weight(type_id: int128, weight: uint256):
     assert msg.sender == self.admin
 
-    old_weight: uint256 = self.type_weights[type_id]
-    old_total_weight: uint256 = self.total_weight
-    _weight_sums_per_type: uint256 = self.weight_sums_per_type[type_id]
+    p: int128 = self.period + 1
+    self.period = p
+    l: int128 = self.type_last[type_id]
+    self.type_last[type_id] = p
+    old_weight: uint256 = self.type_weights[type_id][l]
+    old_sum: uint256 = self.weight_sums_per_type[type_id][l]
+    old_total_weight: uint256 = self.total_weight[p-1]
 
-    self.total_weight = old_total_weight + _weight_sums_per_type * weight - _weight_sums_per_type * old_weight
-    self.type_weights[type_id] = weight
+    if l > 0:
+        # Fill historic type weights and sums
+        _p: int128 = l
+        for _p in range(500):  # If higher (unlikely) - 0 weights
+            _p += 1
+            if _p == p:
+                break
+            self.type_weights[type_id][_p] = old_weight
+            self.weight_sums_per_type[type_id][_p] = old_sum
 
-    self.last_change = block.timestamp
+    self.total_weight[p] = old_total_weight + old_sum * weight - old_sum * old_weight
+    self.type_weights[type_id][p] = weight
+    self.weight_sums_per_type[type_id][p] = old_sum
+
+    self.period_timestamp[p] = block.timestamp
 
 
 @public
