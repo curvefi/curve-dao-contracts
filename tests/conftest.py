@@ -34,7 +34,7 @@ def approx(a, b, precision=1e-10):
     return 2 * abs(a - b) / (a + b) <= precision
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def tester():
     genesis_params = PyEVMBackend._generate_genesis_params(overrides={'gas_limit': 7 * 10 ** 6})
     pyevm_backend = PyEVMBackend(genesis_parameters=genesis_params)
@@ -42,7 +42,7 @@ def tester():
     return EthereumTester(backend=pyevm_backend, auto_mine_transactions=True)
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def w3(tester):
     w3 = Web3(Web3.EthereumTesterProvider(tester))
     w3.eth.setGasPriceStrategy(lambda web3, params: 0)
@@ -50,35 +50,35 @@ def w3(tester):
     return w3
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def token(w3):
     return deploy_contract(
                 w3, 'ERC20CRV.vy', w3.eth.accounts[0],
                 b'Curve DAO token', b'CRV', 18, 10 ** 9)
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def mock_lp_token(w3):  # Not using the actual Curve contract
     return deploy_contract(
                 w3, 'ERC20LP.vy', w3.eth.accounts[0],
                 b'Curve LP token', b'usdCrv', 18, 10 ** 9)
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def gauge_controller(w3, token):
     contract = deploy_contract(w3, 'GaugeController.vy', w3.eth.accounts[0],
                                token.address)
     return contract
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def liquidity_gauge(w3, token, mock_lp_token, gauge_controller):
     contract = deploy_contract(w3, 'LiquidityGauge.vy', w3.eth.accounts[0],
                                token.address, mock_lp_token.address, gauge_controller.address)
     return contract
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def three_gauges(w3, token, mock_lp_token, gauge_controller):
     contracts = [deploy_contract(w3, 'LiquidityGauge.vy', w3.eth.accounts[0],
                                  token.address, mock_lp_token.address, gauge_controller.address)
