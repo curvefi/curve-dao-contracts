@@ -6,7 +6,7 @@ contract CRV20:
     def rate() -> uint256: constant
 
 contract Controller:
-    def gauge_relative_weight(addr: address) -> uint256: constant
+    def gauge_relative_weight(addr: address, _period: int128) -> uint256: constant
 
 
 crv_token: public(address)

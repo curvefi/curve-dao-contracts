@@ -53,3 +53,11 @@ def test_gauge_controller(w3, gauge_controller, liquidity_gauge, three_gauges, t
         assert ts > 0
         assert ts > prev_ts
         prev_ts = ts
+
+    # Fill weights and check that nothing has changed
+    p = gauge_controller.caller.period()
+    for i in range(3):
+        w1 = gauge_controller.caller.gauge_relative_weight(three_gauges[i].address, p)
+        gauge_controller.functions.gauge_relative_weight_write(three_gauges[i].address, p).transact(from_admin)
+        w2 = gauge_controller.caller.gauge_relative_weight(three_gauges[i].address, p)
+        assert w1 == w2

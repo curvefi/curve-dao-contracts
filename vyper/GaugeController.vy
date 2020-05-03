@@ -100,10 +100,43 @@ def gauge_relative_weight(addr: address, _period: int128=-1) -> uint256:
         gauge_type: int128 = self.gauge_types[addr]
         tl: int128 = self.type_last[gauge_type]
         gl: int128 = self.gauge_last[addr]
-        if p < tl:
-            tl = p
-        if p < gl:
-            gl = p
+        return 10 ** 18 * self.type_weights[gauge_type][tl] * self.gauge_weights[addr][gl] / _total_weight
+    else:
+        return 0
+
+
+@public
+def gauge_relative_weight_write(addr: address, _period: int128=-1) -> uint256:
+    """
+    Same as gauge_relative_weight(), but also fill all the unfilled values
+    for type and gauge records
+    """
+    p: int128 = _period
+    if _period < 0:
+        p = self.period
+    _total_weight: uint256 = self.total_weight[p]
+    if _total_weight > 0:
+        gauge_type: int128 = self.gauge_types[addr]
+        tl: int128 = self.type_last[gauge_type]
+        gl: int128 = self.gauge_last[addr]
+        if p > tl and tl > 0:
+            _type_weight: uint256 = self.type_weights[gauge_type][tl]
+            old_sum: uint256 = self.weight_sums_per_type[gauge_type][tl]
+            for i in range(500):
+                tl += 1
+                self.type_weights[gauge_type][tl] = _type_weight
+                self.weight_sums_per_type[gauge_type][tl] = old_sum
+                if tl == p:
+                    break
+            self.type_last[gauge_type] = p
+        if p > gl and gl > 0:
+            old_gauge_weight: uint256 = self.gauge_weights[addr][gl]
+            for i in range(500):
+                gl += 1
+                self.gauge_weights[addr][gl] = old_gauge_weight
+                if gl == p:
+                    break
+            self.gauge_last[addr] = p
         return 10 ** 18 * self.type_weights[gauge_type][tl] * self.gauge_weights[addr][gl] / _total_weight
     else:
         return 0
