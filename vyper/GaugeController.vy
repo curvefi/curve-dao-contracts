@@ -91,13 +91,19 @@ def add_gauge(addr: address, gauge_type: int128, weight: uint256 = 0):
 
 @public
 @constant
-def gauge_relative_weight(addr: address) -> uint256:
-    p: int128 = self.period
+def gauge_relative_weight(addr: address, _period: int128=-1) -> uint256:
+    p: int128 = _period
+    if _period < 0:
+        p = self.period
     _total_weight: uint256 = self.total_weight[p]
     if _total_weight > 0:
         gauge_type: int128 = self.gauge_types[addr]
         tl: int128 = self.type_last[gauge_type]
         gl: int128 = self.gauge_last[addr]
+        if p < tl:
+            tl = p
+        if p < gl:
+            gl = p
         return 10 ** 18 * self.type_weights[gauge_type][tl] * self.gauge_weights[addr][gl] / _total_weight
     else:
         return 0

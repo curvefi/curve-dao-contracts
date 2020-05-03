@@ -6,7 +6,6 @@ contract CRV20:
     def rate() -> uint256: constant
 
 contract Controller:
-    def last_change_write() -> uint256: modifying
     def gauge_relative_weight(addr: address) -> uint256: constant
 
 
