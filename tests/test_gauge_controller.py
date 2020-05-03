@@ -1,4 +1,4 @@
-from .conftest import block_timestamp
+from .conftest import block_timestamp, time_travel, YEAR
 
 
 def test_gauge_controller(w3, gauge_controller, liquidity_gauge, three_gauges, token):
@@ -45,6 +45,13 @@ def test_gauge_controller(w3, gauge_controller, liquidity_gauge, three_gauges, t
     for i, t in [(0, 0), (1, 0), (2, 1)]:
         assert gauge_controller.caller.gauge_relative_weight(three_gauges[i].address) ==\
             10 ** 18 * type_weights[t] * gauge_weights[i] // total_weight
+
+    # Change epoch using the time machine
+    before = gauge_controller.caller.period()
+    time_travel(w3, int(1.1 * YEAR))
+    gauge_controller.functions.gauge_relative_weight_write(three_gauges[0].address).transact(from_admin)
+    after = gauge_controller.caller.period()
+    assert after == before + 1
 
     # Check that no timestamps are missed and everything is incremental
     prev_ts = 0

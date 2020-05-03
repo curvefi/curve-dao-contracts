@@ -146,6 +146,7 @@ def gauge_relative_weight_write(addr: address, _period: int128=-1) -> uint256:
         p, epoch_changed = self.change_epoch(p)
         if epoch_changed:
             self.total_weight[p] = self.total_weight[p-1]
+            self.period = p
     else:
         assert p <= self.period
     _total_weight: uint256 = self.total_weight[p]
