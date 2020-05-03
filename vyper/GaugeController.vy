@@ -76,7 +76,7 @@ def add_gauge(addr: address, gauge_type: int128, weight: uint256 = 0):
         if l > 0:
             # Fill historic type weights and sums
             _p: int128 = l
-            for _p in range(500):  # If higher (unlikely) - 0 weights
+            for i in range(500):  # If higher (unlikely) - 0 weights
                 _p += 1
                 if _p == p:
                     break
@@ -118,7 +118,7 @@ def change_type_weight(type_id: int128, weight: uint256):
     if l > 0:
         # Fill historic type weights and sums
         _p: int128 = l
-        for _p in range(500):  # If higher (unlikely) - 0 weights
+        for i in range(500):  # If higher (unlikely) - 0 weights
             _p += 1
             if _p == p:
                 break
@@ -149,7 +149,7 @@ def change_gauge_weight(addr: address, weight: uint256):
 
     if tl > 0:
         _p: int128 = tl
-        for _p in range(500):
+        for i in range(500):
             _p += 1
             if _p == p:
                 break
@@ -160,7 +160,7 @@ def change_gauge_weight(addr: address, weight: uint256):
 
     if gl > 0:
         _p: int128 = gl
-        for _p in range(500):
+        for i in range(500):
             _p += 1
             if _p == p:
                 break
