@@ -13,9 +13,11 @@ token: address  # CRV token
 n_gauge_types: public(int128)
 n_gauges: public(int128)
 
-# Every time a weight changes, period increases
+# Every time a weight or epoch changes, period increases
 # The idea is: relative weights are guaranteed to not change within the period
 # Period 0 is reserved for "not started" (b/c default value in maps)
+# Period is guaranteed to not have a change of epoch (e.g. mining rate) in the
+# middle of it
 period: public(int128)
 period_timestamp: public(map(int128, timestamp))
 
