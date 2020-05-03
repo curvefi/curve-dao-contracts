@@ -1,9 +1,5 @@
 # The contract which controls gauges and issuance of coins through those
 
-contract CRV20:
-    def start_epoch_time_write() -> timestamp: modifying
-
-
 admin: address  # Can and will be a smart contract
 token: address  # CRV token
 
@@ -12,7 +8,7 @@ token: address  # CRV token
 n_gauge_types: public(int128)
 n_gauges: public(int128)
 
-# Every time a weight or epoch changes, period increases
+# Every time a weight changes, period increases
 # The idea is: relative weights are guaranteed to not change within the period
 # Period 0 is reserved for "not started" (b/c default value in maps)
 period: public(int128)
@@ -30,8 +26,6 @@ type_last: map(int128, int128)  # Last period for type update type_id -> period
 gauge_last: map(address, int128)  # Last period for gauge update gauge_addr -> period
 # Total is always at the last updated state
 
-start_epoch_time: public(timestamp)  # Last epoch
-
 
 @public
 def __init__(token_address: address):
@@ -41,7 +35,6 @@ def __init__(token_address: address):
     self.n_gauges = 0
     self.period = 0
     self.period_timestamp[0] = block.timestamp
-    self.start_epoch_time = CRV20(token_address).start_epoch_time_write()
 
 
 @public
@@ -177,19 +170,3 @@ def change_gauge_weight(addr: address, weight: uint256):
     self.total_weight[p] = old_total + new_sum * type_weight - old_sum * type_weight
 
     self.period_timestamp = block.timestamp
-
-
-@public
-def last_change_write() -> timestamp:
-    _start_epoch_time: timestamp = self.start_epoch_time
-    _last_change: timestamp = self.last_change
-
-    # Bump last epoch if it was changed
-    if block.timestamp >= _start_epoch_time + RATE_REDUCTION_TIME:
-        _start_epoch_time = CRV20(self.token).start_epoch_time_write()
-        self.start_epoch_time = _start_epoch_time
-
-    if _last_change >= _start_epoch_time:
-        return _last_change
-    else:
-        return _start_epoch_time
