@@ -17,10 +17,10 @@ period_timestamp: public(map(int128, timestamp))
 gauges: public(map(int128, address))
 gauge_types: public(map(address, int128))
 
-gauge_weights: public(map(address, map(int128, uint256)))  # address -> period -> weight
-type_weights: public(map(int128, map(int128, uint256)))  # type_id -> period -> weight
-weight_sums_per_type: public(map(int128, map(int128, uint256)))  # gauge_id -> period -> weight
-total_weight: public(map(int128, uint256))  # period -> total_weight
+gauge_weights: map(address, map(int128, uint256))  # address -> period -> weight
+type_weights: map(int128, map(int128, uint256))  # type_id -> period -> weight
+weight_sums_per_type: map(int128, map(int128, uint256))  # type_id -> period -> weight
+total_weight: map(int128, uint256)  # period -> total_weight
 
 type_last: map(int128, int128)  # Last period for type update type_id -> period
 gauge_last: map(address, int128)  # Last period for gauge update gauge_addr -> period
@@ -178,3 +178,23 @@ def change_gauge_weight(addr: address, weight: uint256):
 @public
 def last_change() -> timestamp:
     return self.period_timestamp[self.period]
+
+
+@public
+def get_gauge_weight(addr: address) -> uint256:
+    return self.gauge_weights[addr][self.gauge_last[addr]]
+
+
+@public
+def get_type_weight(type_id: int128) -> uint256:
+    return self.type_weights[type_id][self.type_last[type_id]]
+
+
+@public
+def get_total_weight() -> uint256:
+    return self.total_weight[self.period]
+
+
+@public
+def get_weights_sum_per_type(type_id: int128) -> uint256:
+    return self.weight_sums_per_type[type_id][self.type_last[type_id]]
