@@ -173,3 +173,8 @@ def change_gauge_weight(addr: address, weight: uint256):
     self.total_weight[p] = old_total + new_sum * type_weight - old_sum * type_weight
 
     self.period_timestamp[p] = block.timestamp
+
+
+@public
+def last_change() -> timestamp:
+    return self.period_timestamp[self.period]
