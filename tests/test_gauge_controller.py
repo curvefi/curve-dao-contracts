@@ -49,7 +49,7 @@ def test_gauge_controller(w3, gauge_controller, liquidity_gauge, three_gauges, t
     # Change epoch using the time machine
     before = gauge_controller.caller.period()
     time_travel(w3, int(1.1 * YEAR))
-    gauge_controller.functions.gauge_relative_weight_write(three_gauges[0].address).transact(from_admin)
+    gauge_controller.functions.period_write().transact(from_admin)
     after = gauge_controller.caller.period()
     assert after == before + 1
 

@@ -78,6 +78,17 @@ def change_epoch(_p: int128) -> (int128, bool):
 
 
 @public
+def period_write() -> int128:
+    p: int128 = self.period
+    epoch_changed: bool = False
+    p, epoch_changed = self.change_epoch(p)
+    if epoch_changed:
+        self.period = p
+        self.total_weight[p] = self.total_weight[p-1]
+    return p
+
+
+@public
 def add_gauge(addr: address, gauge_type: int128, weight: uint256 = 0):
     assert msg.sender == self.admin
     assert (gauge_type >= 0) and (gauge_type < self.n_gauge_types)
