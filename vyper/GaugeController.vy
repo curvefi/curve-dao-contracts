@@ -1,5 +1,10 @@
 # The contract which controls gauges and issuance of coins through those
 
+contract CRV20:
+    def start_epoch_time_write() -> timestamp: modifying
+    def start_epoch_time() -> timestamp: constant
+
+
 admin: address  # Can and will be a smart contract
 token: address  # CRV token
 
@@ -26,6 +31,8 @@ type_last: map(int128, int128)  # Last period for type update type_id -> period
 gauge_last: map(address, int128)  # Last period for gauge update gauge_addr -> period
 # Total is always at the last updated state
 
+last_epoch_time: public(timestamp)
+
 
 @public
 def __init__(token_address: address):
@@ -35,6 +42,7 @@ def __init__(token_address: address):
     self.n_gauges = 0
     self.period = 0
     self.period_timestamp[0] = block.timestamp
+    self.last_epoch_time = CRV20(token_address).start_epoch_time_write()
 
 
 @public
@@ -52,6 +60,21 @@ def add_type():
     # zero weights don't change other weights - no need to change last_change
 
 
+@private
+def change_epoch(_p: int128) -> (int128, bool):
+    # Handle change of epoch
+    # If epoch change happened after the last point but before current-
+    #     insert a new period
+    # else use the current period for both weght and epoch change
+    p: int128 = _p
+    let: timestamp = CRV20(self.token).start_epoch_time_write()
+    epoch_changed: bool = (let > self.period_timestamp[p]) and (let < block.timestamp)
+    if epoch_changed:
+        p += 1
+        self.period_timestamp[p] = let
+    return (p, epoch_changed)
+
+
 @public
 def add_gauge(addr: address, gauge_type: int128, weight: uint256 = 0):
     assert msg.sender == self.admin
@@ -66,7 +89,10 @@ def add_gauge(addr: address, gauge_type: int128, weight: uint256 = 0):
     self.gauge_types[addr] = gauge_type
 
     if weight > 0:
-        p: int128 = self.period + 1
+        p: int128 = self.period
+        epoch_changed: bool = False
+        p, epoch_changed = self.change_epoch(p)
+        p += 1
         self.period = p
         l: int128 = self.type_last[gauge_type]
         self.type_last[gauge_type] = p
@@ -85,6 +111,8 @@ def add_gauge(addr: address, gauge_type: int128, weight: uint256 = 0):
         self.type_weights[gauge_type][p] = _type_weight
         self.gauge_weights[addr][p] = weight
         self.weight_sums_per_type[gauge_type][p] = weight + old_sum
+        if epoch_changed:
+            self.total_weight[p-1] = self.total_weight[p-2]
         self.total_weight[p] = self.total_weight[p-1] + _type_weight * weight
         self.period_timestamp[p] = block.timestamp
 
@@ -114,6 +142,12 @@ def gauge_relative_weight_write(addr: address, _period: int128=-1) -> uint256:
     p: int128 = _period
     if _period < 0:
         p = self.period
+        epoch_changed: bool = False
+        p, epoch_changed = self.change_epoch(p)
+        if epoch_changed:
+            self.total_weight[p] = self.total_weight[p-1]
+    else:
+        assert p <= self.period
     _total_weight: uint256 = self.total_weight[p]
     if _total_weight > 0:
         gauge_type: int128 = self.gauge_types[addr]
@@ -146,7 +180,10 @@ def gauge_relative_weight_write(addr: address, _period: int128=-1) -> uint256:
 def change_type_weight(type_id: int128, weight: uint256):
     assert msg.sender == self.admin
 
-    p: int128 = self.period + 1
+    p: int128 = self.period
+    epoch_changed: bool = False
+    p, epoch_changed = self.change_epoch(p)
+    p += 1
     self.period = p
     l: int128 = self.type_last[type_id]
     self.type_last[type_id] = p
@@ -164,6 +201,8 @@ def change_type_weight(type_id: int128, weight: uint256):
             self.type_weights[type_id][_p] = old_weight
             self.weight_sums_per_type[type_id][_p] = old_sum
 
+    if epoch_changed:
+        self.total_weight[p-1] = self.total_weight[p-2]
     self.total_weight[p] = old_total_weight + old_sum * weight - old_sum * old_weight
     self.type_weights[type_id][p] = weight
     self.weight_sums_per_type[type_id][p] = old_sum
@@ -177,7 +216,10 @@ def change_gauge_weight(addr: address, weight: uint256):
 
     # Fill weight from gauge_last to now, type_sums from type_last till now, total
     gauge_type: int128 = self.gauge_types[addr]
-    p: int128 = self.period + 1
+    p: int128 = self.period
+    epoch_changed: bool = False
+    p, epoch_changed = self.change_epoch(p)
+    p += 1
     self.period = p
     gl: int128 = self.gauge_last[addr]
     tl: int128 = self.type_last[gauge_type]
@@ -209,6 +251,8 @@ def change_gauge_weight(addr: address, weight: uint256):
     new_sum: uint256 = old_sum + weight - old_gauge_weight
     self.gauge_weights[addr][p] = weight
     self.weight_sums_per_type[gauge_type][p] = new_sum
+    if epoch_changed:
+        self.total_weight[p-1] = self.total_weight[p-2]
     self.total_weight[p] = old_total + new_sum * type_weight - old_sum * type_weight
 
     self.period_timestamp[p] = block.timestamp
