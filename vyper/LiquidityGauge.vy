@@ -7,6 +7,7 @@ contract CRV20:
 
 contract Controller:
     def period() -> int128: constant
+    def period_write() -> int128: modifying
     def period_timestamp(p: int128) -> timestamp: constant
     def gauge_relative_weight(addr: address, _period: int128) -> uint256: constant
 
@@ -49,7 +50,7 @@ def __init__(crv_addr: address, lp_addr: address, controller_addr: address):
     self.integrate_inv_supply[0] = 0
     period: int128 = Controller(controller_addr).period()
     self.last_period = period
-    self.period_checkpoints[period] = Controller(controller_addr).period_timestamp()
+    self.period_checkpoints[period] = Controller(controller_addr).period_timestamp(period)
     self.inflation_rate = CRV20(crv_addr).rate()
 
 
@@ -121,7 +122,7 @@ def _checkpoint(addr: address, old_value: uint256, old_supply: uint256):
                 user_period -= 1
                 prev_period_inv_supply: uint256 = self.integrate_inv_supply[user_period]
                 dI: uint256 = _period_inv_supply - prev_period_inv_supply
-                _period_inv_supply = prev_epoch_inv_supply
+                _period_inv_supply = prev_period_inv_supply
                 user_period_time = self.period_checkpoints[user_period]
                 _integrate_fraction += old_value * dI / 10 ** 18
 
