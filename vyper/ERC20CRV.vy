@@ -16,7 +16,10 @@ decimals: public(uint256)
 balanceOf: public(map(address, uint256))
 allowances: map(address, map(address, uint256))
 total_supply: uint256
-minter: address
+
+minter: public(address)
+burner: public(address)
+admin: public(address)
 
 # General constants
 YEAR: constant(uint256) = 86400 * 365
@@ -43,7 +46,9 @@ def __init__(_name: string[64], _symbol: string[32], _decimals: uint256, _supply
     self.decimals = _decimals
     self.balanceOf[msg.sender] = init_supply
     self.total_supply = init_supply
+    self.admin = msg.sender
     self.minter = msg.sender
+    self.burner = msg.sender
     log.Transfer(ZERO_ADDRESS, msg.sender, init_supply)
 
     self.mining_epoch = 0
@@ -140,8 +145,20 @@ def mintable_in_timeframe(start: uint256, end: uint256) -> uint256:
 
 @public
 def set_minter(_minter: address):
-    assert msg.sender == self.minter
+    assert msg.sender == self.admin
     self.minter = _minter
+
+
+@public
+def set_admin(_admin: address):
+    assert msg.sender == self.admin
+    self.admin = _admin
+
+
+@public
+def set_burner(_burner: address):
+    assert msg.sender == self.admin
+    self.burner = _burner
 
 
 @public
@@ -262,7 +279,7 @@ def burn(_value: uint256):
     @dev Burn an amount of the token of msg.sender.
     @param _value The amount that will be burned.
     """
-    assert msg.sender == self.minter, "Only minter is allowed to burn"
+    assert msg.sender == self.burner, "Only burner is allowed to burn"
     self._burn(msg.sender, _value)
 
 
@@ -273,8 +290,12 @@ def burnFrom(_to: address, _value: uint256):
     @param _to The account whose tokens will be burned.
     @param _value The amount that will be burned.
     """
-    assert msg.sender == self.minter, "Only minter is allowed to burn"
+    assert msg.sender == self.burner, "Only burner is allowed to burn"
     self._burn(_to, _value)
 
 
-# XXX ability to set symbol and name?
+@public
+def set_name(_name: string[64], _symbol: string[32]):
+    assert msg.sender == self.admin, "Only admin is allowed to change name"
+    self.name = _name
+    self.symbol = _symbol
