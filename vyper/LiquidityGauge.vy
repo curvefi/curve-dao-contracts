@@ -52,7 +52,7 @@ def __init__(crv_addr: address, lp_addr: address, controller_addr: address):
     period: int128 = Controller(controller_addr).period()
     self.last_period = period
     self.period_checkpoints[period] = Controller(controller_addr).period_timestamp(period)
-    self.inflation_rate = 0  # Couldn't be added to controller at creation, so 0
+    self.inflation_rate = CRV20(crv_addr).rate()
 
 
 @private
@@ -66,7 +66,6 @@ def _checkpoint(addr: address, old_value: uint256, old_supply: uint256):
         new_epoch: timestamp = CRV20(_token).start_epoch_time_write()
         last_weight: uint256 = Controller(_controller).gauge_relative_weight_write(self)  # Normalized to 1e18
         new_period: int128 = Controller(_controller).period()
-        # XXX TODO: add multiplication by weight XXX
         _integrate_inv_supply: uint256 = self.integrate_inv_supply[old_period]
         rate: uint256 = self.inflation_rate
 
@@ -100,6 +99,7 @@ def _checkpoint(addr: address, old_value: uint256, old_supply: uint256):
                     # old_period_time contains the lastest period time here
                     dt = as_unitless_number(block.timestamp - new_period_time)
                     break
+            self.last_period = new_period
         else:
             dt = as_unitless_number(block.timestamp - _integrate_checkpoint)
         if old_supply > 0:
@@ -108,7 +108,6 @@ def _checkpoint(addr: address, old_value: uint256, old_supply: uint256):
             # If old_supply == 1, we can have 1e32 dollars
             # - should be all right even if we go full Zimbabwe
             _integrate_inv_supply += rate * last_weight * dt / old_supply
-        self.last_period = new_period
 
         # Update user-specific integrals
         user_period: int128 = new_period
