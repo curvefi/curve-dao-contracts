@@ -59,10 +59,12 @@ def _checkpoint(addr: address, old_value: uint256, old_supply: uint256):
     _integrate_checkpoint: timestamp = self.integrate_checkpoint
     if block.timestamp > _integrate_checkpoint:
         _token: address = self.crv_token
+        _controller: address = self.controller
         old_period: int128 = self.last_period
-        old_period_time: timestamp = Controller(_token).period_timestamp(old_period)
+        old_period_time: timestamp = Controller(_controller).period_timestamp(old_period)
         new_epoch: timestamp = CRV20(_token).start_epoch_time_write()
-        new_period: int128 = Controller(_token).period_write()
+        new_period: int128 = Controller(_controller).period_write()
+        # XXX TODO: add multiplication by weight XXX
         _integrate_inv_supply: uint256 = self.integrate_inv_supply[old_period]
         rate: uint256 = self.inflation_rate
 
@@ -74,7 +76,7 @@ def _checkpoint(addr: address, old_value: uint256, old_supply: uint256):
             p: int128 = old_period
             for i in range(500):
                 p += 1
-                new_period_time: timestamp = Controller(_token).period_timestamp(p)
+                new_period_time: timestamp = Controller(_controller).period_timestamp(p)
                 if _integrate_checkpoint >= new_period_time:
                     # This would never happen, but if we don't do this, it'd suck if it does
                     dt = 0
