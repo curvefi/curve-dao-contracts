@@ -2,10 +2,16 @@ from random import random, randrange
 from .conftest import YEAR, time_travel, block_timestamp, approx
 
 
-def test_gauge_integral(w3, mock_lp_token, token, liquidity_gauge):
+def test_gauge_integral(w3, mock_lp_token, token, liquidity_gauge, gauge_controller):
     alice, bob = w3.eth.accounts[:2]
     from_alice = {'from': alice}
     from_bob = {'from': bob}
+
+    # Wire up Gauge to the controller to have proper rates and stuff
+    gauge_controller.functions.add_type().transact(from_alice)
+    gauge_controller.functions.change_type_weight(0, 10 ** 18).transact(from_alice)
+    gauge_controller.functions.add_gauge(liquidity_gauge.address, 0, 10 ** 18).transact(from_alice)
+
     alice_staked = 0
     bob_staked = 0
     integral = 0  # ∫(balance * rate(t) / totalSupply(t) dt)
