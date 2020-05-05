@@ -1,29 +1,39 @@
 from vyper.interfaces import ERC20
 
-contract CRV20:
-    def start_epoch_time_write() -> timestamp: modifying
-    def rate() -> uint256: constant
-
 contract Controller:
-    def period() -> int128: constant
-    def period_write() -> int128: modifying
-    def period_timestamp(p: int128) -> timestamp: constant
-    def gauge_relative_weight(addr: address, _period: int128) -> uint256: constant
-    def gauge_relative_weight_write(addr: address) -> uint256: modifying
+    def gauges(gauge_id: int128) -> address: constant
+
+contract Gauge:
+    # Presumably, other gauges will provide the same interfaces
+    def integrate_fraction(addr: address) -> uint256: constant
+    def user_checkpoint(addr: address): modifying
+
 
 token: public(address)
 controller: public(address)
-admin: public(address)
+
+minted: public(map(address, map(address, uint256)))  # user -> gauge -> value
 
 
 @public
 def __init__(_token: address, _controller: address):
     self.token = _token
     self.controller = _controller
-    self.admin = msg.sender
 
 
 @public
-def set_admin(_admin: address):
-    assert msg.sender == self.admin
-    self.admin = _admin
+@nonreentrant('lock')
+def mint(gauge_id: int128):
+    """
+    Mint everything which belongs to msg.sender and send to them
+    """
+    gauge_addr: address = Controller(self.controller).gauges(gauge_id)
+    assert gauge_addr != ZERO_ADDRESS, "Gauge is not in controller"
+
+    Gauge(gauge_addr).user_checkpoint(msg.sender)
+    total_mint: uint256 = Gauge(gauge_addr).integrate_fraction(msg.sender)
+    to_mint: uint256 = total_mint - self.minted[msg.sender][gauge_addr]
+
+    if to_mint > 0:
+        ERC20(self.token).mint(msg.sender, to_mint)
+        self.minted[msg.sender][gauge_addr] = total_mint
