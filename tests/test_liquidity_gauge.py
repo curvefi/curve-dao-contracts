@@ -86,6 +86,6 @@ def test_gauge_integral(w3, mock_lp_token, token, liquidity_gauge, gauge_control
         dt = randrange(1, YEAR // 20)
         time_travel(w3, dt)
 
-        liquidity_gauge.functions.user_checkpoint().transact(from_alice)
+        liquidity_gauge.functions.user_checkpoint(alice).transact(from_alice)
         update_integral()
         assert approx(liquidity_gauge.caller.integrate_fraction(alice), integral, 1e-15)

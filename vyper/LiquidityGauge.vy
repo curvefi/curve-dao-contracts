@@ -140,8 +140,8 @@ def _checkpoint(addr: address, old_value: uint256, old_supply: uint256):
 
 
 @public
-def user_checkpoint():
-    self._checkpoint(msg.sender, self.balanceOf[msg.sender], self.totalSupply)
+def user_checkpoint(addr: address):
+    self._checkpoint(addr, self.balanceOf[msg.sender], self.totalSupply)
 
 
 @public
@@ -172,3 +172,9 @@ def withdraw(value: uint256):
 
     assert_modifiable(ERC20(self.lp_token).transfer(msg.sender, value))
     # XXX logs
+
+
+# XXX make it so that if checkpoint is failing, can do a safe withdraw to escape
+# the broken contract
+# XXX safety switch by admin in the worst case, but better autocheck if
+# _checkpoint tries to revert
