@@ -34,6 +34,7 @@ integrate_checkpoint_of: map(address, timestamp)
 
 
 # ∫(balance * rate(t) / totalSupply(t) dt) from 0 till checkpoint
+# Units: rate * t = already number of coins per address to issue
 integrate_fraction: public(map(address, uint256))
 
 inflation_rate: uint256
