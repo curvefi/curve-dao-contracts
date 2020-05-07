@@ -87,7 +87,7 @@ def three_gauges(w3, token, mock_lp_token, gauge_controller):
 
 
 @pytest.fixture(scope="function")
-def minter(w3, mock_lp_token, gauge_controller):
+def minter(w3, token, gauge_controller):
     return deploy_contract(
             w3, 'Minter.vy', w3.eth.accounts[0],
-            mock_lp_token.address, gauge_controller.address)
+            token.address, gauge_controller.address)

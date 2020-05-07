@@ -1,5 +1,3 @@
-from vyper.interfaces import ERC20
-
 contract Controller:
     def gauges(gauge_id: int128) -> address: constant
 
@@ -7,6 +5,9 @@ contract Gauge:
     # Presumably, other gauges will provide the same interfaces
     def integrate_fraction(addr: address) -> uint256: constant
     def user_checkpoint(addr: address): modifying
+
+contract MERC20:
+    def mint(_to: address, _value: uint256): modifying
 
 
 token: public(address)
@@ -35,5 +36,5 @@ def mint(gauge_id: int128):
     to_mint: uint256 = total_mint - self.minted[msg.sender][gauge_addr]
 
     if to_mint > 0:
-        ERC20(self.token).mint(msg.sender, to_mint)
+        MERC20(self.token).mint(msg.sender, to_mint)
         self.minted[msg.sender][gauge_addr] = total_mint
