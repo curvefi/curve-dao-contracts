@@ -1,2 +1,6 @@
-/.venv
+.vscode
+.venv
+venv
 __pycache__
+build/
+reports/
