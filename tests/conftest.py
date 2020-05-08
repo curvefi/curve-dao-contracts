@@ -91,3 +91,9 @@ def minter(w3, token, gauge_controller):
     return deploy_contract(
             w3, 'Minter.vy', w3.eth.accounts[0],
             token.address, gauge_controller.address)
+
+
+@pytest.fixture(scope="function")
+def voting_escrow(w3, token):
+    return deploy_contract(
+            w3, 'VotingEscrow.vy', w3.eth.accounts[0], token.address)
