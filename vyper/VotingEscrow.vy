@@ -2,6 +2,7 @@ from vyper.interfaces import ERC20
 
 token: public(address)
 balances: public(map(address, uint256))
+unlock_times: public(map(address, timestamp))
 supply: public(uint256)
 
 
@@ -18,14 +19,26 @@ def _checkpoint(addr: address, old_value: uint256, old_supply: uint256):
 
 @public
 @nonreentrant('lock')
-def deposit(value: uint256):
+def deposit(value: uint256, unlock_time: timestamp = 0):
+    # Also used to extent locktimes
+    old_unlock_time: timestamp = self.unlock_times[msg.sender]
     old_value: uint256 = self.balances[msg.sender]
     old_supply: uint256 = self.supply
+
+    if unlock_time == 0:
+        assert old_value > 0, "No existing stake found"
+        assert old_unlock_time > block.timestamp, "Time to unstake"
+    else:
+        if old_value > 0:
+            assert unlock_time >= old_unlock_time, "Cannot make locktime smaller"
+        assert unlock_time > block.timestamp, "Can only lock until time in the future"
 
     self._checkpoint(msg.sender, old_value, old_supply)
 
     self.balances[msg.sender] = old_value + value
     self.supply = old_supply + value
+    if unlock_time > 0:
+        self.unlock_times[msg.sender] = unlock_time
 
     assert_modifiable(ERC20(self.token).transferFrom(msg.sender, self, value))
     # XXX logs
@@ -34,6 +47,8 @@ def deposit(value: uint256):
 @public
 @nonreentrant('lock')
 def withdraw(value: uint256):
+    assert block.timestamp >= self.unlock_times[msg.sender]
+
     old_value: uint256 = self.balances[msg.sender]
     old_supply: uint256 = self.supply
 
