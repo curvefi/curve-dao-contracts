@@ -1,6 +1,7 @@
-import pytest
-from eth_tester.exceptions import TransactionFailed
-from .conftest import time_travel, approx
+
+import brownie
+
+from .conftest import approx
 
 
 def to_int(*args):
@@ -8,11 +9,10 @@ def to_int(*args):
     return [int(a) for a in args]
 
 
-def test_mint(tester, w3, mock_lp_token, gauge_controller, three_gauges, minter, token):
-    admin, bob, charlie, dan = w3.eth.accounts[:4]
-    from_admin = {'from': admin}
+def test_mint(accounts, rpc, mock_lp_token, gauge_controller, three_gauges, minter, token):
+    admin, bob, charlie, dan = accounts[:4]
 
-    token.functions.set_minter(minter.address).transact(from_admin)
+    token.set_minter(minter, {'from': admin})
 
     W = 10 ** 18
     amount = 10 ** 18
@@ -22,57 +22,58 @@ def test_mint(tester, w3, mock_lp_token, gauge_controller, three_gauges, minter,
 
     # Set up types
     for i, w in enumerate(type_weights):
-        gauge_controller.functions.add_type().transact(from_admin)
-        gauge_controller.functions.change_type_weight(i, w).transact(from_admin)
+        gauge_controller.add_type({'from': admin})
+        gauge_controller.change_type_weight(i, w, {'from': admin})
 
     # Set up gauges
     for g, t, w in zip(three_gauges, gauge_types, gauge_weights):
-        gauge_controller.functions.add_gauge(g.address, t, w).transact(from_admin)
+        gauge_controller.add_gauge['address', 'int128', 'uint256'](g, t, w, {'from': admin})
 
     # Transfer tokens to Bob, Charlie and Dan
-    for user in w3.eth.accounts[1:4]:
-        mock_lp_token.functions.transfer(user, amount).transact(from_admin)
+    for user in accounts[1:4]:
+        mock_lp_token.transfer(user, amount, {'from': admin})
 
     # Bob and Charlie deposit to gauges with different weights
-    mock_lp_token.functions.approve(three_gauges[1].address, amount).transact({'from': bob})
-    three_gauges[1].functions.deposit(amount).transact({'from': bob})
-    mock_lp_token.functions.approve(three_gauges[2].address, amount).transact({'from': charlie})
-    three_gauges[2].functions.deposit(amount).transact({'from': charlie})
+    mock_lp_token.approve(three_gauges[1], amount, {'from': bob})
+    three_gauges[1].deposit(amount, {'from': bob})
+    mock_lp_token.approve(three_gauges[2], amount, {'from': charlie})
+    three_gauges[2].deposit(amount, {'from': charlie})
 
     dt = 30 * 86400
-    time_travel(w3, dt)
-    tester.mine_block()
+    rpc.sleep(dt)
+    rpc.mine()
 
-    mock_lp_token.functions.approve(three_gauges[1].address, amount).transact({'from': dan})
-    three_gauges[1].functions.deposit(amount).transact({'from': dan})
-    time_travel(w3, dt)
-    tester.mine_block()
+    mock_lp_token.approve(three_gauges[1], amount, {'from': dan})
+    three_gauges[1].deposit(amount, {'from': dan})
 
-    with pytest.raises(TransactionFailed):
+    rpc.sleep(dt)
+    rpc.mine()
+
+    with brownie.reverts():
         # Cannot withdraw too much
-        three_gauges[1].functions.withdraw(amount + 1).transact({'from': bob})
+        three_gauges[1].withdraw(amount + 1, {'from': bob})
 
     # Withdraw
-    three_gauges[1].functions.withdraw(amount).transact({'from': bob})
-    three_gauges[2].functions.withdraw(amount).transact({'from': charlie})
-    three_gauges[1].functions.withdraw(amount).transact({'from': dan})
+    three_gauges[1].withdraw(amount, {'from': bob})
+    three_gauges[2].withdraw(amount, {'from': charlie})
+    three_gauges[1].withdraw(amount, {'from': dan})
 
-    for user in w3.eth.accounts[1:4]:
-        assert mock_lp_token.caller.balanceOf(user) == amount
+    for user in accounts[1:4]:
+        assert mock_lp_token.balanceOf(user) == amount
 
     # Claim for Bob now
-    minter.functions.mint(1).transact({'from': bob})
-    bob_tokens = token.caller.balanceOf(bob)
+    minter.mint(1, {'from': bob})
+    bob_tokens = token.balanceOf(bob)
 
-    time_travel(w3, dt)
+    rpc.sleep(dt)
 
-    minter.functions.mint(1).transact({'from': bob})  # This won't give anything
-    assert bob_tokens == token.caller.balanceOf(bob)
+    minter.mint(1, {'from': bob})  # This won't give anything
+    assert bob_tokens == token.balanceOf(bob)
 
-    minter.functions.mint(2).transact({'from': charlie})
-    charlie_tokens = token.caller.balanceOf(charlie)
-    minter.functions.mint(1).transact({'from': dan})
-    dan_tokens = token.caller.balanceOf(dan)
+    minter.mint(2, {'from': charlie})
+    charlie_tokens = token.balanceOf(charlie)
+    minter.mint(1, {'from': dan})
+    dan_tokens = token.balanceOf(dan)
 
     S = bob_tokens + charlie_tokens + dan_tokens
     ww = [w * type_weights[t] for w, t in zip(gauge_weights, gauge_types)]

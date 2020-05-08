@@ -1,34 +1,34 @@
-import pytest
-from eth_tester.exceptions import TransactionFailed
+import brownie
+
 from random import random, randrange
 from math import log10
-from .conftest import time_travel, theoretical_supply, block_timestamp, approx
+from .conftest import approx
 from .conftest import YEAR, YEAR_1_SUPPLY
 
 
-def test_mintable_in_timeframe(w3, token):
-    owner = w3.eth.accounts[0]
-    from_owner = {'from': owner}
-    creation_time = token.caller.start_epoch_time()
+def test_mintable_in_timeframe(accounts, rpc, theoretical_supply, token):
+    owner = accounts[0]
+    creation_time = token.start_epoch_time()
 
     # Sometimes can go across epochs
     for i in range(20):
         dt = int(10 ** (random() * log10(300 * 86400)))
-        t0 = token.caller.start_epoch_time()
-        t1 = time_travel(w3, dt)
+        t0 = token.start_epoch_time()
+        rpc.sleep(dt)
+        t1 = rpc.time()
         if t1 - t0 >= YEAR:
-            token.functions.update_mining_parameters().transact(from_owner)
+            token.update_mining_parameters({'from': owner})
         else:
-            with pytest.raises(TransactionFailed):
-                token.functions.update_mining_parameters().transact(from_owner)
+            with brownie.reverts():
+                token.update_mining_parameters({'from': owner})
 
-        available_supply = token.caller.available_supply()
-        mintable = token.caller.mintable_in_timeframe(creation_time, t1)
+        available_supply = token.available_supply()
+        mintable = token.mintable_in_timeframe(creation_time, t1)
         assert (available_supply - (10 ** 9 * 10 ** 18)) >= mintable  # Should only round down, not up
         assert (available_supply - (10 ** 9 * 10 ** 18)) / mintable - 1 < 1e-7
-        assert approx(theoretical_supply(w3, token), available_supply, 1e-16)
+        assert approx(theoretical_supply(), available_supply, 1e-16)
 
-    now = block_timestamp(w3)
+    now = rpc.time()
     # Check random ranges
     for i in range(20):
         t0 = randrange(creation_time, now)
@@ -38,38 +38,38 @@ def test_mintable_in_timeframe(w3, token):
         rate = int(YEAR_1_SUPPLY // YEAR / (2 ** 0.5) ** start_epoch)
 
         if start_epoch == end_epoch:
-            assert approx(token.caller.mintable_in_timeframe(t0, t0 + dt), rate * dt, 1e-16)
+            assert approx(token.mintable_in_timeframe(t0, t0 + dt), rate * dt, 1e-16)
         else:
-            assert token.caller.mintable_in_timeframe(t0, t0 + dt) < rate * dt
+            assert token.mintable_in_timeframe(t0, t0 + dt) < rate * dt
 
 
-def test_mint(w3, token):
-    owner = w3.eth.accounts[0]
-    from_owner = {'from': owner}
-    bob = w3.eth.accounts[1]
-    t0 = block_timestamp(w3)
+def test_mint(accounts, rpc, token):
+    owner, bob = accounts[:2]
+
+    t0 = rpc.time()
 
     # Sometimes can go across epochs
     for i in range(20):
-        to_mint = token.caller.available_supply() - token.caller.totalSupply()
+        to_mint = token.available_supply() - token.totalSupply()
         assert to_mint >= 0
-        t0 = block_timestamp(w3)
+        t0 = rpc.time()
         if to_mint > 0:
-            token.functions.mint(owner, to_mint).transact(from_owner)
+            token.mint(owner, to_mint, {'from': owner})
         # All minted before t0 (including t0)
         # Blocks move by 1 s here, so cannot mint rate + 1
-        rate = token.caller.rate()
-        with pytest.raises(TransactionFailed):
+        rate = token.rate()
+        with brownie.reverts():
             # Sometimes rate decreases in this block - that tx will fail too
             if to_mint == 0:
-                token.functions.mint(owner, rate + 1).transact(from_owner)
+                token.mint(owner, rate + 1, {'from': owner})
             else:
                 # We had a new transaction which didn't mint an extra rate amount
-                token.functions.mint(owner, 2 * rate + 1).transact(from_owner)
-        t0 = block_timestamp(w3)  # Next tx will be in future block which is at least 1 s away
+                token.mint(owner, 2 * rate + 1, {'from': owner})
+        t0 = rpc.time()  # Next tx will be in future block which is at least 1 s away
 
-        t1 = time_travel(w3, int(10 ** (random() * log10(300 * 86400))))
-        balance_before = token.caller.balanceOf(bob)
+        rpc.sleep(int(10 ** (random() * log10(300 * 86400))))
+        t1 = rpc.time()
+        balance_before = token.balanceOf(bob)
 
         t_start = randrange(t0, t1 + 1)
 
@@ -77,16 +77,16 @@ def test_mint(w3, token):
             dt = int(10 ** (random() * log10(t1 - t_start)))
         else:
             dt = 0
-        with pytest.raises(TransactionFailed):
+        with brownie.reverts():
             # -2 for two previous mints (failed and nonfailed), -1 for next block,
             # +1 for t0 (it was in the same block as the last mint) and -1 more into the past
-            non_mintable_value = token.caller.mintable_in_timeframe(t0 - 3, t1)
-            token.functions.mint(bob, non_mintable_value).transact(from_owner)
-        value = token.caller.mintable_in_timeframe(t_start, t_start + dt)
+            non_mintable_value = token.mintable_in_timeframe(t0 - 3, t1)
+            token.mint(bob, non_mintable_value, {'from': owner})
+        value = token.mintable_in_timeframe(t_start, t_start + dt)
         value = min(value, int(value * random() * 2))
-        token.functions.mint(bob, value).transact(from_owner)
+        token.mint(bob, value, {'from': owner})
 
-        balance_after = token.caller.balanceOf(bob)
+        balance_after = token.balanceOf(bob)
         assert balance_after - balance_before == value
 
         t0 = t1
