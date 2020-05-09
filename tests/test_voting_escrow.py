@@ -10,5 +10,5 @@ def test_deposit(accounts, rpc, token, voting_escrow):
 
     token.approve(voting_escrow, alice_amount, {'from': alice})
 
-    voting_escrow.deposit['uint256', 'uint256'](alice_amount, alice_unlock_time, {'from': alice})
+    voting_escrow.deposit(alice_amount, alice_unlock_time, {'from': alice})
     voting_escrow.withdraw(alice_amount, {'from': alice})

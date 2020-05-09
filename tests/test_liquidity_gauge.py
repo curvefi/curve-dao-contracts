@@ -2,20 +2,18 @@ from random import random, randrange
 from .conftest import YEAR, approx
 
 
-def test_gauge_integral(accounts, rpc, mock_lp_token, token, liquidity_gauge, gauge_controller):
+def test_gauge_integral(accounts, history, rpc, mock_lp_token, token, liquidity_gauge, gauge_controller):
     alice, bob = accounts[:2]
 
     # Wire up Gauge to the controller to have proper rates and stuff
     gauge_controller.add_type({'from': alice})
     gauge_controller.change_type_weight(0, 10 ** 18, {'from': alice})
-    gauge_controller.add_gauge['address', 'int128', 'uint256'](
-        liquidity_gauge.address, 0, 10 ** 18, {'from': alice}
-    )
+    gauge_controller.add_gauge(liquidity_gauge.address, 0, 10 ** 18, {'from': alice})
 
     alice_staked = 0
     bob_staked = 0
     integral = 0  # ∫(balance * rate(t) / totalSupply(t) dt)
-    checkpoint = rpc.time()
+    checkpoint = history[-1].timestamp
     checkpoint_rate = token.rate()
     checkpoint_supply = 0
     checkpoint_balance = 0
@@ -26,7 +24,7 @@ def test_gauge_integral(accounts, rpc, mock_lp_token, token, liquidity_gauge, ga
     def update_integral():
         nonlocal checkpoint, checkpoint_rate, integral, checkpoint_balance, checkpoint_supply
 
-        t1 = rpc.time()
+        t1 = history[-1].timestamp
         rate1 = token.rate()
         t_epoch = token.start_epoch_time()
         if checkpoint >= t_epoch:

@@ -11,22 +11,18 @@ def test_gauge_controller(accounts, rpc, gauge_controller, three_gauges):
     gauge_controller.add_type({'from': admin})  # 1
     gauge_controller.change_type_weight(0, type_weights[0], {'from': admin})
 
-    gauge_controller.add_gauge['address', 'int128'](
-        three_gauges[0].address, 0, {'from': admin}
-    )
-    gauge_controller.add_gauge['address', 'int128', 'uint256'](
-        three_gauges[1].address, 0, gauge_weights[1], {'from': admin}
-    )
-    gauge_controller.add_gauge['address', 'int128', 'uint256'](
-        three_gauges[2].address, 1, gauge_weights[2], {'from': admin}
-    )
+    gauge_controller.add_gauge(three_gauges[0].address, 0, {'from': admin})
+    gauge_controller.add_gauge(three_gauges[1].address, 0, gauge_weights[1], {'from': admin})
+    gauge_controller.add_gauge(three_gauges[2].address, 1, gauge_weights[2], {'from': admin})
 
     gauge_controller.change_type_weight(1, type_weights[1], {'from': admin})
 
-    gauge_controller.change_gauge_weight(three_gauges[0].address, gauge_weights[0], {'from': admin})
+    tx = gauge_controller.change_gauge_weight(
+        three_gauges[0].address, gauge_weights[0], {'from': admin}
+    )
 
-    last_change = rpc.time()
-    assert last_change == gauge_controller.last_change()
+    last_change = tx.timestamp
+    assert last_change == gauge_controller.last_change.call()
 
     # Check static parameters
     assert gauge_controller.n_gauge_types() == 2
@@ -37,16 +33,16 @@ def test_gauge_controller(accounts, rpc, gauge_controller, three_gauges):
     assert gauge_controller.gauge_types(three_gauges[1].address) == 0
     assert gauge_controller.gauge_types(three_gauges[2].address) == 1
     for i in range(3):
-        assert gauge_controller.get_gauge_weight(three_gauges[i].address) == gauge_weights[i]
+        assert gauge_controller.get_gauge_weight.call(three_gauges[i].address) == gauge_weights[i]
     for i in range(2):
-        assert gauge_controller.get_type_weight(i) == type_weights[i]
+        assert gauge_controller.get_type_weight.call(i) == type_weights[i]
 
     # Check incremental calculations
     sums = [sum(gauge_weights[:2]), gauge_weights[2]]
-    assert gauge_controller.get_weights_sum_per_type(0) == sums[0]
-    assert gauge_controller.get_weights_sum_per_type(1) == sums[1]
+    assert gauge_controller.get_weights_sum_per_type.call(0) == sums[0]
+    assert gauge_controller.get_weights_sum_per_type.call(1) == sums[1]
     total_weight = sum(s * t for s, t in zip(sums, type_weights))
-    assert gauge_controller.get_total_weight() == total_weight
+    assert gauge_controller.get_total_weight.call() == total_weight
     for i, t in [(0, 0), (1, 0), (2, 1)]:
         assert gauge_controller.gauge_relative_weight(three_gauges[i].address) ==\
             10 ** 18 * type_weights[t] * gauge_weights[i] // total_weight
