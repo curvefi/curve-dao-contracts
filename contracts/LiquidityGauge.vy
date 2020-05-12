@@ -142,7 +142,7 @@ def _checkpoint(addr: address, old_value: uint256, old_supply: uint256):
 
 @public
 def user_checkpoint(addr: address):
-    self._checkpoint(addr, self.balanceOf[msg.sender], self.totalSupply)
+    self._checkpoint(addr, self.balanceOf[addr], self.totalSupply)
 
 
 @public
