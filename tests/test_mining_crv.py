@@ -6,7 +6,9 @@ from .conftest import approx
 from .conftest import YEAR, YEAR_1_SUPPLY
 
 
-def test_mintable_in_timeframe(accounts, rpc, theoretical_supply, token):
+def test_mintable_in_timeframe(
+        web3, accounts, rpc, block_timestamp,
+        theoretical_supply, token):
     owner = accounts[0]
     creation_time = token.start_epoch_time()
 
@@ -15,20 +17,25 @@ def test_mintable_in_timeframe(accounts, rpc, theoretical_supply, token):
         dt = int(10 ** (random() * log10(300 * 86400)))
         t0 = token.start_epoch_time()
         rpc.sleep(dt)
-        t1 = rpc.time()
+        rpc.mine()
+        t1 = block_timestamp()
         if t1 - t0 >= YEAR:
             token.update_mining_parameters({'from': owner})
         else:
             with brownie.reverts():
                 token.update_mining_parameters({'from': owner})
+        t1 = block_timestamp()
 
         available_supply = token.available_supply()
         mintable = token.mintable_in_timeframe(creation_time, t1)
         assert (available_supply - (10 ** 9 * 10 ** 18)) >= mintable  # Should only round down, not up
-        assert (available_supply - (10 ** 9 * 10 ** 18)) / mintable - 1 < 1e-7
+        if t1 == t0:
+            assert mintable == 0
+        else:
+            assert (available_supply - (10 ** 9 * 10 ** 18)) / mintable - 1 < 1e-7
         assert approx(theoretical_supply(), available_supply, 1e-16)
 
-    now = rpc.time()
+    now = block_timestamp()
     # Check random ranges
     for i in range(20):
         t0 = randrange(creation_time, now)

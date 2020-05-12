@@ -17,14 +17,21 @@ def isolation_setup(fn_isolation):
 
 
 @pytest.fixture(scope="module")
-def theoretical_supply(rpc, token):
+def block_timestamp(web3):
+    def _fn():
+        return web3.eth.getBlock(web3.eth.blockNumber)['timestamp']
+    yield _fn
+
+
+@pytest.fixture(scope="module")
+def theoretical_supply(rpc, token, block_timestamp):
     def _fn():
         epoch = token.mining_epoch()
         q = 1 / 2 ** .5
         S = 10 ** 9 * 10 ** 18
         if epoch > 0:
             S += int(YEAR_1_SUPPLY * (1 - q ** epoch) / (1 - q))
-        S += int(YEAR_1_SUPPLY // YEAR * q ** epoch) * (rpc.time() - token.start_epoch_time())
+        S += int(YEAR_1_SUPPLY // YEAR * q ** epoch) * (block_timestamp() - token.start_epoch_time())
         return S
 
     yield _fn
