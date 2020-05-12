@@ -27,7 +27,7 @@ def test_mint(accounts, rpc, mock_lp_token, gauge_controller, three_gauges, mint
 
     # Set up gauges
     for g, t, w in zip(three_gauges, gauge_types, gauge_weights):
-        gauge_controller.add_gauge['address', 'int128', 'uint256'](g, t, w, {'from': admin})
+        gauge_controller.add_gauge(g, t, w, {'from': admin})
 
     # Transfer tokens to Bob, Charlie and Dan
     for user in accounts[1:4]:
@@ -66,6 +66,7 @@ def test_mint(accounts, rpc, mock_lp_token, gauge_controller, three_gauges, mint
     bob_tokens = token.balanceOf(bob)
 
     rpc.sleep(dt)
+    rpc.mine()
 
     minter.mint(1, {'from': bob})  # This won't give anything
     assert bob_tokens == token.balanceOf(bob)
