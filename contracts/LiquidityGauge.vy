@@ -59,85 +59,85 @@ def __init__(crv_addr: address, lp_addr: address, controller_addr: address):
 @private
 def _checkpoint(addr: address, old_value: uint256, old_supply: uint256):
     _integrate_checkpoint: timestamp = self.integrate_checkpoint
-    if block.timestamp > _integrate_checkpoint:
-        _token: address = self.crv_token
-        _controller: address = self.controller
-        old_period: int128 = self.last_period
-        old_period_time: timestamp = Controller(_controller).period_timestamp(old_period)
-        new_epoch: timestamp = CRV20(_token).start_epoch_time_write()
-        last_weight: uint256 = Controller(_controller).gauge_relative_weight_write(self)  # Normalized to 1e18
-        new_period: int128 = Controller(_controller).period()
-        _integrate_inv_supply: uint256 = self.integrate_inv_supply[old_period]
-        rate: uint256 = self.inflation_rate
 
-        dt: uint256 = 0
-        w: uint256 = last_weight
-        # Update integral of 1/supply
-        if new_period > old_period:
-            # Handle going across periods where weights or rates change
-            # No less than one checkpoint is expected in 1 year
-            p: int128 = old_period
-            for i in range(500):
-                w = Controller(_controller).gauge_relative_weight(self, p)
-                p += 1
-                new_period_time: timestamp = Controller(_controller).period_timestamp(p)
-                if _integrate_checkpoint >= new_period_time:
-                    # This would never happen, but if we don't do this, it'd suck if it does
-                    dt = 0
-                elif _integrate_checkpoint >= old_period_time:
-                    dt = as_unitless_number(new_period_time - _integrate_checkpoint)
-                else:
-                    dt = as_unitless_number(new_period_time - old_period_time)
-                if old_supply > 0:
-                    _integrate_inv_supply += rate * w * dt / old_supply
-                self.integrate_inv_supply[p] = _integrate_inv_supply
-                if new_period_time == new_epoch:
-                    rate = CRV20(_token).rate()
-                    self.inflation_rate = rate
-                old_period_time = new_period_time
-                self.period_checkpoints[p] = new_period_time
-                if p == new_period:
-                    # old_period_time contains the lastest period time here
-                    dt = as_unitless_number(block.timestamp - new_period_time)
-                    break
-            self.last_period = new_period
-        else:
-            dt = as_unitless_number(block.timestamp - _integrate_checkpoint)
-        if old_supply > 0:
-            # No need to integrate if old_supply == 0
-            # because no one staked then anyway
-            # If old_supply == 1, we can have 1e32 dollars
-            # - should be all right even if we go full Zimbabwe
-            _integrate_inv_supply += rate * last_weight * dt / old_supply
+    _token: address = self.crv_token
+    _controller: address = self.controller
+    old_period: int128 = self.last_period
+    old_period_time: timestamp = Controller(_controller).period_timestamp(old_period)
+    new_epoch: timestamp = CRV20(_token).start_epoch_time_write()
+    last_weight: uint256 = Controller(_controller).gauge_relative_weight_write(self)  # Normalized to 1e18
+    new_period: int128 = Controller(_controller).period()
+    _integrate_inv_supply: uint256 = self.integrate_inv_supply[old_period]
+    rate: uint256 = self.inflation_rate
 
-        # Update user-specific integrals
-        user_period: int128 = new_period
-        user_period_time: timestamp = old_period_time
-        user_checkpoint: timestamp = self.integrate_checkpoint_of[addr]
-        _period_inv_supply: uint256 = _integrate_inv_supply
-        _integrate_inv_supply_of: uint256 = self.integrate_inv_supply_of[addr]
-        _integrate_fraction: uint256 = self.integrate_fraction[addr]
-        # Cycle is going backwards in time
+    dt: uint256 = 0
+    w: uint256 = last_weight
+    # Update integral of 1/supply
+    if new_period > old_period:
+        # Handle going across periods where weights or rates change
+        # No less than one checkpoint is expected in 1 year
+        p: int128 = old_period
         for i in range(500):
-            # Going no more than 500 periods (usually much less)
-            if user_checkpoint >= user_period_time:
-                # Last cycle => we are in the period of the user checkpoint
-                dI: uint256 = _period_inv_supply - _integrate_inv_supply_of
-                _integrate_fraction += old_value * dI / 10 ** 18
-                break
+            w = Controller(_controller).gauge_relative_weight(self, p)
+            p += 1
+            new_period_time: timestamp = Controller(_controller).period_timestamp(p)
+            if _integrate_checkpoint >= new_period_time:
+                # This would never happen, but if we don't do this, it'd suck if it does
+                dt = 0
+            elif _integrate_checkpoint >= old_period_time:
+                dt = as_unitless_number(new_period_time - _integrate_checkpoint)
             else:
-                user_period -= 1
-                prev_period_inv_supply: uint256 = self.integrate_inv_supply[user_period]
-                dI: uint256 = _period_inv_supply - prev_period_inv_supply
-                _period_inv_supply = prev_period_inv_supply
-                user_period_time = self.period_checkpoints[user_period]
-                _integrate_fraction += old_value * dI / 10 ** 18
+                dt = as_unitless_number(new_period_time - old_period_time)
+            if old_supply > 0:
+                _integrate_inv_supply += rate * w * dt / old_supply
+            self.integrate_inv_supply[p] = _integrate_inv_supply
+            if new_period_time == new_epoch:
+                rate = CRV20(_token).rate()
+                self.inflation_rate = rate
+            old_period_time = new_period_time
+            self.period_checkpoints[p] = new_period_time
+            if p == new_period:
+                # old_period_time contains the lastest period time here
+                dt = as_unitless_number(block.timestamp - new_period_time)
+                break
+        self.last_period = new_period
+    else:
+        dt = as_unitless_number(block.timestamp - _integrate_checkpoint)
+    if old_supply > 0:
+        # No need to integrate if old_supply == 0
+        # because no one staked then anyway
+        # If old_supply == 1, we can have 1e32 dollars
+        # - should be all right even if we go full Zimbabwe
+        _integrate_inv_supply += rate * last_weight * dt / old_supply
 
-        self.integrate_inv_supply[new_period] = _integrate_inv_supply
-        self.integrate_inv_supply_of[addr] = _integrate_inv_supply
-        self.integrate_fraction[addr] = _integrate_fraction
-        self.integrate_checkpoint_of[addr] = block.timestamp
-        self.integrate_checkpoint = block.timestamp
+    # Update user-specific integrals
+    user_period: int128 = new_period
+    user_period_time: timestamp = old_period_time
+    user_checkpoint: timestamp = self.integrate_checkpoint_of[addr]
+    _period_inv_supply: uint256 = _integrate_inv_supply
+    _integrate_inv_supply_of: uint256 = self.integrate_inv_supply_of[addr]
+    _integrate_fraction: uint256 = self.integrate_fraction[addr]
+    # Cycle is going backwards in time
+    for i in range(500):
+        # Going no more than 500 periods (usually much less)
+        if user_checkpoint >= user_period_time:
+            # Last cycle => we are in the period of the user checkpoint
+            dI: uint256 = _period_inv_supply - _integrate_inv_supply_of
+            _integrate_fraction += old_value * dI / 10 ** 18
+            break
+        else:
+            user_period -= 1
+            prev_period_inv_supply: uint256 = self.integrate_inv_supply[user_period]
+            dI: uint256 = _period_inv_supply - prev_period_inv_supply
+            _period_inv_supply = prev_period_inv_supply
+            user_period_time = self.period_checkpoints[user_period]
+            _integrate_fraction += old_value * dI / 10 ** 18
+
+    self.integrate_inv_supply[new_period] = _integrate_inv_supply
+    self.integrate_inv_supply_of[addr] = _integrate_inv_supply
+    self.integrate_fraction[addr] = _integrate_fraction
+    self.integrate_checkpoint_of[addr] = block.timestamp
+    self.integrate_checkpoint = block.timestamp
 
 
 @public

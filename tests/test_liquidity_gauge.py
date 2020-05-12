@@ -50,6 +50,7 @@ def test_gauge_integral(
 
         # For Bob
         is_withdraw = (i > 0) * (random() < 0.5)
+        print('Bob', 'withdraws' if is_withdraw else 'deposits')
         if is_withdraw:
             amount = randrange(1, liquidity_gauge.balanceOf(bob) + 1)
             liquidity_gauge.withdraw(amount, {'from': bob})
@@ -65,6 +66,7 @@ def test_gauge_integral(
         if is_alice:
             # For Alice
             is_withdraw_alice = (liquidity_gauge.balanceOf(alice) > 0) * (random() < 0.5)
+            print('Alice', 'withdraws' if is_withdraw_alice else 'deposits')
 
             if is_withdraw_alice:
                 amount_alice = randrange(1, liquidity_gauge.balanceOf(alice) // 10 + 1)
