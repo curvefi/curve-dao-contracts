@@ -1,61 +1,171 @@
 from vyper.interfaces import ERC20
 
+# Voting escrow to have time-weighted votes
+# The idea: votes have a weight depending on time, so that users are committed
+# to the future of (whatever they are voting for).
+# The weight in this implementation is linear until some max time:
+# w ^
+# 1 +    /-----------------
+#   |   /
+#   |  /
+#   | /
+#   |/
+# 0 +----+--------------------> time
+#       maxtime (2 years?)
+
+struct Point:
+    bias: int128
+    slope: int128  # - dweight / dt * 1e18
+    # upper bit in slope is reserved for the sign
+
+struct LockedBalance:
+    amount: int128
+    begin: uint256
+    end: uint256
+
+
+WEEK: constant(uint256) = 7 * 86400  # All future times rounded by week
+
 token: public(address)
-balances: public(map(address, uint256))
-unlock_times: public(map(address, timestamp))
 supply: public(uint256)
+
+locked: public(map(address, LockedBalance))
+locked_history: public(map(address, map(uint256, LockedBalance)))
+
+point_history: public(map(uint256, Point))  # time -> unsigned point
+slope_changes: public(map(uint256, int128))  # time -> signed slope change
+last_checkpoint: uint256
 
 
 @public
 def __init__(token_addr: address):
     self.token = token_addr
-    self.supply = 0
+    self.last_checkpoint = as_unitless_number(block.timestamp)
 
 
 @private
-def _checkpoint(addr: address, old_value: uint256, old_supply: uint256):
-    pass
+def _checkpoint(addr: address, old_locked: LockedBalance, new_locked: LockedBalance):
+    u_old: Point = Point({bias: 0, slope: 0})
+    u_new: Point = Point({bias: 0, slope: 0})
+    t: uint256 = as_unitless_number(block.timestamp)
+    if old_locked.amount > 0 and old_locked.end > block.timestamp and old_locked.end > old_locked.begin:
+        u_old.slope = old_locked.amount / convert(old_locked.end - old_locked.begin, int128)
+        old_user_bias = u_old.slope * convert(old_locked.end - t, int128)
+    if new_locked.amount > 0 and new_locked.end > block.timestamp and new_locked.end > new_locked.begin:
+        u_new.slope = new_locked.amount / convert(new_locked.end - new_locked.begin, int128)
+        u_new.bias = u_new.slope * convert(new_locked.end - ts, int128)
+
+    old_dslope: int128 = self.slope_changes[old_locked.end]
+    new_dslope: int128 = 0
+    if new_locked.end != old_locked.end:
+        new_dslope = self.slope_changes[new_locked.end]
+    else:
+        new_dslope = old_dslope
+
+    # Bias/slope (unlike change in bias/slope) is always positive
+    _last_checkpoint: uint256 = self.last_checkpoint
+    last_point: Point = self.point_history[_last_checkpoint]
+
+    # Go over weeks to fill history and calculate what the current point is
+    ts_i: uint256 = (_last_checkpoint / WEEK) * WEEK
+    for i in range(255):
+        # Hopefully it won't happen that this won't get used in 5 years!
+        # If it does, users will be able to withdraw but vote weight will be broken
+        ts_i += WEEK
+        d_slope: int128 = 0
+        if ts_i > ts:
+            ts_i = ts
+        else:
+            d_slope = self.slope_changes[ts_i]
+        last_point.bias -= last_point.slope * convert(ts_i - last_checkpoint, int128)
+        last_point.slope += d_slope
+        if last_point.bias < 0:
+            last_point.bias = 0
+        if last_point.slope < 0:
+            last_point.slope = 0
+        _last_checkpoint = ts_i
+        if ts_i == ts:
+            break
+        else:
+            self.point_history[ts_i] = last_point
+
+    # XXX still need to account for locking > 2 yr
+    last_point.slope += (u_new.slope - u_old.slope)
+    last_point.bias += (u_new.bias - u_old.bias)
+    if last_point.slope < 0:
+        last_point.slope = 0
+    if last_point.bias < 0:
+        last_point.bias = 0
+
+    self.point_history[ts] = last_point
+
+    # Slope going down is considered positive here (it actually always does, but
+    # delta can have either sign
+    # end comes, slope becomes smaller, so delta is negative
+    # We subtract new_user_slope from [new_locked.end]
+    # and add old_user_slope to [old_locked.end]
+    if old_locked.end > block.timestamp:
+        old_dslope += (u_old.slope - u_new.slope)
+        if new_locked.end != old_locked.end:
+            self.slope_changes[old_locked.end] = old_dslope
+
+    if new_locked.end > block.timestamp:  # check in withdraw maybe?
+        new_dslope -= (u_new.slope - u_old.slope)
+        self.slope_changes[new_locked.end] = new_dslope
 
 
 @public
 @nonreentrant('lock')
-def deposit(value: uint256, unlock_time: timestamp = 0):
-    # Also used to extent locktimes
-    old_unlock_time: timestamp = self.unlock_times[msg.sender]
-    old_value: uint256 = self.balances[msg.sender]
+def deposit(value: uint256, _unlock_time: uint256 = 0):
+    # Also used to extend locktimes
+    unlock_time: uint256 = (_unlock_time / WEEK) * WEEK
+    _locked: LockedBalance = self.locked[msg.sender]
     old_supply: uint256 = self.supply
 
     if unlock_time == 0:
-        assert old_value > 0, "No existing stake found"
-        assert old_unlock_time > block.timestamp, "Time to unstake"
+        assert _locked.amount > 0, "No existing stake found"
+        assert _locked.end > block.timestamp, "Time to unstake"
+        assert value > 0
     else:
-        if old_value > 0:
-            assert unlock_time >= old_unlock_time, "Cannot make locktime smaller"
+        if _locked.amount > 0:
+            assert unlock_time >= _locked.end, "Cannot make locktime smaller"
+        else:
+            assert value > 0
         assert unlock_time > block.timestamp, "Can only lock until time in the future"
 
-    self._checkpoint(msg.sender, old_value, old_supply)
-
-    self.balances[msg.sender] = old_value + value
+    old_locked: LockedBalance = _locked
+    if _locked.amount == 0:
+        _locked.begin = as_unitless_number(block.timestamp)
     self.supply = old_supply + value
+    _locked.amount += convert(value, int128)
     if unlock_time > 0:
-        self.unlock_times[msg.sender] = unlock_time
+        _locked.end = unlock_time
+    self.locked[msg.sender] = _locked
+    self.locked_history[msg.sender][as_unitless_number(block.timestamp)] = _locked
 
-    assert_modifiable(ERC20(self.token).transferFrom(msg.sender, self, value))
+    self._checkpoint(msg.sender, old_locked, _locked)
+
+    if value > 0:
+        assert_modifiable(ERC20(self.token).transferFrom(msg.sender, self, value))
     # XXX logs
 
 
 @public
 @nonreentrant('lock')
 def withdraw(value: uint256):
-    assert block.timestamp >= self.unlock_times[msg.sender]
-
-    old_value: uint256 = self.balances[msg.sender]
+    _locked: LockedBalance = self.locked[msg.sender]
+    assert block.timestamp >= _locked.end
     old_supply: uint256 = self.supply
 
-    self._checkpoint(msg.sender, old_value, old_supply)
-
-    self.balances[msg.sender] = old_value - value
+    old_locked: LockedBalance = _locked
+    _locked.amount -= convert(value, int128)
+    assert _locked.amount >= 0, "Withdrawing more than you have"
+    self.locked[msg.sender] = _locked
+    self.locked_history[msg.sender][as_unitless_number(block.timestamp)] = _locked
     self.supply = old_supply - value
+
+    # XXX check times
+    self._checkpoint(msg.sender, old_locked, _locked)
 
     assert_modifiable(ERC20(self.token).transfer(msg.sender, value))
     # XXX logs
