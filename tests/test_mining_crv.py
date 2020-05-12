@@ -7,7 +7,7 @@ from .conftest import YEAR, YEAR_1_SUPPLY
 
 
 def test_mintable_in_timeframe(
-        web3, accounts, rpc, block_timestamp,
+        accounts, rpc, block_timestamp,
         theoretical_supply, token):
     owner = accounts[0]
     creation_time = token.start_epoch_time()
@@ -50,7 +50,7 @@ def test_mintable_in_timeframe(
             assert token.mintable_in_timeframe(t0, t0 + dt) < rate * dt
 
 
-def test_mint(web3, accounts, rpc, block_timestamp, token):
+def test_mint(accounts, rpc, block_timestamp, token):
     owner, bob = accounts[:2]
 
     # Sometimes can go across epochs

@@ -2,18 +2,20 @@ from random import random, randrange
 from .conftest import YEAR, approx
 
 
-def test_gauge_integral(accounts, history, rpc, mock_lp_token, token, liquidity_gauge, gauge_controller):
+def test_gauge_integral(
+        accounts, rpc, block_timestamp,
+        mock_lp_token, token, liquidity_gauge, gauge_controller):
     alice, bob = accounts[:2]
 
     # Wire up Gauge to the controller to have proper rates and stuff
     gauge_controller.add_type({'from': alice})
     gauge_controller.change_type_weight(0, 10 ** 18, {'from': alice})
-    gauge_controller.add_gauge(liquidity_gauge.address, 0, 10 ** 18, {'from': alice})
+    gauge_controller.add_gauge['address,int128,uint'](liquidity_gauge.address, 0, 10 ** 18, {'from': alice})
 
     alice_staked = 0
     bob_staked = 0
     integral = 0  # ∫(balance * rate(t) / totalSupply(t) dt)
-    checkpoint = history[-1].timestamp
+    checkpoint = block_timestamp()
     checkpoint_rate = token.rate()
     checkpoint_supply = 0
     checkpoint_balance = 0
@@ -24,7 +26,7 @@ def test_gauge_integral(accounts, history, rpc, mock_lp_token, token, liquidity_
     def update_integral():
         nonlocal checkpoint, checkpoint_rate, integral, checkpoint_balance, checkpoint_supply
 
-        t1 = history[-1].timestamp
+        t1 = block_timestamp()
         rate1 = token.rate()
         t_epoch = token.start_epoch_time()
         if checkpoint >= t_epoch:
@@ -44,6 +46,7 @@ def test_gauge_integral(accounts, history, rpc, mock_lp_token, token, liquidity_
         is_alice = (random() < 0.2)
         dt = randrange(1, YEAR // 5)
         rpc.sleep(dt)
+        rpc.mine()
 
         # For Bob
         is_withdraw = (i > 0) * (random() < 0.5)
@@ -81,7 +84,9 @@ def test_gauge_integral(accounts, history, rpc, mock_lp_token, token, liquidity_
 
         dt = randrange(1, YEAR // 20)
         rpc.sleep(dt)
+        rpc.mine()
 
         liquidity_gauge.user_checkpoint(alice, {'from': alice})
         update_integral()
+        print(i, dt / 86400, integral, liquidity_gauge.integrate_fraction(alice))
         assert approx(liquidity_gauge.integrate_fraction(alice), integral, 1e-15)
