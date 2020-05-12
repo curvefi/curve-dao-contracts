@@ -50,16 +50,14 @@ def test_mintable_in_timeframe(
             assert token.mintable_in_timeframe(t0, t0 + dt) < rate * dt
 
 
-def test_mint(accounts, rpc, token):
+def test_mint(web3, accounts, rpc, block_timestamp, token):
     owner, bob = accounts[:2]
-
-    t0 = rpc.time()
 
     # Sometimes can go across epochs
     for i in range(20):
         to_mint = token.available_supply() - token.totalSupply()
         assert to_mint >= 0
-        t0 = rpc.time()
+        t0 = block_timestamp()
         if to_mint > 0:
             token.mint(owner, to_mint, {'from': owner})
         # All minted before t0 (including t0)
@@ -72,10 +70,13 @@ def test_mint(accounts, rpc, token):
             else:
                 # We had a new transaction which didn't mint an extra rate amount
                 token.mint(owner, 2 * rate + 1, {'from': owner})
-        t0 = rpc.time()  # Next tx will be in future block which is at least 1 s away
+        rpc.sleep(1)
+        rpc.mine()
+        t0 = block_timestamp()  # Next tx will be in future block which is at least 1 s away
 
         rpc.sleep(int(10 ** (random() * log10(300 * 86400))))
-        t1 = rpc.time()
+        rpc.mine()
+        t1 = block_timestamp()
         balance_before = token.balanceOf(bob)
 
         t_start = randrange(t0, t1 + 1)

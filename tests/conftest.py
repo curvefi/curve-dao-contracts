@@ -16,14 +16,14 @@ def isolation_setup(fn_isolation):
     pass
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def block_timestamp(web3):
     def _fn():
         return web3.eth.getBlock(web3.eth.blockNumber)['timestamp']
     yield _fn
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def theoretical_supply(rpc, token, block_timestamp):
     def _fn():
         epoch = token.mining_epoch()
@@ -37,27 +37,27 @@ def theoretical_supply(rpc, token, block_timestamp):
     yield _fn
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def token(ERC20CRV, accounts):
     yield ERC20CRV.deploy("Curve DAO Token", "CRV", 18, 10 ** 9, {'from': accounts[0]})
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def mock_lp_token(ERC20LP, accounts):  # Not using the actual Curve contract
     yield ERC20LP.deploy("Curve LP token", "usdCrv", 18, 10 ** 9, {'from': accounts[0]})
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def gauge_controller(GaugeController, accounts, token):
     yield GaugeController.deploy(token, {'from': accounts[0]})
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def liquidity_gauge(LiquidityGauge, accounts, gauge_controller, mock_lp_token, token):
     yield LiquidityGauge.deploy(token, mock_lp_token, gauge_controller, {'from': accounts[0]})
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def three_gauges(LiquidityGauge, accounts, gauge_controller, mock_lp_token, token):
     contracts = [
         LiquidityGauge.deploy(token, mock_lp_token, gauge_controller, {'from': accounts[0]})
