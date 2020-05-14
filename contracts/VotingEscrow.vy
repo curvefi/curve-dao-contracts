@@ -50,10 +50,10 @@ def _checkpoint(addr: address, old_locked: LockedBalance, new_locked: LockedBala
     t: uint256 = as_unitless_number(block.timestamp)
     if old_locked.amount > 0 and old_locked.end > block.timestamp and old_locked.end > old_locked.begin:
         u_old.slope = old_locked.amount / convert(old_locked.end - old_locked.begin, int128)
-        old_user_bias = u_old.slope * convert(old_locked.end - t, int128)
+        u_old.bias = u_old.slope * convert(old_locked.end - t, int128)
     if new_locked.amount > 0 and new_locked.end > block.timestamp and new_locked.end > new_locked.begin:
         u_new.slope = new_locked.amount / convert(new_locked.end - new_locked.begin, int128)
-        u_new.bias = u_new.slope * convert(new_locked.end - ts, int128)
+        u_new.bias = u_new.slope * convert(new_locked.end - t, int128)
 
     old_dslope: int128 = self.slope_changes[old_locked.end]
     new_dslope: int128 = 0
@@ -67,27 +67,27 @@ def _checkpoint(addr: address, old_locked: LockedBalance, new_locked: LockedBala
     last_point: Point = self.point_history[_last_checkpoint]
 
     # Go over weeks to fill history and calculate what the current point is
-    ts_i: uint256 = (_last_checkpoint / WEEK) * WEEK
+    t_i: uint256 = (_last_checkpoint / WEEK) * WEEK
     for i in range(255):
         # Hopefully it won't happen that this won't get used in 5 years!
         # If it does, users will be able to withdraw but vote weight will be broken
-        ts_i += WEEK
+        t_i += WEEK
         d_slope: int128 = 0
-        if ts_i > ts:
-            ts_i = ts
+        if t_i > t:
+            t_i = t
         else:
-            d_slope = self.slope_changes[ts_i]
-        last_point.bias -= last_point.slope * convert(ts_i - last_checkpoint, int128)
+            d_slope = self.slope_changes[t_i]
+        last_point.bias -= last_point.slope * convert(t_i - _last_checkpoint, int128)
         last_point.slope += d_slope
         if last_point.bias < 0:
             last_point.bias = 0
         if last_point.slope < 0:
             last_point.slope = 0
-        _last_checkpoint = ts_i
-        if ts_i == ts:
+        _last_checkpoint = t_i
+        if t_i == t:
             break
         else:
-            self.point_history[ts_i] = last_point
+            self.point_history[t_i] = last_point
 
     # XXX still need to account for locking > 2 yr
     last_point.slope += (u_new.slope - u_old.slope)
@@ -97,7 +97,7 @@ def _checkpoint(addr: address, old_locked: LockedBalance, new_locked: LockedBala
     if last_point.bias < 0:
         last_point.bias = 0
 
-    self.point_history[ts] = last_point
+    self.point_history[t] = last_point
 
     # Slope going down is considered positive here (it actually always does, but
     # delta can have either sign
