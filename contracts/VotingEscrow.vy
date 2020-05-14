@@ -31,7 +31,6 @@ token: public(address)
 supply: public(uint256)
 
 locked: public(map(address, LockedBalance))
-locked_history: public(map(address, map(uint256, LockedBalance)))  # XXX do we need it?
 
 point_history: public(map(uint256, Point))  # time -> unsigned point
 slope_changes: public(map(uint256, int128))  # time -> signed slope change
@@ -143,7 +142,6 @@ def deposit(value: uint256, _unlock_time: uint256 = 0):
     if unlock_time > 0:
         _locked.end = unlock_time
     self.locked[msg.sender] = _locked
-    self.locked_history[msg.sender][as_unitless_number(block.timestamp)] = _locked
 
     self._checkpoint(msg.sender, old_locked, _locked)
 
