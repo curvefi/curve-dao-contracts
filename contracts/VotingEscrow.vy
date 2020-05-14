@@ -15,8 +15,8 @@ from vyper.interfaces import ERC20
 
 struct Point:
     bias: int128
-    slope: int128  # - dweight / dt * 1e18
-    # upper bit in slope is reserved for the sign
+    slope: int128  # - dweight / dt
+    ts: uint256  # timestamp
 
 struct LockedBalance:
     amount: int128
@@ -32,7 +32,8 @@ supply: public(uint256)
 
 locked: public(map(address, LockedBalance))
 
-point_history: public(map(uint256, Point))  # time -> unsigned point
+epoch: int128
+point_history: Point[100000000000000000000000000000]  # time -> unsigned point
 slope_changes: public(map(uint256, int128))  # time -> signed slope change
 last_checkpoint: uint256
 
@@ -45,8 +46,9 @@ def __init__(token_addr: address):
 
 @private
 def _checkpoint(addr: address, old_locked: LockedBalance, new_locked: LockedBalance):
-    u_old: Point = Point({bias: 0, slope: 0})
-    u_new: Point = Point({bias: 0, slope: 0})
+    u_old: Point = Point({bias: 0, slope: 0, ts: 0})
+    u_new: Point = Point({bias: 0, slope: 0, ts: 0})
+    _epoch: int128 = self.epoch
     t: uint256 = as_unitless_number(block.timestamp)
     if old_locked.amount > 0 and old_locked.end > block.timestamp and old_locked.end > old_locked.begin:
         u_old.slope = old_locked.amount / convert(MAXTIME, int128)
@@ -64,7 +66,7 @@ def _checkpoint(addr: address, old_locked: LockedBalance, new_locked: LockedBala
 
     # Bias/slope (unlike change in bias/slope) is always positive
     _last_checkpoint: uint256 = self.last_checkpoint
-    last_point: Point = self.point_history[_last_checkpoint]
+    last_point: Point = self.point_history[_epoch]
 
     # Go over weeks to fill history and calculate what the current point is
     t_i: uint256 = (_last_checkpoint / WEEK) * WEEK
@@ -84,10 +86,13 @@ def _checkpoint(addr: address, old_locked: LockedBalance, new_locked: LockedBala
         if last_point.slope < 0:
             last_point.slope = 0
         _last_checkpoint = t_i
+        last_point.ts = t_i
+        _epoch += 1
+        self.epoch = _epoch
         if t_i == t:
             break
         else:
-            self.point_history[t_i] = last_point
+            self.point_history[_epoch] = last_point
 
     # XXX still need to account for locking > 2 yr
     last_point.slope += (u_new.slope - u_old.slope)
@@ -97,7 +102,7 @@ def _checkpoint(addr: address, old_locked: LockedBalance, new_locked: LockedBala
     if last_point.bias < 0:
         last_point.bias = 0
 
-    self.point_history[t] = last_point
+    self.point_history[_epoch] = last_point
 
     # Slope going down is considered positive here (it actually always does, but
     # delta can have either sign
@@ -161,7 +166,6 @@ def withdraw(value: uint256):
     _locked.amount -= convert(value, int128)
     assert _locked.amount >= 0, "Withdrawing more than you have"
     self.locked[msg.sender] = _locked
-    self.locked_history[msg.sender][as_unitless_number(block.timestamp)] = _locked
     self.supply = old_supply - value
 
     # XXX check times
