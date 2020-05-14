@@ -179,6 +179,7 @@ def withdraw(value: uint256):
 # They measure the weights for the purpose of voting, so they don't represent
 # real coins.
 
+
 @public
 def balanceOf(addr: address) -> uint256:
     return 0
@@ -191,7 +192,11 @@ def balanceOfAt(addr: address, _block: uint256) -> uint256:
 
 @public
 def totalSupply() -> uint256:
-    return 0
+    last_point: Point = self.point_history[self.epoch]
+    last_point.bias -= last_point.slope * convert(as_unitless_number(block.timestamp) - last_point.ts, int128)
+    if last_point.bias < 0:
+        last_point.bias = 0
+    return convert(last_point.bias, uint256)
 
 
 @public
