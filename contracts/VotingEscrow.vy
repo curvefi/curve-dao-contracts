@@ -24,7 +24,8 @@ struct LockedBalance:
     end: uint256
 
 
-WEEK: constant(uint256) = 7 * 86400  # All future times rounded by week
+WEEK: constant(uint256) = 604800  # 7 * 86400 seconds - all future times are rounded by week
+MAXTIME: constant(uint256) = 63072000  # 2 * 365 * 86400 - 2 years
 
 token: public(address)
 supply: public(uint256)
@@ -132,6 +133,7 @@ def deposit(value: uint256, _unlock_time: uint256 = 0):
         else:
             assert value > 0
         assert unlock_time > block.timestamp, "Can only lock until time in the future"
+        assert unlock_time <= as_unitless_number(block.timestamp) + MAXTIME, "Voting lock can be 2 years max"
 
     old_locked: LockedBalance = _locked
     if _locked.amount == 0:
