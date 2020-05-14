@@ -31,7 +31,7 @@ token: public(address)
 supply: public(uint256)
 
 locked: public(map(address, LockedBalance))
-locked_history: public(map(address, map(uint256, LockedBalance)))
+locked_history: public(map(address, map(uint256, LockedBalance)))  # XXX do we need it?
 
 point_history: public(map(uint256, Point))  # time -> unsigned point
 slope_changes: public(map(uint256, int128))  # time -> signed slope change
@@ -50,10 +50,10 @@ def _checkpoint(addr: address, old_locked: LockedBalance, new_locked: LockedBala
     u_new: Point = Point({bias: 0, slope: 0})
     t: uint256 = as_unitless_number(block.timestamp)
     if old_locked.amount > 0 and old_locked.end > block.timestamp and old_locked.end > old_locked.begin:
-        u_old.slope = old_locked.amount / convert(old_locked.end - old_locked.begin, int128)
+        u_old.slope = old_locked.amount / convert(MAXTIME, int128)
         u_old.bias = u_old.slope * convert(old_locked.end - t, int128)
     if new_locked.amount > 0 and new_locked.end > block.timestamp and new_locked.end > new_locked.begin:
-        u_new.slope = new_locked.amount / convert(new_locked.end - new_locked.begin, int128)
+        u_new.slope = new_locked.amount / convert(MAXTIME, int128)
         u_new.bias = u_new.slope * convert(new_locked.end - t, int128)
 
     old_dslope: int128 = self.slope_changes[old_locked.end]
