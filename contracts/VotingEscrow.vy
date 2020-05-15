@@ -51,6 +51,7 @@ def __init__(token_addr: address):
 
 @private
 def _checkpoint(addr: address, old_locked: LockedBalance, new_locked: LockedBalance):
+    # XXX is everything ok if both checkpoints are in the same block?
     u_old: Point = Point({bias: 0, slope: 0, blk: 0, ts: 0})
     u_new: Point = Point({bias: 0, slope: 0, blk: 0, ts: 0})
     _epoch: int128 = self.epoch
@@ -106,7 +107,6 @@ def _checkpoint(addr: address, old_locked: LockedBalance, new_locked: LockedBala
         else:
             self.point_history[_epoch] = last_point
 
-    # XXX still need to account for locking > 2 yr
     last_point.slope += (u_new.slope - u_old.slope)
     last_point.bias += (u_new.bias - u_old.bias)
     if last_point.slope < 0:
@@ -213,5 +213,32 @@ def totalSupply() -> uint256:
 
 @public
 def totalSupplyAt(_block: uint256) -> uint256:
+    assert _block <= block.number
     _epoch: int128 = self.epoch
-    return 0
+    # Binary search
+    _min: int128 = 0
+    _max: int128 = _epoch
+    for i in range(128):  # Will be always enough for 128-bit numbers
+        if _min >= _max:
+            break
+        _mid: int128 = (_min + _max + 1) / 2
+        if self.point_history[_mid].blk <= _block:
+            _min = _mid
+        else:
+            _max = _mid - 1
+
+    point: Point = self.point_history[_min]
+    dt: uint256 = 0
+    if _min < _epoch:
+        point_next: Point = self.point_history[_min + 1]
+        if point.blk != point_next.blk:
+            dt = (_block - point.blk) * (point_next.ts - point.ts) / (point_next.blk - point.blk)
+    else:
+        if point.blk != block.number:
+            dt = (_block - point.blk) * (as_unitless_number(block.timestamp) - point.ts) / (block.number - point.blk)
+
+    point.bias -= point.slope * convert(dt, int128)
+    if point.bias >= 0:
+        return convert(point.bias, uint256)
+    else:
+        return 0
