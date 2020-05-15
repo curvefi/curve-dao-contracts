@@ -16,7 +16,11 @@ from vyper.interfaces import ERC20
 struct Point:
     bias: int128
     slope: int128  # - dweight / dt
-    ts: uint256  # timestamp
+    ts: uint256
+    blk: uint256  # block
+# We cannot really do block numbers per se b/c slope is per time, not per block
+# and per block could be fairly bad b/c Ethereum changes blocktimes.
+# What we can do is to extrapolate ***At functions
 
 struct LockedBalance:
     amount: int128
@@ -35,19 +39,20 @@ locked: public(map(address, LockedBalance))
 epoch: int128
 point_history: Point[100000000000000000000000000000]  # time -> unsigned point
 slope_changes: public(map(uint256, int128))  # time -> signed slope change
-last_checkpoint: uint256
 
 
 @public
 def __init__(token_addr: address):
     self.token = token_addr
-    self.last_checkpoint = as_unitless_number(block.timestamp)
+    self.point_history[0] = Point({
+        bias: 0, slope: 0,
+        blk: block.number, ts: as_unitless_number(block.timestamp)})
 
 
 @private
 def _checkpoint(addr: address, old_locked: LockedBalance, new_locked: LockedBalance):
-    u_old: Point = Point({bias: 0, slope: 0, ts: 0})
-    u_new: Point = Point({bias: 0, slope: 0, ts: 0})
+    u_old: Point = Point({bias: 0, slope: 0, blk: 0, ts: 0})
+    u_new: Point = Point({bias: 0, slope: 0, blk: 0, ts: 0})
     _epoch: int128 = self.epoch
     t: uint256 = as_unitless_number(block.timestamp)
     if old_locked.amount > 0 and old_locked.end > block.timestamp and old_locked.end > old_locked.begin:
@@ -65,11 +70,16 @@ def _checkpoint(addr: address, old_locked: LockedBalance, new_locked: LockedBala
         new_dslope = old_dslope
 
     # Bias/slope (unlike change in bias/slope) is always positive
-    _last_checkpoint: uint256 = self.last_checkpoint
     last_point: Point = self.point_history[_epoch]
+    last_checkpoint: uint256 = last_point.ts
+    # For extrapolation to calculate block number (approximately, for *At methods)
+    initial_last_point: Point = last_point
+    block_slope: uint256 = 0
+    if t > last_point.ts:
+        block_slope = 10 ** 18 * (block.number - last_point.blk) / (t - last_point.ts)
 
     # Go over weeks to fill history and calculate what the current point is
-    t_i: uint256 = (_last_checkpoint / WEEK) * WEEK
+    t_i: uint256 = (last_checkpoint / WEEK) * WEEK
     for i in range(255):
         # Hopefully it won't happen that this won't get used in 5 years!
         # If it does, users will be able to withdraw but vote weight will be broken
@@ -79,17 +89,19 @@ def _checkpoint(addr: address, old_locked: LockedBalance, new_locked: LockedBala
             t_i = t
         else:
             d_slope = self.slope_changes[t_i]
-        last_point.bias -= last_point.slope * convert(t_i - _last_checkpoint, int128)
+        last_point.bias -= last_point.slope * convert(t_i - last_checkpoint, int128)
         last_point.slope += d_slope
         if last_point.bias < 0:
             last_point.bias = 0
         if last_point.slope < 0:
             last_point.slope = 0
-        _last_checkpoint = t_i
+        last_checkpoint = t_i
         last_point.ts = t_i
+        last_point.blk = initial_last_point.blk + block_slope * (t_i - initial_last_point.ts) / 10 ** 18
         _epoch += 1
         self.epoch = _epoch
         if t_i == t:
+            last_point.blk = block.number
             break
         else:
             self.point_history[_epoch] = last_point
@@ -201,4 +213,5 @@ def totalSupply() -> uint256:
 
 @public
 def totalSupplyAt(_block: uint256) -> uint256:
+    _epoch: int128 = self.epoch
     return 0
