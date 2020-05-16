@@ -205,6 +205,7 @@ def withdraw(value: uint256):
 
 
 @public
+@constant
 def balanceOf(addr: address) -> uint256:
     _epoch: int128 = self.user_point_epoch[addr]
     if _epoch == 0:
@@ -218,11 +219,43 @@ def balanceOf(addr: address) -> uint256:
 
 
 @public
+@constant
 def balanceOfAt(addr: address, _block: uint256) -> uint256:
-    return 0
+    # Copying and pasting totalSupply code because Vyper cannot pass by
+    # reference yet
+    assert _block <= block.number
+    _epoch: int128 = self.user_point_epoch[addr]
+    # Binary search
+    _min: int128 = 0
+    _max: int128 = _epoch
+    for i in range(128):  # Will be always enough for 128-bit numbers
+        if _min >= _max:
+            break
+        _mid: int128 = (_min + _max + 1) / 2
+        if self.user_point_history[addr][_mid].blk <= _block:
+            _min = _mid
+        else:
+            _max = _mid - 1
+
+    point: Point = self.user_point_history[addr][_min]
+    dt: uint256 = 0
+    if _min < _epoch:
+        point_next: Point = self.user_point_history[addr][_min + 1]
+        if point.blk != point_next.blk:
+            dt = (_block - point.blk) * (point_next.ts - point.ts) / (point_next.blk - point.blk)
+    else:
+        if point.blk != block.number:
+            dt = (_block - point.blk) * (as_unitless_number(block.timestamp) - point.ts) / (block.number - point.blk)
+
+    point.bias -= point.slope * convert(dt, int128)
+    if point.bias >= 0:
+        return convert(point.bias, uint256)
+    else:
+        return 0
 
 
 @public
+@constant
 def totalSupply() -> uint256:
     last_point: Point = self.point_history[self.epoch]
     last_point.bias -= last_point.slope * convert(as_unitless_number(block.timestamp) - last_point.ts, int128)
@@ -232,6 +265,7 @@ def totalSupply() -> uint256:
 
 
 @public
+@constant
 def totalSupplyAt(_block: uint256) -> uint256:
     assert _block <= block.number
     _epoch: int128 = self.epoch
