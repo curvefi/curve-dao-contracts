@@ -21,11 +21,11 @@ totalSupply: public(uint256)
 
 # The goal is to be able to calculate ∫(rate * balance / totalSupply dt) from 0 till checkpoint
 # All values are kept in units of being multiplied by 1e18
-period_checkpoints: map(int128, timestamp)
+period_checkpoints: timestamp[100000000000000000000000000000]
 last_period: int128
 
 # 1e18 * ∫(rate(t) / totalSupply(t) dt) from 0 till checkpoint
-integrate_inv_supply: map(int128, uint256)  # bump epoch when rate() changes
+integrate_inv_supply: uint256[100000000000000000000000000000]  # bump epoch when rate() changes
 integrate_checkpoint: timestamp
 
 # 1e18 * ∫(rate(t) / totalSupply(t) dt) from (last_action) till checkpoint
@@ -120,17 +120,20 @@ def _checkpoint(addr: address, old_value: uint256, old_supply: uint256):
     # Cycle is going backwards in time
     for i in range(500):
         # Going no more than 500 periods (usually much less)
-        if user_checkpoint >= user_period_time:
+        if user_period < 0 or user_checkpoint >= user_period_time:
             # Last cycle => we are in the period of the user checkpoint
             dI: uint256 = _period_inv_supply - _integrate_inv_supply_of
             _integrate_fraction += old_value * dI / 10 ** 18
             break
         else:
             user_period -= 1
-            prev_period_inv_supply: uint256 = self.integrate_inv_supply[user_period]
+            prev_period_inv_supply: uint256 = 0
+            if user_period >= 0:
+                prev_period_inv_supply = self.integrate_inv_supply[user_period]
             dI: uint256 = _period_inv_supply - prev_period_inv_supply
             _period_inv_supply = prev_period_inv_supply
-            user_period_time = self.period_checkpoints[user_period]
+            if user_period >= 0:
+                user_period_time = self.period_checkpoints[user_period]
             _integrate_fraction += old_value * dI / 10 ** 18
 
     self.integrate_inv_supply[new_period] = _integrate_inv_supply
