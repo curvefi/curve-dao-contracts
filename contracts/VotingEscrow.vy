@@ -22,12 +22,6 @@ struct Point:
 # and per block could be fairly bad b/c Ethereum changes blocktimes.
 # What we can do is to extrapolate ***At functions
 
-struct UserPoint:
-    bias: int128
-    slope: int128  # - dweight / dt
-    epoch: int128
-    blk: uint256
-
 struct LockedBalance:
     amount: int128
     begin: uint256
@@ -44,7 +38,7 @@ locked: public(map(address, LockedBalance))
 
 epoch: int128
 point_history: Point[100000000000000000000000000000]  # epoch -> unsigned point
-user_point_history: public(map(address, UserPoint[1000000000]))  # user -> UserPoint[user_epoch]
+user_point_history: public(map(address, Point[1000000000]))  # user -> Point[user_epoch]
 user_point_epoch: public(map(address, int128))
 slope_changes: public(map(uint256, int128))  # time -> signed slope change
 
@@ -60,8 +54,8 @@ def __init__(token_addr: address):
 @private
 def _checkpoint(addr: address, old_locked: LockedBalance, new_locked: LockedBalance):
     # XXX is everything ok if both checkpoints are in the same block?
-    u_old: UserPoint = UserPoint({bias: 0, slope: 0, epoch: 0, blk: 0})
-    u_new: UserPoint = UserPoint({bias: 0, slope: 0, epoch: 0, blk: 0})
+    u_old: Point = Point({bias: 0, slope: 0, ts: 0, blk: 0})
+    u_new: Point = Point({bias: 0, slope: 0, ts: 0, blk: 0})
     _epoch: int128 = self.epoch
     t: uint256 = as_unitless_number(block.timestamp)
     if old_locked.amount > 0 and old_locked.end > block.timestamp and old_locked.end > old_locked.begin:
@@ -70,12 +64,6 @@ def _checkpoint(addr: address, old_locked: LockedBalance, new_locked: LockedBala
     if new_locked.amount > 0 and new_locked.end > block.timestamp and new_locked.end > new_locked.begin:
         u_new.slope = new_locked.amount / convert(MAXTIME, int128)
         u_new.bias = u_new.slope * convert(new_locked.end - t, int128)
-
-    # Now handle user history
-    user_epoch: int128 = self.user_point_epoch[addr]
-    user_epoch += 1
-    self.user_point_epoch[addr] = user_epoch
-    self.user_point_history[addr][user_epoch] = u_new
 
     # Handle total slope in the rest of the method
 
@@ -146,6 +134,14 @@ def _checkpoint(addr: address, old_locked: LockedBalance, new_locked: LockedBala
         new_dslope -= (u_new.slope - u_old.slope)
         self.slope_changes[new_locked.end] = new_dslope
 
+    # Now handle user history
+    user_epoch: int128 = self.user_point_epoch[addr]
+    user_epoch += 1
+    self.user_point_epoch[addr] = user_epoch
+    u_new.ts = as_unitless_number(block.timestamp)
+    u_new.blk = block.number
+    self.user_point_history[addr][user_epoch] = u_new
+
 
 @public
 @nonreentrant('lock')
@@ -210,7 +206,15 @@ def withdraw(value: uint256):
 
 @public
 def balanceOf(addr: address) -> uint256:
-    return 0
+    _epoch: int128 = self.user_point_epoch[addr]
+    if _epoch == 0:
+        return 0
+    else:
+        last_point: Point = self.user_point_history[addr][_epoch]
+        last_point.bias -= last_point.slope * convert(as_unitless_number(block.timestamp) - last_point.ts, int128)
+        if last_point.bias < 0:
+            last_point.bias = 0
+        return convert(last_point.bias, uint256)
 
 
 @public
