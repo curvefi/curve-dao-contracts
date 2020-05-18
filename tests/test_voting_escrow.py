@@ -1,12 +1,12 @@
 import brownie
 
-WEEK = 7 * 86400
+DAY = 86400
+WEEK = 7 * DAY
 
 
 def test_escrow_desposit_withdraw(rpc, accounts, token, voting_escrow, block_timestamp):
-    alice, bob = accounts[:2]
+    alice = accounts[0]
     from_alice = {'from': alice}
-    # from_bob = {'from': bob}
 
     alice_amount = 1000 * 10 ** 18
     alice_unlock_time = (block_timestamp() + 2 * WEEK) // WEEK * WEEK
@@ -33,3 +33,81 @@ def test_escrow_desposit_withdraw(rpc, accounts, token, voting_escrow, block_tim
     rpc.sleep(WEEK)
     rpc.mine()
     voting_escrow.withdraw(2 * alice_amount, from_alice)
+
+
+def test_voting_powers(web3, rpc, accounts, block_timestamp,
+                       token, voting_escrow):
+    """
+    Test voting power in the following scenario.
+    Alice:
+    ~~~~~~~
+    ^
+    | *       *
+    | | \     |  \
+    | |  \    |    \
+    +-+---+---+------+---> t
+
+    Bob:
+    ~~~~~~~
+    ^
+    |         *
+    |         | \
+    |         |  \
+    +-+---+---+---+--+---> t
+
+    Alice has 100% of voting power in the first period.
+    She has 2/3 power at the start of 2nd period, with Bob having 1/2 power
+    (due to smaller locktime).
+    Alice's power grows to 100% by Bob's unlock.
+
+    Checking that totalSupply is appropriate.
+
+    After the test is done, check all over again with balanceOfAt / totalSupplyAt
+    """
+    alice, bob = accounts[:2]
+    amount = 1000 * 10 ** 18
+    token.transfer(bob, amount, {'from': alice})
+    stages = {}
+
+    token.approve(voting_escrow.address, amount * 10, {'from': alice})
+    token.approve(voting_escrow.address, amount * 10, {'from': bob})
+
+    stages['before_deposits'] = (web3.eth.blockNumber, block_timestamp())
+    rpc.sleep(DAY)
+    rpc.mine()
+
+    stages['alice_deposit'] = []
+    voting_escrow.deposit(amount, block_timestamp() + WEEK, {'from': alice})
+    stages['alice_deposit'].append((web3.eth.blockNumber, block_timestamp()))
+    for i in range(7):
+        rpc.sleep(DAY)
+        rpc.mine()
+        stages['alice_deposit'].append((web3.eth.blockNumber, block_timestamp()))
+    voting_escrow.withdraw(amount, {'from': alice})
+    stages['alice_deposit'].append((web3.eth.blockNumber, block_timestamp()))
+
+    rpc.sleep(DAY)
+    rpc.mine()
+
+    stages['both_deposit'] = []
+    voting_escrow.deposit(amount, block_timestamp() + 2 * WEEK, {'from': alice})
+    stages['both_deposit'].append((web3.eth.blockNumber, block_timestamp()))
+    voting_escrow.deposit(amount, block_timestamp() + WEEK, {'from': bob})
+    stages['both_deposit'].append((web3.eth.blockNumber, block_timestamp()))
+    for i in range(7):
+        rpc.sleep(DAY)
+        rpc.mine()
+        stages['both_deposit'].append((web3.eth.blockNumber, block_timestamp()))
+    voting_escrow.withdraw(amount // 2, {'from': bob})
+    stages['both_deposit'].append((web3.eth.blockNumber, block_timestamp()))
+    for i in range(7):
+        rpc.sleep(DAY)
+        rpc.mine()
+        stages['both_deposit'].append((web3.eth.blockNumber, block_timestamp()))
+    voting_escrow.withdraw(amount, {'from': alice})
+    stages['both_deposit'].append((web3.eth.blockNumber, block_timestamp()))
+    voting_escrow.withdraw(amount - amount // 2, {'from': bob})
+    stages['both_deposit'].append((web3.eth.blockNumber, block_timestamp()))
+
+    rpc.sleep(DAY)
+    rpc.mine()

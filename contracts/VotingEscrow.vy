@@ -295,6 +295,7 @@ def totalSupply() -> uint256:
 def totalSupplyAt(_block: uint256) -> uint256:
     assert _block <= block.number
     _epoch: int128 = self.epoch
+
     # Binary search
     _min: int128 = 0
     _max: int128 = _epoch
