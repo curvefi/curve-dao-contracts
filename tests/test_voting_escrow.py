@@ -70,10 +70,6 @@ def test_voting_powers(web3, rpc, accounts, block_timestamp,
     token.transfer(bob, amount, {'from': alice})
     stages = {}
 
-    # Move to timing which is good for testing - beginning of a UTC week
-    rpc.sleep((block_timestamp() // WEEK + 1) * WEEK)
-    rpc.mine()
-
     token.approve(voting_escrow.address, amount * 10, {'from': alice})
     token.approve(voting_escrow.address, amount * 10, {'from': bob})
 
@@ -81,21 +77,28 @@ def test_voting_powers(web3, rpc, accounts, block_timestamp,
     assert voting_escrow.balanceOf(alice) == 0
     assert voting_escrow.balanceOf(bob) == 0
 
-    stages['before_deposits'] = (web3.eth.blockNumber, block_timestamp())
-    rpc.sleep(DAY)
+    # Move to timing which is good for testing - beginning of a UTC week
+    rpc.sleep((block_timestamp() // WEEK + 1) * WEEK - block_timestamp())
     rpc.mine()
+
+    stages['before_deposits'] = (web3.eth.blockNumber, block_timestamp())
 
     stages['alice_deposit'] = []
     voting_escrow.deposit(amount, block_timestamp() + WEEK, {'from': alice})
     stages['alice_deposit'].append((web3.eth.blockNumber, block_timestamp()))
 
-    assert voting_escrow.balanceOf(alice) == amount * WEEK // MAXTIME
+    assert voting_escrow.totalSupply() == amount // MAXTIME * WEEK
+    assert voting_escrow.balanceOf(alice) == amount // MAXTIME * WEEK
     assert voting_escrow.balanceOf(bob) == 0
-    assert voting_escrow.totalSupply() == amount * WEEK // MAXTIME
+    t0 = block_timestamp()
 
     for i in range(7):
         rpc.sleep(DAY)
         rpc.mine()
+        dt = block_timestamp() - t0
+        assert voting_escrow.totalSupply() == amount // MAXTIME * max(WEEK - dt, 0)
+        assert voting_escrow.balanceOf(alice) == amount // MAXTIME * max(WEEK - dt, 0)
+        assert voting_escrow.balanceOf(bob) == 0
         stages['alice_deposit'].append((web3.eth.blockNumber, block_timestamp()))
     voting_escrow.withdraw(amount, {'from': alice})
     stages['alice_deposit'].append((web3.eth.blockNumber, block_timestamp()))
