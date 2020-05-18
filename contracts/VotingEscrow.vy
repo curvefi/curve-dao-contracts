@@ -3,15 +3,15 @@ from vyper.interfaces import ERC20
 # Voting escrow to have time-weighted votes
 # The idea: votes have a weight depending on time, so that users are committed
 # to the future of (whatever they are voting for).
-# The weight in this implementation is linear until some max time:
+# The weight in this implementation is linear, and lock cannot be more than maxtime:
 # w ^
-# 1 +    /-----------------
-#   |   /
+# 1 +        /
+#   |      /
+#   |    /
 #   |  /
-#   | /
 #   |/
-# 0 +----+--------------------> time
-#       maxtime (2 years?)
+# 0 +--------+------> time
+#       maxtime (4 years?)
 
 struct Point:
     bias: int128
@@ -29,7 +29,7 @@ struct LockedBalance:
 
 
 WEEK: constant(uint256) = 604800  # 7 * 86400 seconds - all future times are rounded by week
-MAXTIME: constant(uint256) = 63072000  # 2 * 365 * 86400 - 2 years
+MAXTIME: constant(uint256) = 126144000  # 4 * 365 * 86400 - 4 years
 
 token: public(address)
 supply: public(uint256)
@@ -146,32 +146,43 @@ def _checkpoint(addr: address, old_locked: LockedBalance, new_locked: LockedBala
 @public
 @nonreentrant('lock')
 def deposit(value: uint256, _unlock_time: uint256 = 0):
-    # Also used to extend locktimes
-    unlock_time: uint256 = (_unlock_time / WEEK) * WEEK
-    _locked: LockedBalance = self.locked[msg.sender]
-    old_supply: uint256 = self.supply
+    """
+    Deposit `value` or extend locktime
+    """
+    unlock_time: uint256 = (_unlock_time / WEEK) * WEEK  # Locktime is rounded down to weeks
+    _locked: LockedBalance = self.locked[msg.sender]  # How much is locked previously and for how long
 
     if unlock_time == 0:
-        assert _locked.amount > 0, "No existing stake found"
-        assert _locked.end > block.timestamp, "Time to unstake"
-        assert value > 0
+        # Checks needed if we are not extending the lock
+        # It means that a workable lock should already exist
+        assert _locked.amount > 0, "No existing lock found"
+        assert _locked.end > block.timestamp, "Cannot add to expired lock. Withdraw"
+        assert value > 0  # Why add zero to existing lock
+
     else:
-        if _locked.amount > 0:
-            assert unlock_time >= _locked.end, "Cannot make locktime smaller"
-        else:
+        # Lock is extended, or a new one is created, with deposit added or not
+        assert unlock_time >= _locked.end, "Cannot decrease the lock duration"
+        if (unlock_time == _locked.end) or (_locked.end <= block.timestamp):
+            # If lock is not extended, we must be adding more to it
             assert value > 0
         assert unlock_time > block.timestamp, "Can only lock until time in the future"
-        assert unlock_time <= as_unitless_number(block.timestamp) + MAXTIME, "Voting lock can be 2 years max"
+        assert unlock_time <= as_unitless_number(block.timestamp) + MAXTIME, "Voting lock can be 4 years max"
 
+    self.supply += value
     old_locked: LockedBalance = _locked
     if _locked.amount == 0:
         _locked.begin = as_unitless_number(block.timestamp)
-    self.supply = old_supply + value
+    # Adding to existing lock, or if a lock is expired - creating a new one
     _locked.amount += convert(value, int128)
     if unlock_time > 0:
         _locked.end = unlock_time
     self.locked[msg.sender] = _locked
 
+    # Possibilities:
+    # Both old_locked.end could be current or expired (>/< block.timestamp)
+    # value == 0 (extend lock) or value > 0 (add to lock or extend lock)
+    # _locked.end > block.timestamp (always)
+    # _locked.begin = block.timestamp
     self._checkpoint(msg.sender, old_locked, _locked)
 
     if value > 0:
