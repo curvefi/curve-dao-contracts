@@ -24,7 +24,6 @@ struct Point:
 
 struct LockedBalance:
     amount: int128
-    begin: uint256
     end: uint256
 
 
@@ -183,8 +182,6 @@ def deposit(value: uint256, _unlock_time: uint256 = 0):
 
     self.supply += value
     old_locked: LockedBalance = _locked
-    if _locked.amount == 0:
-        _locked.begin = as_unitless_number(block.timestamp)
     # Adding to existing lock, or if a lock is expired - creating a new one
     _locked.amount += convert(value, int128)
     if unlock_time > 0:
@@ -195,7 +192,6 @@ def deposit(value: uint256, _unlock_time: uint256 = 0):
     # Both old_locked.end could be current or expired (>/< block.timestamp)
     # value == 0 (extend lock) or value > 0 (add to lock or extend lock)
     # _locked.end > block.timestamp (always)
-    # _locked.begin = block.timestamp
     self._checkpoint(msg.sender, old_locked, _locked)
 
     if value > 0:
@@ -214,15 +210,13 @@ def withdraw(value: uint256):
 
     old_locked: LockedBalance = _locked
     _locked.amount -= convert(value, int128)
-    _locked.begin = 0
     _locked.end = 0
     assert _locked.amount >= 0, "Withdrawing more than you have"
     self.locked[msg.sender] = _locked
     self.supply -= value
 
-    # old_locked can have either expired <= timestamp
-    # or zero begin and end
-    # _locked has only 0 begin and end
+    # old_locked can have either expired <= timestamp or zero end
+    # _locked has only 0 end
     # Both can have >= 0 amount
     self._checkpoint(msg.sender, old_locked, _locked)
 
@@ -256,6 +250,7 @@ def balanceOfAt(addr: address, _block: uint256) -> uint256:
     # reference yet
     assert _block <= block.number
     _epoch: int128 = self.user_point_epoch[addr]
+
     # Binary search
     _min: int128 = 0
     _max: int128 = _epoch
