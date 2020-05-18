@@ -78,14 +78,17 @@ def _checkpoint(addr: address, old_locked: LockedBalance, new_locked: LockedBala
         else:
             new_dslope = self.slope_changes[new_locked.end]
 
-    # Bias/slope (unlike change in bias/slope) is always positive
     last_point: Point = self.point_history[_epoch]
     last_checkpoint: uint256 = last_point.ts
-    # For extrapolation to calculate block number (approximately, for *At methods)
+    # initial_last_point is used for extrapolation to calculate block number
+    # (approximately, for *At methods) and save them
+    # as we cannot figure that out exactly from inside the contract
     initial_last_point: Point = last_point
-    block_slope: uint256 = 0
+    block_slope: uint256 = 0  # dblock/dt
     if t > last_point.ts:
         block_slope = 10 ** 18 * (block.number - last_point.blk) / (t - last_point.ts)
+    # If last point is already recorded in this block, slope=0
+    # But that's ok b/c we know the block in such case
 
     # Go over weeks to fill history and calculate what the current point is
     t_i: uint256 = (last_checkpoint / WEEK) * WEEK
@@ -100,9 +103,9 @@ def _checkpoint(addr: address, old_locked: LockedBalance, new_locked: LockedBala
             d_slope = self.slope_changes[t_i]
         last_point.bias -= last_point.slope * convert(t_i - last_checkpoint, int128)
         last_point.slope += d_slope
-        if last_point.bias < 0:
+        if last_point.bias < 0:  # This can happen
             last_point.bias = 0
-        if last_point.slope < 0:
+        if last_point.slope < 0:  # This cannot happen - just in case
             last_point.slope = 0
         last_checkpoint = t_i
         last_point.ts = t_i
@@ -114,7 +117,10 @@ def _checkpoint(addr: address, old_locked: LockedBalance, new_locked: LockedBala
             break
         else:
             self.point_history[_epoch] = last_point
+    # Now point_history is filled until t=now
 
+    # If last point was in this block, the slope change has been applied already
+    # But in such case we have 0 slope(s)
     last_point.slope += (u_new.slope - u_old.slope)
     last_point.bias += (u_new.bias - u_old.bias)
     if last_point.slope < 0:
@@ -122,21 +128,23 @@ def _checkpoint(addr: address, old_locked: LockedBalance, new_locked: LockedBala
     if last_point.bias < 0:
         last_point.bias = 0
 
+    # Record the changed point into history
     self.point_history[_epoch] = last_point
 
-    # Slope going down is considered positive here (it actually always does, but
-    # delta can have either sign
-    # end comes, slope becomes smaller, so delta is negative
+    # Schedule the slope changes (slope is going down)
     # We subtract new_user_slope from [new_locked.end]
     # and add old_user_slope to [old_locked.end]
     if old_locked.end > block.timestamp:
+        # old_dslope was <something> - u_old.slope, so we cancel that
+        # and subtract u_new.slope
         old_dslope += (u_old.slope - u_new.slope)
-        if new_locked.end != old_locked.end:
-            self.slope_changes[old_locked.end] = old_dslope
+        self.slope_changes[old_locked.end] = old_dslope
 
-    if new_locked.end > block.timestamp:  # check in withdraw maybe?
-        new_dslope -= (u_new.slope - u_old.slope)
-        self.slope_changes[new_locked.end] = new_dslope
+    if new_locked.end > block.timestamp:
+        if new_locked.end > old_locked.end:
+            new_dslope -= u_new.slope  # old slope disappeared at this point
+            self.slope_changes[new_locked.end] = new_dslope
+        # else: we recorded it already in old_dslope
 
     # Now handle user history
     user_epoch: int128 = self.user_point_epoch[addr]
