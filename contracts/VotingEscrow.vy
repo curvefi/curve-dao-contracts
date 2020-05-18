@@ -148,6 +148,7 @@ def _checkpoint(addr: address, old_locked: LockedBalance, new_locked: LockedBala
 def deposit(value: uint256, _unlock_time: uint256 = 0):
     """
     Deposit `value` or extend locktime
+    If previous lock is expired but hasn't been taken - use that
     """
     unlock_time: uint256 = (_unlock_time / WEEK) * WEEK  # Locktime is rounded down to weeks
     _locked: LockedBalance = self.locked[msg.sender]  # How much is locked previously and for how long
@@ -193,17 +194,24 @@ def deposit(value: uint256, _unlock_time: uint256 = 0):
 @public
 @nonreentrant('lock')
 def withdraw(value: uint256):
+    """
+    Withdraw `value` if it's withdrawable
+    """
     _locked: LockedBalance = self.locked[msg.sender]
-    assert block.timestamp >= _locked.end
-    old_supply: uint256 = self.supply
+    assert block.timestamp >= _locked.end, "The lock didn't expire"
 
     old_locked: LockedBalance = _locked
     _locked.amount -= convert(value, int128)
+    _locked.begin = 0
+    _locked.end = 0
     assert _locked.amount >= 0, "Withdrawing more than you have"
     self.locked[msg.sender] = _locked
-    self.supply = old_supply - value
+    self.supply -= value
 
-    # XXX check times
+    # old_locked can have either expired <= timestamp
+    # or zero begin and end
+    # _locked has only 0 begin and end
+    # Both can have >= 0 amount
     self._checkpoint(msg.sender, old_locked, _locked)
 
     assert_modifiable(ERC20(self.token).transfer(msg.sender, value))
