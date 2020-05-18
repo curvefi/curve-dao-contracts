@@ -53,26 +53,30 @@ def __init__(token_addr: address):
 
 @private
 def _checkpoint(addr: address, old_locked: LockedBalance, new_locked: LockedBalance):
-    # XXX is everything ok if both checkpoints are in the same block?
     u_old: Point = Point({bias: 0, slope: 0, ts: 0, blk: 0})
     u_new: Point = Point({bias: 0, slope: 0, ts: 0, blk: 0})
     _epoch: int128 = self.epoch
     t: uint256 = as_unitless_number(block.timestamp)
-    if old_locked.amount > 0 and old_locked.end > block.timestamp and old_locked.end > old_locked.begin:
+
+    # Calculate slopes and biases
+    # Kept at zero when they have to
+    if old_locked.amount > 0 and old_locked.end > block.timestamp and old_locked.end != 0:
         u_old.slope = old_locked.amount / convert(MAXTIME, int128)
         u_old.bias = u_old.slope * convert(old_locked.end - t, int128)
-    if new_locked.amount > 0 and new_locked.end > block.timestamp and new_locked.end > new_locked.begin:
+    if new_locked.amount > 0 and new_locked.end > block.timestamp and new_locked.end != 0:
         u_new.slope = new_locked.amount / convert(MAXTIME, int128)
         u_new.bias = u_new.slope * convert(new_locked.end - t, int128)
 
-    # Handle total slope in the rest of the method
-
+    # Read values of scheduled changes in the slope
+    # old_locked.end can be in the past and in the future
+    # new_locked.end can ONLY by in the FUTURE unless everything expired: than zeros
     old_dslope: int128 = self.slope_changes[old_locked.end]
     new_dslope: int128 = 0
-    if new_locked.end != old_locked.end:
-        new_dslope = self.slope_changes[new_locked.end]
-    else:
-        new_dslope = old_dslope
+    if new_locked.end != 0:
+        if new_locked.end == old_locked.end:
+            new_dslope = old_dslope
+        else:
+            new_dslope = self.slope_changes[new_locked.end]
 
     # Bias/slope (unlike change in bias/slope) is always positive
     last_point: Point = self.point_history[_epoch]
