@@ -35,8 +35,8 @@ supply: public(uint256)
 
 locked: public(map(address, LockedBalance))
 
-epoch: int128
-point_history: Point[100000000000000000000000000000]  # epoch -> unsigned point
+epoch: public(int128)
+point_history: public(Point[100000000000000000000000000000])  # epoch -> unsigned point
 user_point_history: public(map(address, Point[1000000000]))  # user -> Point[user_epoch]
 user_point_epoch: public(map(address, int128))
 slope_changes: public(map(uint256, int128))  # time -> signed slope change
@@ -77,7 +77,9 @@ def _checkpoint(addr: address, old_locked: LockedBalance, new_locked: LockedBala
         else:
             new_dslope = self.slope_changes[new_locked.end]
 
-    last_point: Point = self.point_history[_epoch]
+    last_point: Point = Point({bias: 0, slope: 0, ts: t, blk: block.number})
+    if _epoch > 0:
+        last_point = self.point_history[_epoch]
     last_checkpoint: uint256 = last_point.ts
     # initial_last_point is used for extrapolation to calculate block number
     # (approximately, for *At methods) and save them
