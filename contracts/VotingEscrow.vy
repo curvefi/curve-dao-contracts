@@ -149,6 +149,7 @@ def _checkpoint(addr: address, old_locked: LockedBalance, new_locked: LockedBala
 
     # Now handle user history
     user_epoch: int128 = self.user_point_epoch[addr]
+
     user_epoch += 1
     self.user_point_epoch[addr] = user_epoch
     u_new.ts = as_unitless_number(block.timestamp)
@@ -201,6 +202,9 @@ def deposit(value: uint256, _unlock_time: uint256 = 0):
     # XXX logs
 
 
+# XXX add deposit_for()
+
+
 @public
 @nonreentrant('lock')
 def withdraw(value: uint256):
@@ -229,6 +233,21 @@ def withdraw(value: uint256):
 # The following ERC20/minime-compatible methods are not real balanceOf and supply!
 # They measure the weights for the purpose of voting, so they don't represent
 # real coins.
+@private
+@constant
+def find_block_epoch(_block: uint256, max_epoch: int128) -> int128:
+    # Binary search
+    _min: int128 = 0
+    _max: int128 = max_epoch
+    for i in range(128):  # Will be always enough for 128-bit numbers
+        if _min >= _max:
+            break
+        _mid: int128 = (_min + _max + 1) / 2
+        if self.point_history[_mid].blk <= _block:
+            _min = _mid
+        else:
+            _max = _mid - 1
+    return _min
 
 
 @public
@@ -251,11 +270,10 @@ def balanceOfAt(addr: address, _block: uint256) -> uint256:
     # Copying and pasting totalSupply code because Vyper cannot pass by
     # reference yet
     assert _block <= block.number
-    _epoch: int128 = self.user_point_epoch[addr]
 
     # Binary search
     _min: int128 = 0
-    _max: int128 = _epoch
+    _max: int128 = self.user_point_epoch[addr]
     for i in range(128):  # Will be always enough for 128-bit numbers
         if _min >= _max:
             break
@@ -265,19 +283,25 @@ def balanceOfAt(addr: address, _block: uint256) -> uint256:
         else:
             _max = _mid - 1
 
-    point: Point = self.user_point_history[addr][_min]
-    dt: uint256 = 0
-    if _min < _epoch:
-        point_next: Point = self.user_point_history[addr][_min + 1]
-        if point.blk != point_next.blk:
-            dt = (_block - point.blk) * (point_next.ts - point.ts) / (point_next.blk - point.blk)
-    else:
-        if point.blk != block.number:
-            dt = (_block - point.blk) * (as_unitless_number(block.timestamp) - point.ts) / (block.number - point.blk)
+    upoint: Point = self.user_point_history[addr][_min]
 
-    point.bias -= point.slope * convert(dt, int128)
-    if point.bias >= 0:
-        return convert(point.bias, uint256)
+    max_epoch: int128 = self.epoch
+    _epoch: int128 = self.find_block_epoch(_block, max_epoch)
+    point_0: Point = self.point_history[_epoch]
+    d_block: uint256 = 0
+    d_t: uint256 = 0
+    if _epoch < max_epoch:
+        point_1: Point = self.point_history[_epoch + 1]
+        d_block = point_1.blk - point_0.blk
+        d_t = point_1.ts - point_0.ts
+    else:
+        d_block = block.number - point_0.blk
+        d_t = as_unitless_number(block.timestamp) - point_0.ts
+    block_time: uint256 = point_0.ts + d_t * (_block - point_0.blk) / d_block
+
+    upoint.bias -= upoint.slope * convert(block_time - upoint.ts, int128)
+    if upoint.bias >= 0:
+        return convert(upoint.bias, uint256)
     else:
         return 0
 
@@ -297,23 +321,12 @@ def totalSupply() -> uint256:
 def totalSupplyAt(_block: uint256) -> uint256:
     assert _block <= block.number
     _epoch: int128 = self.epoch
+    target_epoch: int128 = self.find_block_epoch(_block, _epoch)
 
-    # Binary search
-    _min: int128 = 0
-    _max: int128 = _epoch
-    for i in range(128):  # Will be always enough for 128-bit numbers
-        if _min >= _max:
-            break
-        _mid: int128 = (_min + _max + 1) / 2
-        if self.point_history[_mid].blk <= _block:
-            _min = _mid
-        else:
-            _max = _mid - 1
-
-    point: Point = self.point_history[_min]
+    point: Point = self.point_history[target_epoch]
     dt: uint256 = 0
-    if _min < _epoch:
-        point_next: Point = self.point_history[_min + 1]
+    if target_epoch < _epoch:
+        point_next: Point = self.point_history[target_epoch + 1]
         if point.blk != point_next.blk:
             dt = (_block - point.blk) * (point_next.ts - point.ts) / (point_next.blk - point.blk)
     else:
