@@ -166,8 +166,10 @@ def test_voting_powers(web3, rpc, accounts, block_timestamp,
         rpc.sleep(DAY)
         rpc.mine()
         dt = block_timestamp() - t0
-        assert approx(voting_escrow.totalSupply(), amount // MAXTIME * max(WEEK - dt, 0), TOL)
-        assert approx(voting_escrow.balanceOf(alice), amount // MAXTIME * max(WEEK - dt, 0), TOL)
+        w_total = voting_escrow.totalSupply()
+        w_alice = voting_escrow.balanceOf(alice)
+        assert w_total == w_alice
+        assert approx(w_total, amount // MAXTIME * max(WEEK - dt, 0), TOL)
         assert voting_escrow.balanceOf(bob) == 0
         stages['alice_in_2'].append((web3.eth.blockNumber, block_timestamp()))
 
@@ -198,4 +200,6 @@ def test_voting_powers(web3, rpc, accounts, block_timestamp,
         w_total = voting_escrow.totalSupplyAt(block)
         assert w_bob == 0
         assert w_alice == w_total
-        assert approx(w_alice, amount // MAXTIME * WEEK * (7 - i) // 7, TOL)
+        time_left = (WEEK * (7 - i) // 7 - 2 * H)
+        error_1h = H / time_left  # Rounding error of 1 block is possible, and we have 1h blocks
+        assert approx(w_alice, amount // MAXTIME * time_left, error_1h)
