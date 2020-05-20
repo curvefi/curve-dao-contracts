@@ -297,7 +297,9 @@ def balanceOfAt(addr: address, _block: uint256) -> uint256:
     else:
         d_block = block.number - point_0.blk
         d_t = as_unitless_number(block.timestamp) - point_0.ts
-    block_time: uint256 = point_0.ts + d_t * (_block - point_0.blk) / d_block
+    block_time: uint256 = point_0.ts
+    if d_block > 0:
+        block_time += d_t * (_block - point_0.blk) / d_block
 
     upoint.bias -= upoint.slope * convert(block_time - upoint.ts, int128)
     if upoint.bias >= 0:

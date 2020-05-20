@@ -253,3 +253,10 @@ def test_voting_powers(web3, rpc, accounts, block_timestamp,
         error_1h = H / (2 * WEEK - i * DAY)  # Rounding error of 1 block is possible, and we have 1h blocks
         assert approx(w_alice, amount // MAXTIME * max(2 * WEEK - dt, 0), error_1h)
         assert approx(w_bob, amount // MAXTIME * max(WEEK - dt, 0), error_1h)
+
+    w_total = voting_escrow.totalSupplyAt(stages['bob_withdraw_2'][0])
+    w_alice = voting_escrow.balanceOfAt(alice, stages['bob_withdraw_2'][0])
+    w_bob = voting_escrow.balanceOfAt(bob, stages['bob_withdraw_2'][0])
+    assert w_total == w_alice
+    assert approx(w_total, amount // MAXTIME * (WEEK - 2 * H), TOL)
+    assert w_bob == 0
