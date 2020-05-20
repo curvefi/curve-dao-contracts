@@ -142,29 +142,41 @@ def test_voting_powers(web3, rpc, accounts, block_timestamp,
     assert approx(voting_escrow.balanceOf(bob), amount // MAXTIME * WEEK, TOL)
 
     t0 = block_timestamp()
+    rpc.sleep(H)
+    rpc.mine()
+
     stages['alice_bob_in_2'] = []
     # Beginning of week: weight 3
     # End of week: weight 1
     for i in range(7):
-        rpc.sleep(DAY)
-        rpc.mine()
+        for _ in range(24):
+            rpc.sleep(H)
+            rpc.mine()
         dt = block_timestamp() - t0
-        assert approx(voting_escrow.totalSupply(), amount // MAXTIME * max(3 * WEEK - 2 * dt, 0), TOL)
-        assert approx(voting_escrow.balanceOf(alice), amount // MAXTIME * max(2 * WEEK - dt, 0), TOL)
-        assert approx(voting_escrow.balanceOf(bob), amount // MAXTIME * max(WEEK - dt, 0), TOL)
+        w_total = voting_escrow.totalSupply()
+        w_alice = voting_escrow.balanceOf(alice)
+        w_bob = voting_escrow.balanceOf(bob)
+        assert w_total == w_alice + w_bob
+        assert approx(w_total, amount // MAXTIME * max(3 * WEEK - 2 * dt, 0), TOL)
+        assert approx(w_alice, amount // MAXTIME * max(2 * WEEK - dt, 0), TOL)
+        assert approx(w_bob, amount // MAXTIME * max(WEEK - dt, 0), TOL)
         stages['alice_bob_in_2'].append((web3.eth.blockNumber, block_timestamp()))
 
     voting_escrow.withdraw(amount // 2, {'from': bob})
     t0 = block_timestamp()
     stages['bob_withdraw_2'] = (web3.eth.blockNumber, block_timestamp())
-    assert approx(voting_escrow.totalSupply(), amount // MAXTIME * WEEK, TOL)
-    assert approx(voting_escrow.balanceOf(alice), amount // MAXTIME * WEEK, TOL)
+    assert approx(voting_escrow.totalSupply(), amount // MAXTIME * (WEEK - H), TOL)
+    assert approx(voting_escrow.balanceOf(alice), amount // MAXTIME * (WEEK - H), TOL)
     assert voting_escrow.balanceOf(bob) == 0
+
+    rpc.sleep(H)
+    rpc.mine()
 
     stages['alice_in_2'] = []
     for i in range(7):
-        rpc.sleep(DAY)
-        rpc.mine()
+        for _ in range(24):
+            rpc.sleep(H)
+            rpc.mine()
         dt = block_timestamp() - t0
         w_total = voting_escrow.totalSupply()
         w_alice = voting_escrow.balanceOf(alice)
@@ -175,6 +187,10 @@ def test_voting_powers(web3, rpc, accounts, block_timestamp,
 
     voting_escrow.withdraw(amount, {'from': alice})
     stages['alice_withdraw_2'] = (web3.eth.blockNumber, block_timestamp())
+
+    rpc.sleep(H)
+    rpc.mine()
+
     voting_escrow.withdraw(amount - amount // 2, {'from': bob})
     stages['bob_withdraw_2'] = (web3.eth.blockNumber, block_timestamp())
 

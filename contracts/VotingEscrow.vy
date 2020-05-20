@@ -309,8 +309,23 @@ def balanceOfAt(addr: address, _block: uint256) -> uint256:
 @public
 @constant
 def totalSupply() -> uint256:
-    last_point: Point = self.point_history[self.epoch]
-    last_point.bias -= last_point.slope * convert(as_unitless_number(block.timestamp) - last_point.ts, int128)
+    _epoch: int128 = self.epoch
+    last_point: Point = self.point_history[_epoch]
+
+    t_i: uint256 = (last_point.ts / WEEK) * WEEK
+    for i in range(255):
+        t_i += WEEK
+        d_slope: int128 = 0
+        if t_i > block.timestamp:
+            t_i = as_unitless_number(block.timestamp)
+        else:
+            d_slope = self.slope_changes[t_i]
+        last_point.bias -= last_point.slope * convert(t_i - last_point.ts, int128)
+        if t_i == block.timestamp:
+            break
+        last_point.slope += d_slope
+        last_point.ts = t_i
+
     if last_point.bias < 0:
         last_point.bias = 0
     return convert(last_point.bias, uint256)
