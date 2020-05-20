@@ -166,7 +166,7 @@ def test_voting_powers(web3, rpc, accounts, block_timestamp,
 
     voting_escrow.withdraw(amount // 2, {'from': bob})
     t0 = block_timestamp()
-    stages['bob_withdraw_2'] = (web3.eth.blockNumber, block_timestamp())
+    stages['bob_withdraw_1'] = (web3.eth.blockNumber, block_timestamp())
     w_total = voting_escrow.totalSupply()
     w_alice = voting_escrow.balanceOf(alice)
     assert w_alice == w_total
@@ -254,9 +254,25 @@ def test_voting_powers(web3, rpc, accounts, block_timestamp,
         assert approx(w_alice, amount // MAXTIME * max(2 * WEEK - dt, 0), error_1h)
         assert approx(w_bob, amount // MAXTIME * max(WEEK - dt, 0), error_1h)
 
-    w_total = voting_escrow.totalSupplyAt(stages['bob_withdraw_2'][0])
-    w_alice = voting_escrow.balanceOfAt(alice, stages['bob_withdraw_2'][0])
-    w_bob = voting_escrow.balanceOfAt(bob, stages['bob_withdraw_2'][0])
+    w_total = voting_escrow.totalSupplyAt(stages['bob_withdraw_1'][0])
+    w_alice = voting_escrow.balanceOfAt(alice, stages['bob_withdraw_1'][0])
+    w_bob = voting_escrow.balanceOfAt(bob, stages['bob_withdraw_1'][0])
     assert w_total == w_alice
     assert approx(w_total, amount // MAXTIME * (WEEK - 2 * H), TOL)
     assert w_bob == 0
+
+    t0 = stages['bob_withdraw_1'][1]
+    for i, (block, t) in enumerate(stages['alice_in_2']):
+        w_alice = voting_escrow.balanceOfAt(alice, block)
+        w_bob = voting_escrow.balanceOfAt(bob, block)
+        w_total = voting_escrow.totalSupplyAt(block)
+        assert w_total == w_alice
+        assert w_bob == 0
+        dt = t - t0
+        error_1h = H / (WEEK - i * DAY + DAY)  # Rounding error of 1 block is possible, and we have 1h blocks
+        assert approx(w_total, amount // MAXTIME * max(WEEK - dt - 2 * H, 0), error_1h)
+
+    w_total = voting_escrow.totalSupplyAt(stages['bob_withdraw_2'][0])
+    w_alice = voting_escrow.balanceOfAt(alice, stages['bob_withdraw_2'][0])
+    w_bob = voting_escrow.balanceOfAt(bob, stages['bob_withdraw_2'][0])
+    assert w_total == w_alice == w_bob == 0
