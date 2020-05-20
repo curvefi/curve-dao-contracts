@@ -157,7 +157,6 @@ def test_voting_powers(web3, rpc, accounts, block_timestamp,
         w_alice = voting_escrow.balanceOf(alice)
         w_bob = voting_escrow.balanceOf(bob)
         assert w_total == w_alice + w_bob
-        assert approx(w_total, amount // MAXTIME * max(3 * WEEK - 2 * dt, 0), TOL)
         assert approx(w_alice, amount // MAXTIME * max(2 * WEEK - dt, 0), TOL)
         assert approx(w_bob, amount // MAXTIME * max(WEEK - dt, 0), TOL)
         stages['alice_bob_in_2'].append((web3.eth.blockNumber, block_timestamp()))
