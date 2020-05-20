@@ -306,22 +306,20 @@ def balanceOfAt(addr: address, _block: uint256) -> uint256:
         return 0
 
 
-@public
+@private
 @constant
-def totalSupply() -> uint256:
-    _epoch: int128 = self.epoch
-    last_point: Point = self.point_history[_epoch]
-
+def supply_at(point: Point, t: uint256) -> uint256:
+    last_point: Point = point
     t_i: uint256 = (last_point.ts / WEEK) * WEEK
     for i in range(255):
         t_i += WEEK
         d_slope: int128 = 0
-        if t_i > block.timestamp:
-            t_i = as_unitless_number(block.timestamp)
+        if t_i > t:
+            t_i = t
         else:
             d_slope = self.slope_changes[t_i]
         last_point.bias -= last_point.slope * convert(t_i - last_point.ts, int128)
-        if t_i == block.timestamp:
+        if t_i == t:
             break
         last_point.slope += d_slope
         last_point.ts = t_i
@@ -329,6 +327,14 @@ def totalSupply() -> uint256:
     if last_point.bias < 0:
         last_point.bias = 0
     return convert(last_point.bias, uint256)
+
+
+@public
+@constant
+def totalSupply() -> uint256:
+    _epoch: int128 = self.epoch
+    last_point: Point = self.point_history[_epoch]
+    return self.supply_at(last_point, as_unitless_number(block.timestamp))
 
 
 @public
@@ -347,9 +353,6 @@ def totalSupplyAt(_block: uint256) -> uint256:
     else:
         if point.blk != block.number:
             dt = (_block - point.blk) * (as_unitless_number(block.timestamp) - point.ts) / (block.number - point.blk)
+    # Now dt contains info on how far are we beyond point
 
-    point.bias -= point.slope * convert(dt, int128)
-    if point.bias >= 0:
-        return convert(point.bias, uint256)
-    else:
-        return 0
+    return self.supply_at(point, point.ts + dt)
