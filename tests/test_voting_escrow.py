@@ -5,7 +5,7 @@ H = 3600
 DAY = 86400
 WEEK = 7 * DAY
 MAXTIME = 126144000
-TOL = 20 / WEEK
+TOL = 120 / WEEK
 
 
 def test_escrow_desposit_withdraw(rpc, accounts, token, voting_escrow, block_timestamp):
@@ -161,11 +161,16 @@ def test_voting_powers(web3, rpc, accounts, block_timestamp,
         assert approx(w_bob, amount // MAXTIME * max(WEEK - dt, 0), TOL)
         stages['alice_bob_in_2'].append((web3.eth.blockNumber, block_timestamp()))
 
+    rpc.sleep(H)
+    rpc.mine()
+
     voting_escrow.withdraw(amount // 2, {'from': bob})
     t0 = block_timestamp()
     stages['bob_withdraw_2'] = (web3.eth.blockNumber, block_timestamp())
-    assert approx(voting_escrow.totalSupply(), amount // MAXTIME * (WEEK - H), TOL)
-    assert approx(voting_escrow.balanceOf(alice), amount // MAXTIME * (WEEK - H), TOL)
+    w_total = voting_escrow.totalSupply()
+    w_alice = voting_escrow.balanceOf(alice)
+    assert w_alice == w_total
+    assert approx(w_total, amount // MAXTIME * (WEEK - 2 * H), TOL)
     assert voting_escrow.balanceOf(bob) == 0
 
     rpc.sleep(H)
@@ -180,7 +185,7 @@ def test_voting_powers(web3, rpc, accounts, block_timestamp,
         w_total = voting_escrow.totalSupply()
         w_alice = voting_escrow.balanceOf(alice)
         assert w_total == w_alice
-        assert approx(w_total, amount // MAXTIME * max(WEEK - dt, 0), TOL)
+        assert approx(w_total, amount // MAXTIME * max(WEEK - dt - 2 * H, 0), TOL)
         assert voting_escrow.balanceOf(bob) == 0
         stages['alice_in_2'].append((web3.eth.blockNumber, block_timestamp()))
 
