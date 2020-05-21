@@ -163,15 +163,10 @@ def _checkpoint(addr: address, old_locked: LockedBalance, new_locked: LockedBala
     self.user_point_history[addr][user_epoch] = u_new
 
 
-@public
-@nonreentrant('lock')
-def deposit(value: uint256, _unlock_time: uint256 = 0):
-    """
-    Deposit `value` or extend locktime
-    If previous lock is expired but hasn't been taken - use that
-    """
+@private
+def _deposit_for(addr: address, value: uint256, _unlock_time: uint256):
     unlock_time: uint256 = (_unlock_time / WEEK) * WEEK  # Locktime is rounded down to weeks
-    _locked: LockedBalance = self.locked[msg.sender]  # How much is locked previously and for how long
+    _locked: LockedBalance = self.locked[addr]  # How much is locked previously and for how long
 
     if unlock_time == 0:
         # Checks needed if we are not extending the lock
@@ -195,16 +190,36 @@ def deposit(value: uint256, _unlock_time: uint256 = 0):
     _locked.amount += convert(value, int128)
     if unlock_time > 0:
         _locked.end = unlock_time
-    self.locked[msg.sender] = _locked
+    self.locked[addr] = _locked
 
     # Possibilities:
     # Both old_locked.end could be current or expired (>/< block.timestamp)
     # value == 0 (extend lock) or value > 0 (add to lock or extend lock)
     # _locked.end > block.timestamp (always)
-    self._checkpoint(msg.sender, old_locked, _locked)
+    self._checkpoint(addr, old_locked, _locked)
 
     if value > 0:
-        assert_modifiable(ERC20(self.token).transferFrom(msg.sender, self, value))
+        assert_modifiable(ERC20(self.token).transferFrom(addr, self, value))
+
+
+@public
+@nonreentrant('lock')
+def deposit_for(addr: address, value: uint256):
+    """
+    Anyone can deposit for someone else, but cannot extend their locktime
+    """
+    self._deposit_for(addr, value, 0)
+    # XXX logs
+
+
+@public
+@nonreentrant('lock')
+def deposit(value: uint256, _unlock_time: uint256 = 0):
+    """
+    Deposit `value` or extend locktime
+    If previous lock is expired but hasn't been taken - use that
+    """
+    self._deposit_for(msg.sender, value, _unlock_time)
     # XXX logs
 
 
