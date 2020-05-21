@@ -27,6 +27,10 @@ struct LockedBalance:
     end: uint256
 
 
+Deposit: event({provider: indexed(address), value: uint256, locktime: indexed(uint256)})
+Withdraw: event({provider: indexed(address), value: uint256})
+
+
 WEEK: constant(uint256) = 604800  # 7 * 86400 seconds - all future times are rounded by week
 MAXTIME: constant(uint256) = 126144000  # 4 * 365 * 86400 - 4 years
 
@@ -201,6 +205,8 @@ def _deposit_for(addr: address, value: uint256, _unlock_time: uint256):
     if value > 0:
         assert_modifiable(ERC20(self.token).transferFrom(addr, self, value))
 
+    log.Deposit(addr, value, _locked.end)
+
 
 @public
 @nonreentrant('lock')
@@ -209,7 +215,6 @@ def deposit_for(addr: address, value: uint256):
     Anyone can deposit for someone else, but cannot extend their locktime
     """
     self._deposit_for(addr, value, 0)
-    # XXX logs
 
 
 @public
@@ -220,10 +225,6 @@ def deposit(value: uint256, _unlock_time: uint256 = 0):
     If previous lock is expired but hasn't been taken - use that
     """
     self._deposit_for(msg.sender, value, _unlock_time)
-    # XXX logs
-
-
-# XXX add deposit_for()
 
 
 @public
@@ -248,7 +249,8 @@ def withdraw(value: uint256):
     self._checkpoint(msg.sender, old_locked, _locked)
 
     assert_modifiable(ERC20(self.token).transfer(msg.sender, value))
-    # XXX logs
+
+    log.Withdraw(msg.sender, value)
 
 
 # The following ERC20/minime-compatible methods are not real balanceOf and supply!
