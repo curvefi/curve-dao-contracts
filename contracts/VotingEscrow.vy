@@ -41,6 +41,9 @@ user_point_history: public(map(address, Point[1000000000]))  # user -> Point[use
 user_point_epoch: public(map(address, int128))
 slope_changes: public(map(uint256, int128))  # time -> signed slope change
 
+# Aragon's "admin". Just for compatibility - not doing anything
+controller: public(address)
+
 
 @public
 def __init__(token_addr: address):
@@ -48,6 +51,7 @@ def __init__(token_addr: address):
     self.point_history[0] = Point({
         bias: 0, slope: 0,
         blk: block.number, ts: as_unitless_number(block.timestamp)})
+    self.controller = msg.sender
 
 
 @private
@@ -358,3 +362,11 @@ def totalSupplyAt(_block: uint256) -> uint256:
     # Now dt contains info on how far are we beyond point
 
     return self.supply_at(point, point.ts + dt)
+
+
+# Dummy methods for compatibility with Aragon
+
+@public
+def changeController(_newController: address):
+    assert msg.sender == self.controller
+    self.controller = _newController
