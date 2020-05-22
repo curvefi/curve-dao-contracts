@@ -49,15 +49,45 @@ slope_changes: public(map(uint256, int128))  # time -> signed slope change
 controller: public(address)
 transfersEnabled: public(bool)
 
+# Whitelisted (smart contract) wallets which are allowed to deposit
+# The goal is to prevent tokenizing the escrow
+contracts_whitelist: public(map(address, bool))  # When sets?
+admin: address  # Can and will be a smart contract
+
 
 @public
 def __init__(token_addr: address):
+    self.admin = msg.sender
     self.token = token_addr
     self.point_history[0] = Point({
         bias: 0, slope: 0,
         blk: block.number, ts: as_unitless_number(block.timestamp)})
     self.controller = msg.sender
     self.transfersEnabled = True
+
+
+@public
+def transfer_ownership(addr: address):
+    assert msg.sender == self.admin
+    self.admin = addr
+
+
+@public
+def add_to_whitelist(addr: address):
+    assert msg.sender == self.admin
+    self.contracts_whitelist[addr] = True
+
+
+@public
+def remove_from_whitelist(addr: address):
+    assert msg.sender == self.admin
+    self.contracts_whitelist[addr] = False
+
+
+@private
+def assert_not_contract(addr: address):
+    if addr != tx.origin:
+        assert self.contracts_whitelist[addr], "Smart contract depositors not allowed"
 
 
 @private
@@ -224,6 +254,7 @@ def deposit(value: uint256, _unlock_time: uint256 = 0):
     Deposit `value` or extend locktime
     If previous lock is expired but hasn't been taken - use that
     """
+    self.assert_not_contract(msg.sender)
     self._deposit_for(msg.sender, value, _unlock_time)
 
 
@@ -233,6 +264,7 @@ def withdraw(value: uint256):
     """
     Withdraw `value` if it's withdrawable
     """
+    self.assert_not_contract(msg.sender)
     _locked: LockedBalance = self.locked[msg.sender]
     assert block.timestamp >= _locked.end, "The lock didn't expire"
 
