@@ -132,7 +132,7 @@ def test_voting_powers(web3, rpc, accounts, block_timestamp,
     rpc.sleep(H)
 
     assert voting_escrow.balanceOf(alice) == 0
-    voting_escrow.withdraw(amount, {'from': alice})
+    voting_escrow.withdraw({'from': alice})
     stages['alice_withdraw'] = (web3.eth.blockNumber, block_timestamp())
     assert voting_escrow.totalSupply() == 0
     assert voting_escrow.balanceOf(alice) == 0
@@ -207,7 +207,7 @@ def test_voting_powers(web3, rpc, accounts, block_timestamp,
         assert voting_escrow.balanceOf(bob) == 0
         stages['alice_in_2'].append((web3.eth.blockNumber, block_timestamp()))
 
-    voting_escrow.withdraw(amount, {'from': alice})
+    voting_escrow.withdraw({'from': alice})
     stages['alice_withdraw_2'] = (web3.eth.blockNumber, block_timestamp())
 
     rpc.sleep(H)
