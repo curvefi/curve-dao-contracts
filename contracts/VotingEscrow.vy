@@ -263,13 +263,16 @@ def deposit(value: uint256, _unlock_time: uint256 = 0):
 
 @public
 @nonreentrant('lock')
-def withdraw(value: uint256):
+def withdraw(_value: uint256 = 0):
     """
     Withdraw `value` if it's withdrawable
     """
     self.assert_not_contract(msg.sender)
     _locked: LockedBalance = self.locked[msg.sender]
     assert block.timestamp >= _locked.end, "The lock didn't expire"
+    value: uint256 = _value
+    if value == 0:
+        value = convert(_locked.amount, uint256)
 
     old_locked: LockedBalance = _locked
     _locked.end = 0

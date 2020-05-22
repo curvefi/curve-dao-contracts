@@ -45,7 +45,13 @@ def test_escrow_deposit_withdraw(rpc, accounts, token, voting_escrow, block_time
     voting_escrow.deposit_for(alice, 10 ** 18, from_bob)
     rpc.sleep(WEEK)
     rpc.mine()
-    voting_escrow.withdraw(2 * alice_amount + 10 ** 18, from_alice)
+
+    with brownie.reverts('Withdraw old tokens first'):
+        voting_escrow.deposit(1, block_timestamp() + 4 * WEEK, from_alice)
+
+    balance_before = token.balanceOf(alice)
+    voting_escrow.withdraw(from_alice)
+    assert token.balanceOf(alice) == 2 * alice_amount + 10 ** 18 + balance_before
 
     with brownie.reverts('No existing lock found'):
         voting_escrow.deposit_for(alice, 10 ** 18, from_bob)
