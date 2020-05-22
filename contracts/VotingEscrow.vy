@@ -244,6 +244,7 @@ def deposit_for(addr: address, value: uint256):
     """
     Anyone can deposit for someone else, but cannot extend their locktime
     """
+    assert self.user_point_epoch[addr] > 0, "First tx should be done by user"
     self._deposit_for(addr, value, 0)
 
 
