@@ -211,6 +211,8 @@ def _deposit_for(addr: address, value: uint256, _unlock_time: uint256):
 
     else:
         # Lock is extended, or a new one is created, with deposit added or not
+        if _locked.end <= block.timestamp:
+            assert _locked.amount == 0, "Withdraw old tokens first"
         assert unlock_time >= _locked.end, "Cannot decrease the lock duration"
         if (unlock_time == _locked.end) or (_locked.end <= block.timestamp):
             # If lock is not extended, we must be adding more to it
@@ -270,8 +272,8 @@ def withdraw(value: uint256):
     assert block.timestamp >= _locked.end, "The lock didn't expire"
 
     old_locked: LockedBalance = _locked
-    _locked.amount -= convert(value, int128)
     _locked.end = 0
+    _locked.amount -= convert(value, int128)
     assert _locked.amount >= 0, "Withdrawing more than you have"
     self.locked[msg.sender] = _locked
     self.supply -= value
