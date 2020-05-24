@@ -8,7 +8,7 @@ def test_gauge_integral(
     alice, bob = accounts[:2]
 
     # Wire up Gauge to the controller to have proper rates and stuff
-    gauge_controller.add_type({'from': alice})
+    gauge_controller.add_type(b'Liquidity', {'from': alice})
     gauge_controller.change_type_weight(0, 10 ** 18, {'from': alice})
     gauge_controller.add_gauge(liquidity_gauge.address, 0, 10 ** 18, {'from': alice})
 

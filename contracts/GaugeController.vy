@@ -12,6 +12,7 @@ token: address  # CRV token
 # All numbers are "fixed point" on the basis of 1e18
 n_gauge_types: public(int128)
 n_gauges: public(int128)
+gauge_type_names: public(map(int128, string[64]))
 
 # Every time a weight or epoch changes, period increases
 # The idea is: relative weights are guaranteed to not change within the period
@@ -54,9 +55,10 @@ def transfer_ownership(addr: address):
 
 
 @public
-def add_type():
+def add_type(_name: string[64]):
     assert msg.sender == self.admin
     n: int128 = self.n_gauge_types
+    self.gauge_type_names[n] = _name
     self.n_gauge_types = n + 1
     # maps contain 0 values by default, no need to do anything
     # zero weights don't change other weights - no need to change last_change

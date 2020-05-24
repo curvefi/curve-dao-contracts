@@ -8,8 +8,8 @@ def test_gauge_controller(accounts, rpc, block_timestamp, gauge_controller, thre
     gauge_weights = [2 * 10 ** 18, 10 ** 18, 5 * 10 ** 17]
 
     # Set up gauges and types
-    gauge_controller.add_type({'from': admin})  # 0
-    gauge_controller.add_type({'from': admin})  # 1
+    gauge_controller.add_type(b'Liquidity', {'from': admin})  # 0
+    gauge_controller.add_type(b'Insurance', {'from': admin})  # 1
     gauge_controller.change_type_weight(0, type_weights[0], {'from': admin})
 
     gauge_controller.add_gauge(three_gauges[0].address, 0, {'from': admin})

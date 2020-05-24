@@ -22,7 +22,7 @@ def test_mint(accounts, rpc, mock_lp_token, gauge_controller, three_gauges, mint
 
     # Set up types
     for i, w in enumerate(type_weights):
-        gauge_controller.add_type({'from': admin})
+        gauge_controller.add_type(b'Liquidity', {'from': admin})
         gauge_controller.change_type_weight(i, w, {'from': admin})
 
     # Set up gauges
