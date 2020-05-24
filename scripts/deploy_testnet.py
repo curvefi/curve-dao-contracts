@@ -3,7 +3,7 @@
 import json
 from web3 import middleware
 from web3.gas_strategies.time_based import fast_gas_price_strategy as gas_strategy
-from brownie import web3, accounts, ERC20CRV, VotingEscrow
+from brownie import web3, accounts, ERC20CRV, VotingEscrow, ERC20, ERC20LP, CurvePool
 
 USE_STRATEGIES = False  # Needed for the ganache-cli tester which doesn't like middlewares
 POA = True
@@ -26,6 +26,19 @@ def repeat(f, *args):
             continue
 
 
+def deploy_erc20s_and_pool(deployer):
+    coin_a = repeat(ERC20.deploy, "Coin A", "USDA", 18, {'from': deployer})
+    repeat(coin_a._mint_for_testing, 10 ** 9 * 10 ** 18, {'from': deployer})
+    coin_b = repeat(ERC20.deploy, "Coin B", "USDB", 18, {'from': deployer})
+    repeat(coin_b._mint_for_testing, 10 ** 9 * 10 ** 18, {'from': deployer})
+
+    lp_token = repeat(ERC20LP.deploy, "Some pool", "cPool", 18, 0, {'from': deployer})
+    pool = repeat(CurvePool.deploy, [coin_a, coin_b], lp_token, 100, 4 * 10 ** 6, {'from': deployer})
+    repeat(lp_token.set_minter, pool, {'from': deployer})
+
+    return coin_a, coin_b, lp_token, pool
+
+
 def main():
     if USE_STRATEGIES:
         web3.eth.setGasPriceStrategy(gas_strategy)
@@ -36,6 +49,9 @@ def main():
             web3.middleware_onion.inject(middleware.geth_poa_middleware, layer=0)
 
     deployer = accounts.at(DEPLOYER)
+
+    print("Deploying fake coins and the pool...")
+    deploy_erc20s_and_pool(deployer)
 
     print("Deploying CRV token...")
     token = repeat(ERC20CRV.deploy, "Curve DAO Token", "CRV", 18, 10 ** 9, {'from': deployer})
