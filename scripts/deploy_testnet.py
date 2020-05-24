@@ -101,7 +101,7 @@ def main():
     save_abi(liquidity_gauge, 'liquidity_gauge')
 
     repeat(token.set_minter, minter, {'from': deployer})
-    repeat(gauge_controller.add_type, {'from': deployer})
+    repeat(gauge_controller.add_type, b'Liquidity', {'from': deployer})
     repeat(gauge_controller.change_type_weight, 0, 10 ** 18, {'from': deployer})
     repeat(gauge_controller.add_gauge, liquidity_gauge, 0, 10 ** 18, {'from': deployer})
 
