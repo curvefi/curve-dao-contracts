@@ -181,7 +181,7 @@ def get_pool_info(_pool: address) -> PoolInfo:
         _underlying_coin: address = self.pool_data[_pool].ul_coins[i]
         if _coin == _underlying_coin:
             _pool_info.underlying_balances[i] = _pool_info.balances[i]
-        else:
+        elif _underlying_coin != ZERO_ADDRESS:
             _pool_info.underlying_balances[i] = ERC20(_underlying_coin).balanceOf(_pool)
 
     return _pool_info
