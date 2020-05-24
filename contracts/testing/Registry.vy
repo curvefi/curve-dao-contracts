@@ -614,7 +614,7 @@ def commit_transfer_ownership(_new_admin: address):
     assert msg.sender == self.admin  # dev: admin-only function
     assert self.transfer_ownership_deadline == 0  # dev: transfer already active
 
-    _deadline: uint256 = as_unitless_number(block.timestamp) + 3*86400
+    _deadline: uint256 = as_unitless_number(block.timestamp)  # + 3*86400
     self.transfer_ownership_deadline = _deadline
     self.future_admin = _new_admin
 
