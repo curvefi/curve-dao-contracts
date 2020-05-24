@@ -3,7 +3,12 @@
 import json
 from web3 import middleware
 from web3.gas_strategies.time_based import fast_gas_price_strategy as gas_strategy
-from brownie import web3, accounts, ERC20CRV, VotingEscrow, ERC20, ERC20LP, CurvePool, Registry
+from brownie import (
+        web3, accounts,
+        ERC20CRV, VotingEscrow, ERC20, ERC20LP, CurvePool, Registry,
+        GaugeController, Minter, LiquidityGauge
+        )
+
 
 USE_STRATEGIES = False  # Needed for the ganache-cli tester which doesn't like middlewares
 POA = True
@@ -59,7 +64,7 @@ def deploy_erc20s_and_pool(deployer):
     repeat(registry.commit_transfer_ownership, ARAGON_AGENT, {'from': deployer})
     repeat(registry.apply_transfer_ownership, {'from': deployer})
 
-    return pool, registry
+    return lp_token
 
 
 def main():
@@ -73,7 +78,7 @@ def main():
 
     deployer = accounts.at(DEPLOYER)
 
-    deploy_erc20s_and_pool(deployer)
+    lp_token = deploy_erc20s_and_pool(deployer)
 
     token = repeat(ERC20CRV.deploy, "Curve DAO Token", "CRV", 18, 10 ** 9, {'from': deployer})
     save_abi(token, 'token_crv')
@@ -85,3 +90,20 @@ def main():
 
     for account in DISTRIBUTION_ADDRESSES:
         repeat(token.transfer, account, DISTRIBUTION_AMOUNT, {'from': deployer})
+
+    gauge_controller = repeat(GaugeController.deploy, token, {'from': deployer})
+    save_abi(gauge_controller, 'gauge_controller')
+
+    minter = repeat(Minter.deploy, token, gauge_controller, {'from': deployer})
+    save_abi(minter, 'minter')
+
+    liquidity_gauge = repeat(LiquidityGauge.deploy, token, lp_token, gauge_controller, {'from': deployer})
+    save_abi(liquidity_gauge, 'liquidity_gauge')
+
+    repeat(token.set_minter, minter, {'from': deployer})
+    repeat(gauge_controller.add_type, {'from': deployer})
+    repeat(gauge_controller.change_type_weight, 0, 10 ** 18, {'from': deployer})
+    repeat(gauge_controller.add_gauge, liquidity_gauge, 0, 10 ** 18, {'from': deployer})
+
+    repeat(gauge_controller.transfer_ownership, ARAGON_AGENT, {'from': deployer})
+    repeat(escrow.transfer_ownership, ARAGON_AGENT, {'from': deployer})
