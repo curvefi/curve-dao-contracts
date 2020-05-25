@@ -13,6 +13,10 @@ contract Controller:
     def gauge_relative_weight_write(addr: address) -> uint256: modifying
 
 
+Deposit: event({provider: indexed(address), value: uint256})
+Withdraw: event({provider: indexed(address), value: uint256})
+
+
 crv_token: public(address)
 lp_token: public(address)
 controller: public(address)
@@ -38,8 +42,6 @@ integrate_checkpoint_of: map(address, timestamp)
 integrate_fraction: public(map(address, uint256))
 
 inflation_rate: uint256
-
-# XXX also set_weight_fraction and integrate with * (weight / sum(all_weights))
 
 
 @public
@@ -160,7 +162,8 @@ def deposit(value: uint256):
     self.totalSupply = old_supply + value
 
     assert_modifiable(ERC20(self.lp_token).transferFrom(msg.sender, self, value))
-    # XXX logs
+
+    log.Deposit(msg.sender, value)
 
 
 @public
@@ -175,7 +178,8 @@ def withdraw(value: uint256):
     self.totalSupply = old_supply - value
 
     assert_modifiable(ERC20(self.lp_token).transfer(msg.sender, value))
-    # XXX logs
+
+    log.Withdraw(msg.sender, value)
 
 
 # XXX make it so that if checkpoint is failing, can do a safe withdraw to escape
