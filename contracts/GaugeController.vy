@@ -1,14 +1,27 @@
 # The contract which controls gauges and issuance of coins through those
 
+N_GAUGE_VOTES: constant(int128) = 3
+ZERO_GAUGE_VOTES: constant(int128[N_GAUGE_VOTES]) = [0, 0, 0]
+
+struct Point:
+    bias: int128
+    slope: int128  # - dweight / dt
+    ts: uint256
+
+struct UserSlopes:
+    gauge_ids: int128[N_GAUGE_VOTES]
+    slopes: int128[N_GAUGE_VOTES]
+    end: uint256
+
+
 contract CRV20:
     def start_epoch_time_write() -> timestamp: modifying
     def start_epoch_time() -> timestamp: constant
 
 
 contract VotingEscrow:
-    def user_point_epoch() -> int128: constant
-    def user_point_history__bias(addr: address, epoch: int128) -> int128: constant
-    def user_point_history__slope(addr: address, epoch: int128) -> int128: constant
+    def get_last_user_point(addr: address) -> (int128, int128, uint256): constant
+    def locked__end(addr: address) -> uint256: constant
 
 
 admin: address  # Can and will be a smart contract
@@ -42,6 +55,11 @@ gauge_last: map(address, int128)  # Last period for gauge update gauge_addr -> p
 # Total is always at the last updated state
 
 last_epoch_time: public(timestamp)
+
+vote_points: public(map(int128, Point))  # gauge_id -> Point
+vote_point_timestamps: public(map(int128, uint256))
+slope_changes: public(map(int128, map(uint256, int128)))  # gauge_id -> time -> slope
+vote_user_slopes: public(map(address, UserSlopes))  # user -> UserSlopes
 
 
 @public
@@ -280,6 +298,68 @@ def change_gauge_weight(addr: address, weight: uint256):
     self.total_weight[p] = old_total + new_sum * type_weight - old_sum * type_weight
 
     self.period_timestamp[p] = block.timestamp
+
+
+@public
+def vote_for_gauge_weights(_gauge_ids: int128[N_GAUGE_VOTES], _user_weights: int128[N_GAUGE_VOTES]):
+    """
+    @notice Allocate voting power for changing pool weights
+    @param _gauge_ids Gauges which `msg.sender` votes for
+    @param _user_weights Weights for each gauge in bps (units of 0.01%). Minimal is 0.01%. Ignored if 0
+    """
+    escrow: address = self.voting_escrow
+    bias: int128 = 0
+    slope: int128 = 0
+    ts: uint256 = 0
+    bias, slope, ts = VotingEscrow(escrow).get_last_user_point(msg.sender)
+    lock_end: uint256 = VotingEscrow(escrow).locked__end(msg.sender)
+    _n_gauges: int128 = self.n_gauges
+    now: uint256 = as_unitless_number(block.timestamp)
+    assert ts > now, "Your token lock is expired"
+
+    # Prepare slopes and biases in memory
+    old_slopes: UserSlopes = self.vote_user_slopes[msg.sender]
+    old_biases: int128[N_GAUGE_VOTES] = ZERO_GAUGE_VOTES
+    old_dt: int128 = 0
+    if old_slopes.end > now:
+        old_dt = convert(old_slopes.end - now, int128)
+    new_slopes: UserSlopes = old_slopes
+    new_biases: int128[N_GAUGE_VOTES] = ZERO_GAUGE_VOTES
+    new_dt: int128 = convert(lock_end - now, int128)  # dev: raises when expired
+    total_user_weight: int128 = 0
+    for i in range(N_GAUGE_VOTES):
+        assert (_gauge_ids[i] >= 0) and (_gauge_ids[i] < _n_gauges)
+        assert _user_weights[i] >= 0
+        new_slopes.gauge_ids[i] = _gauge_ids[i]
+        new_slopes.slopes[i] = slope * _user_weights[i] / 10000
+        total_user_weight += _user_weights[i]
+        old_biases[i] = old_slopes.slopes[i] * old_dt
+        new_biases[i] = new_slopes.slopes[i] * new_dt
+    new_slopes.end = lock_end
+    assert total_user_weight <= 10000
+
+    # XXX
+    # Update vote_points
+
+    # Remove old and schedule new slope changes
+    # Update points
+    for i in range(N_GAUGE_VOTES):
+        # Remove slope changes for old slopes
+        gauge_id: int128 = 0
+        slope_change: int128 = 0
+        if old_slopes.end > now:
+            gauge_id = old_slopes.gauge_ids[i]
+            slope_change = self.slope_changes[gauge_id][old_slopes.end]
+            slope_change -= old_slopes.slopes[i]
+            if slope_change < 0:
+                slope_change = 0
+            self.slope_changes[gauge_id][old_slopes.end] = slope_change
+        # Add slope changes for new slopes
+        gauge_id = new_slopes.gauge_ids[i]
+        slope_change = self.slope_changes[gauge_id][new_slopes.end]
+        slope_change += new_slopes.slopes[i]
+        self.slope_changes[gauge_id][new_slopes.end] = slope_change
+    self.vote_user_slopes[msg.sender] = new_slopes
 
 
 @public

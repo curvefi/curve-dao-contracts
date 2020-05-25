@@ -90,6 +90,15 @@ def assert_not_contract(addr: address):
         assert self.contracts_whitelist[addr], "Smart contract depositors not allowed"
 
 
+@public
+@constant
+def get_last_user_point(addr: address) -> (int128, int128, uint256):
+    uepoch: int128 = self.user_point_epoch[addr]
+    return self.user_point_history[addr][uepoch].bias,\
+           self.user_point_history[addr][uepoch].slope,\
+           self.user_point_history[addr][uepoch].ts
+
+
 @private
 def _checkpoint(addr: address, old_locked: LockedBalance, new_locked: LockedBalance):
     u_old: Point = Point({bias: 0, slope: 0, ts: 0, blk: 0})
