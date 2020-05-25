@@ -5,6 +5,12 @@ contract CRV20:
     def start_epoch_time() -> timestamp: constant
 
 
+contract VotingEscrow:
+    def user_point_epoch() -> int128: constant
+    def user_point_history__bias(addr: address, epoch: int128) -> int128: constant
+    def user_point_history__slope(addr: address, epoch: int128) -> int128: constant
+
+
 admin: address  # Can and will be a smart contract
 token: address  # CRV token
 voting_escrow: address  # Voting escrow
