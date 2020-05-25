@@ -43,13 +43,18 @@ def token(ERC20CRV, accounts):
 
 
 @pytest.fixture(scope="function")
+def voting_escrow(VotingEscrow, accounts, token):
+    yield VotingEscrow.deploy(token, {'from': accounts[0]})
+
+
+@pytest.fixture(scope="function")
 def mock_lp_token(ERC20LP, accounts):  # Not using the actual Curve contract
     yield ERC20LP.deploy("Curve LP token", "usdCrv", 18, 10 ** 9, {'from': accounts[0]})
 
 
 @pytest.fixture(scope="function")
-def gauge_controller(GaugeController, accounts, token):
-    yield GaugeController.deploy(token, {'from': accounts[0]})
+def gauge_controller(GaugeController, accounts, token, voting_escrow):
+    yield GaugeController.deploy(token, voting_escrow, {'from': accounts[0]})
 
 
 @pytest.fixture(scope="function")
@@ -70,8 +75,3 @@ def three_gauges(LiquidityGauge, accounts, gauge_controller, mock_lp_token, toke
 @pytest.fixture(scope="function")
 def minter(Minter, accounts, gauge_controller, token):
     yield Minter.deploy(token, gauge_controller, {'from': accounts[0]})
-
-
-@pytest.fixture(scope="function")
-def voting_escrow(VotingEscrow, accounts, token):
-    yield VotingEscrow.deploy(token, {'from': accounts[0]})

@@ -7,6 +7,7 @@ contract CRV20:
 
 admin: address  # Can and will be a smart contract
 token: address  # CRV token
+voting_escrow: address  # Voting escrow
 
 # Gauge parameters
 # All numbers are "fixed point" on the basis of 1e18
@@ -38,14 +39,15 @@ last_epoch_time: public(timestamp)
 
 
 @public
-def __init__(token_address: address):
+def __init__(_token: address, _voting_escrow: address):
     self.admin = msg.sender
-    self.token = token_address
+    self.token = _token
+    self.voting_escrow = _voting_escrow
     self.n_gauge_types = 0
     self.n_gauges = 0
     self.period = 0
     self.period_timestamp[0] = block.timestamp
-    self.last_epoch_time = CRV20(token_address).start_epoch_time_write()
+    self.last_epoch_time = CRV20(_token).start_epoch_time_write()
 
 
 @public

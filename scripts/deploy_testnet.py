@@ -10,10 +10,11 @@ from brownie import (
         )
 
 
-USE_STRATEGIES = True  # Needed for the ganache-cli tester which doesn't like middlewares
+USE_STRATEGIES = False  # Needed for the ganache-cli tester which doesn't like middlewares
 POA = True
 
-DEPLOYER = "0xFD3DeCC0cF498bb9f54786cb65800599De505706"  # "0x66aB6D9362d4F35596279692F0251Db635165871"
+# DEPLOYER = "0xFD3DeCC0cF498bb9f54786cb65800599De505706"  # "0x66aB6D9362d4F35596279692F0251Db635165871"
+DEPLOYER = "0x66aB6D9362d4F35596279692F0251Db635165871"
 TOKEN_MANAGER = "0x1818E6b9E3Ed209fbBd6631f4a85CcffA77E597f"
 ARAGON_AGENT = "0xeC26B84912dAB8904E252E7E29526661e4bD1534"
 
@@ -91,7 +92,7 @@ def main():
     for account in DISTRIBUTION_ADDRESSES:
         repeat(token.transfer, account, DISTRIBUTION_AMOUNT, {'from': deployer})
 
-    gauge_controller = repeat(GaugeController.deploy, token, {'from': deployer})
+    gauge_controller = repeat(GaugeController.deploy, token, escrow, {'from': deployer})
     save_abi(gauge_controller, 'gauge_controller')
 
     minter = repeat(Minter.deploy, token, gauge_controller, {'from': deployer})
