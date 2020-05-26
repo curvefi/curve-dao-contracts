@@ -1,16 +1,13 @@
 # The contract which controls gauges and issuance of coins through those
 
-N_GAUGE_VOTES: constant(int128) = 3
-ZERO_GAUGE_VOTES: constant(int128[N_GAUGE_VOTES]) = [0, 0, 0]
-
 struct Point:
     bias: int128
     slope: int128  # - dweight / dt
     ts: uint256
 
-struct UserSlopes:
-    gauge_ids: int128[N_GAUGE_VOTES]
-    slopes: int128[N_GAUGE_VOTES]
+struct Slope:
+    gauge_id: int128
+    slope: int128
     end: uint256
 
 
@@ -58,8 +55,10 @@ last_epoch_time: public(timestamp)
 
 vote_points: public(map(int128, Point))  # gauge_id -> Point
 vote_point_timestamps: public(map(int128, uint256))
-slope_changes: public(map(int128, map(uint256, int128)))  # gauge_id -> time -> slope
-vote_user_slopes: public(map(address, UserSlopes))  # user -> UserSlopes
+vote_enacted_at: public(map(int128, uint256))  # gauge_id -> timestamp
+vote_slope_changes: public(map(int128, map(uint256, int128)))  # gauge_id -> time -> slope
+vote_user_slopes: public(map(address, map(int128, Slope)))  # user -> gauge_id -> Slope
+vote_user_power: public(map(address, int128))  # Total vote power used by user
 
 
 @public
@@ -301,11 +300,11 @@ def change_gauge_weight(addr: address, weight: uint256):
 
 
 @public
-def vote_for_gauge_weights(_gauge_ids: int128[N_GAUGE_VOTES], _user_weights: int128[N_GAUGE_VOTES]):
+def vote_for_gauge_weights(_gauge_id: int128, _user_weight: int128):
     """
     @notice Allocate voting power for changing pool weights
-    @param _gauge_ids Gauges which `msg.sender` votes for
-    @param _user_weights Weights for each gauge in bps (units of 0.01%). Minimal is 0.01%. Ignored if 0
+    @param _gauge_id Gauge which `msg.sender` votes for
+    @param _user_weight Weight for a gauge in bps (units of 0.01%). Minimal is 0.01%. Ignored if 0
     """
     escrow: address = self.voting_escrow
     bias: int128 = 0
@@ -316,27 +315,22 @@ def vote_for_gauge_weights(_gauge_ids: int128[N_GAUGE_VOTES], _user_weights: int
     _n_gauges: int128 = self.n_gauges
     now: uint256 = as_unitless_number(block.timestamp)
     assert ts > now, "Your token lock is expired"
+    assert (_gauge_id < _n_gauges) and (_gauge_id >= 0)
 
     # Prepare slopes and biases in memory
-    old_slopes: UserSlopes = self.vote_user_slopes[msg.sender]
-    old_biases: int128[N_GAUGE_VOTES] = ZERO_GAUGE_VOTES
+    old_slope: Slope = self.vote_user_slopes[msg.sender][_gauge_id]
     old_dt: int128 = 0
-    if old_slopes.end > now:
+    if old_slope.end > now:
         old_dt = convert(old_slopes.end - now, int128)
-    new_slopes: UserSlopes = old_slopes
-    new_biases: int128[N_GAUGE_VOTES] = ZERO_GAUGE_VOTES
+    old_bias: int128 = old_slope.slope * old_dt
+    # old_power: int128 = self.vote_user_power[msg.sender] XXX
+    new_slope: Slope = Slope({
+        gauge_id: _gauge_id,
+        slope: slope * _user_weight / 10000,
+        end: lock_end
+    })
     new_dt: int128 = convert(lock_end - now, int128)  # dev: raises when expired
-    total_user_weight: int128 = 0
-    for i in range(N_GAUGE_VOTES):
-        assert (_gauge_ids[i] >= 0) and (_gauge_ids[i] < _n_gauges)
-        assert _user_weights[i] >= 0
-        new_slopes.gauge_ids[i] = _gauge_ids[i]
-        new_slopes.slopes[i] = slope * _user_weights[i] / 10000
-        total_user_weight += _user_weights[i]
-        old_biases[i] = old_slopes.slopes[i] * old_dt
-        new_biases[i] = new_slopes.slopes[i] * new_dt
-    new_slopes.end = lock_end
-    assert total_user_weight <= 10000
+    new_bias: int128 = new_slope.slope * new_dt
 
     # XXX
     # Update vote_points
