@@ -339,6 +339,7 @@ def _enact_vote(_gauge_id: int128, dbias: int128):
         pt.ts = now
         self.vote_points[_gauge_id] = pt
         self.vote_enacted_at[_gauge_id] = now
+        self._change_gauge_weight(self.gauges[_gauge_id], convert(pt.bias, uint256))
 
 
 @public
