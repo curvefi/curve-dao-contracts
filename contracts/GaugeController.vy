@@ -20,7 +20,7 @@ contract CRV20:
 
 
 contract VotingEscrow:
-    def get_last_user_point(addr: address) -> (int128, int128): constant
+    def get_last_user_slope(addr: address) -> int128: constant
     def locked__end(addr: address) -> uint256: constant
 
 
@@ -355,9 +355,7 @@ def vote_for_gauge_weights(_gauge_id: int128, _user_weight: int128):
     @param _user_weight Weight for a gauge in bps (units of 0.01%). Minimal is 0.01%. Ignored if 0
     """
     escrow: address = self.voting_escrow
-    bias: int128 = 0
-    slope: int128 = 0
-    bias, slope = VotingEscrow(escrow).get_last_user_point(msg.sender)
+    slope: int128 = VotingEscrow(escrow).get_last_user_slope(msg.sender)
     lock_end: uint256 = VotingEscrow(escrow).locked__end(msg.sender)
     _n_gauges: int128 = self.n_gauges
     now: uint256 = as_unitless_number(block.timestamp)
@@ -378,6 +376,9 @@ def vote_for_gauge_weights(_gauge_id: int128, _user_weight: int128):
     })
     new_dt: int128 = convert(lock_end - now, int128)  # dev: raises when expired
     new_bias: int128 = new_slope.slope * new_dt
+    # XXX new_bias and old_bias should be scheduled for the future
+    # XXX when we change the weights
+    # XXX TODO
 
     # Check and update powers (weights) used
     power_used: int128 = self.vote_user_power[msg.sender]

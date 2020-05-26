@@ -105,11 +105,23 @@ def test_gauge_weight_vote(accounts, rpc, block_timestamp, gauge_controller, thr
     gauge_controller.vote_for_gauge_weights(1, 3000, {'from': bob})
     gauge_controller.vote_for_gauge_weights(2, 6000, {'from': bob})
 
+    assert gauge_controller.vote_user_power(admin) == gauge_controller.vote_user_power(bob) == 9000
+
     while True:
         for j in range(3):
             gauge_controller.enact_vote(j, {'from': charlie})
         weights = [gauge_controller.gauge_relative_weight(three_gauges[j].address) / 1e18 for j in range(3)]
+
+        print(voting_escrow.get_last_user_slope(admin))
+        print(gauge_controller.vote_points__bias(0))
+        print(gauge_controller.vote_user_slopes__slope(admin, 0))
+        print(gauge_controller.vote_user_slopes__power(admin, 0))
+        print(gauge_controller.vote_user_slopes__end(admin, 0))
+        print(gauge_controller.vote_user_slopes__slope(bob, 0))
+        print(gauge_controller.vote_user_slopes__power(bob, 0))
+        print(gauge_controller.vote_user_slopes__end(bob, 0))
         print((block_timestamp() - t) / (2 * 365 * 86400), weights)
+
         if block_timestamp() - t > 2 * 365 * 86400:
             break
         dt = randrange(1, 30 * 86400)
