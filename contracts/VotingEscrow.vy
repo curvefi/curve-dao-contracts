@@ -92,11 +92,10 @@ def assert_not_contract(addr: address):
 
 @public
 @constant
-def get_last_user_point(addr: address) -> (int128, int128, uint256):
+def get_last_user_point(addr: address) -> (int128, int128):
     uepoch: int128 = self.user_point_epoch[addr]
     return self.user_point_history[addr][uepoch].bias,\
-           self.user_point_history[addr][uepoch].slope,\
-           self.user_point_history[addr][uepoch].ts
+           self.user_point_history[addr][uepoch].slope
 
 
 @private

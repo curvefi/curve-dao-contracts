@@ -98,3 +98,9 @@ def test_gauge_weight_vote(accounts, rpc, block_timestamp, gauge_controller, thr
     # Same voting power initially, but as Bob unlocks, his power drops
     voting_escrow.deposit(5 * 10 ** 5 * 10 ** 18, t + 86400 * 365 * 2, {'from': admin})
     voting_escrow.deposit(10 ** 6 * 10 ** 18, t + 86400 * 365, {'from': bob})
+
+    # Users vote. Initially total weights are equal, though will only be enacted in a week
+    gauge_controller.vote_for_gauge_weights(0, 6000, {'from': admin})
+    gauge_controller.vote_for_gauge_weights(1, 3000, {'from': admin})
+    gauge_controller.vote_for_gauge_weights(1, 3000, {'from': bob})
+    gauge_controller.vote_for_gauge_weights(2, 6000, {'from': bob})

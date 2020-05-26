@@ -20,7 +20,7 @@ contract CRV20:
 
 
 contract VotingEscrow:
-    def get_last_user_point(addr: address) -> (int128, int128, uint256): constant
+    def get_last_user_point(addr: address) -> (int128, int128): constant
     def locked__end(addr: address) -> uint256: constant
 
 
@@ -357,14 +357,13 @@ def vote_for_gauge_weights(_gauge_id: int128, _user_weight: int128):
     escrow: address = self.voting_escrow
     bias: int128 = 0
     slope: int128 = 0
-    ts: uint256 = 0
-    bias, slope, ts = VotingEscrow(escrow).get_last_user_point(msg.sender)
+    bias, slope = VotingEscrow(escrow).get_last_user_point(msg.sender)
     lock_end: uint256 = VotingEscrow(escrow).locked__end(msg.sender)
     _n_gauges: int128 = self.n_gauges
     now: uint256 = as_unitless_number(block.timestamp)
-    assert ts > now, "Your token lock is expired"
-    assert (_gauge_id < _n_gauges) and (_gauge_id >= 0)
-    assert (_user_weight >= 0) and (_user_weight <= 10000)
+    assert lock_end > now, "Your token lock is expired"
+    assert (_gauge_id < _n_gauges) and (_gauge_id >= 0)  # dev: wrong gauge id
+    assert (_user_weight >= 0) and (_user_weight <= 10000), "You used all your voting power"
 
     # Prepare slopes and biases in memory
     old_slope: VotedSlope = self.vote_user_slopes[msg.sender][_gauge_id]
