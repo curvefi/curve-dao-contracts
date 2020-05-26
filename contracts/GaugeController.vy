@@ -1,13 +1,16 @@
 # The contract which controls gauges and issuance of coins through those
 
+WEEK: constant(uint256) = 604800  # 7 * 86400 seconds - all future times are rounded by week
+
+
 struct Point:
     bias: int128
     slope: int128  # - dweight / dt
     ts: uint256
 
-struct Slope:
-    gauge_id: int128
+struct VotedSlope:
     slope: int128
+    power: int128
     end: uint256
 
 
@@ -54,10 +57,9 @@ gauge_last: map(address, int128)  # Last period for gauge update gauge_addr -> p
 last_epoch_time: public(timestamp)
 
 vote_points: public(map(int128, Point))  # gauge_id -> Point
-vote_point_timestamps: public(map(int128, uint256))
 vote_enacted_at: public(map(int128, uint256))  # gauge_id -> timestamp
 vote_slope_changes: public(map(int128, map(uint256, int128)))  # gauge_id -> time -> slope
-vote_user_slopes: public(map(address, map(int128, Slope)))  # user -> gauge_id -> Slope
+vote_user_slopes: public(map(address, map(int128, VotedSlope)))  # user -> gauge_id -> VotedSlope
 vote_user_power: public(map(address, int128))  # Total vote power used by user
 
 
@@ -251,10 +253,8 @@ def change_type_weight(type_id: int128, weight: uint256):
     self.period_timestamp[p] = block.timestamp
 
 
-@public
-def change_gauge_weight(addr: address, weight: uint256):
-    assert msg.sender == self.admin
-
+@private
+def _change_gauge_weight(addr: address, weight: uint256):
     # Fill weight from gauge_last to now, type_sums from type_last till now, total
     gauge_type: int128 = self.gauge_types[addr]
     p: int128 = self.period
@@ -300,6 +300,32 @@ def change_gauge_weight(addr: address, weight: uint256):
 
 
 @public
+def change_gauge_weight(addr: address, weight: uint256):
+    assert msg.sender == self.admin
+    self._change_gauge_weight(addr, weight)
+
+
+@private
+def _enact_vote(_gauge_id: int128):
+    ts: uint256 = self.vote_enacted_at[_gauge_id]
+    if (ts + WEEK) / WEEK * WEEK <= block.timestamp:
+        now: uint256 = as_unitless_number(block.timestamp)
+        pt: Point = self.vote_points[_gauge_id]
+        pt.bias -= pt.slope * convert(now - ts, int128)
+        if pt.bias < 0:
+            pt.bias = 0
+        pt.ts = now
+        self.vote_points[_gauge_id] = pt
+        self.vote_enacted_at[_gauge_id] = now
+
+
+@public
+def enact_vote(_gauge_id: int128):
+    # XXX unsafe now
+    self._enact_vote(_gauge_id)
+
+
+@public
 def vote_for_gauge_weights(_gauge_id: int128, _user_weight: int128):
     """
     @notice Allocate voting power for changing pool weights
@@ -316,44 +342,68 @@ def vote_for_gauge_weights(_gauge_id: int128, _user_weight: int128):
     now: uint256 = as_unitless_number(block.timestamp)
     assert ts > now, "Your token lock is expired"
     assert (_gauge_id < _n_gauges) and (_gauge_id >= 0)
+    assert (_user_weight >= 0) and (_user_weight <= 10000)
 
     # Prepare slopes and biases in memory
-    old_slope: Slope = self.vote_user_slopes[msg.sender][_gauge_id]
+    old_slope: VotedSlope = self.vote_user_slopes[msg.sender][_gauge_id]
     old_dt: int128 = 0
     if old_slope.end > now:
-        old_dt = convert(old_slopes.end - now, int128)
+        old_dt = convert(old_slope.end - now, int128)
     old_bias: int128 = old_slope.slope * old_dt
-    # old_power: int128 = self.vote_user_power[msg.sender] XXX
-    new_slope: Slope = Slope({
-        gauge_id: _gauge_id,
+    new_slope: VotedSlope = VotedSlope({
         slope: slope * _user_weight / 10000,
-        end: lock_end
+        end: lock_end,
+        power: _user_weight
     })
     new_dt: int128 = convert(lock_end - now, int128)  # dev: raises when expired
     new_bias: int128 = new_slope.slope * new_dt
 
-    # XXX
-    # Update vote_points
+    # Check and update powers (weights) used
+    power_used: int128 = self.vote_user_power[msg.sender]
+    power_used += (new_slope.power - old_slope.power)
+    self.vote_user_power[msg.sender] = power_used
+    assert (power_used >= 0) and (power_used <= 10000), 'Used too much power'
 
-    # Remove old and schedule new slope changes
-    # Update points
-    for i in range(N_GAUGE_VOTES):
-        # Remove slope changes for old slopes
-        gauge_id: int128 = 0
-        slope_change: int128 = 0
-        if old_slopes.end > now:
-            gauge_id = old_slopes.gauge_ids[i]
-            slope_change = self.slope_changes[gauge_id][old_slopes.end]
-            slope_change -= old_slopes.slopes[i]
-            if slope_change < 0:
-                slope_change = 0
-            self.slope_changes[gauge_id][old_slopes.end] = slope_change
-        # Add slope changes for new slopes
-        gauge_id = new_slopes.gauge_ids[i]
-        slope_change = self.slope_changes[gauge_id][new_slopes.end]
-        slope_change += new_slopes.slopes[i]
-        self.slope_changes[gauge_id][new_slopes.end] = slope_change
-    self.vote_user_slopes[msg.sender] = new_slopes
+    # Update vote_point
+    vote_point: Point = self.vote_points[_gauge_id]
+    for i in range(500):
+        next_ts: uint256 = (vote_point.ts + WEEK) / WEEK * WEEK
+        dslope: int128 = 0
+        if next_ts > now:
+            next_ts = now
+        else:
+            dslope = self.vote_slope_changes[_gauge_id][next_ts]
+        vote_point.bias -= vote_point.slope * convert(next_ts - vote_point.ts, int128)
+        if vote_point.bias < 0:
+            vote_point.bias = 0
+        if vote_point.ts != now:  # <- already saved in this timestamp
+            vote_point.slope -= dslope
+
+        vote_point.ts = next_ts
+        if next_ts == now:
+            break
+    vote_point.bias += new_bias - old_bias
+    if vote_point.bias < 0:
+        vote_point.bias = bias
+    self.vote_points[_gauge_id] = vote_point
+
+    self._enact_vote(_gauge_id)
+
+    ## Remove old and schedule new slope changes
+    # Remove slope changes for old slopes
+    slope_change: int128 = 0
+    if old_slope.end > now:
+        # Cancel old slope changes if they still didn't happen
+        slope_change = self.vote_slope_changes[_gauge_id][old_slope.end]
+        slope_change -= old_slope.slope
+        if slope_change < 0:
+            slope_change = 0
+        self.vote_slope_changes[_gauge_id][old_slope.end] = slope_change
+    # Add slope changes for new slopes
+    slope_change = self.vote_slope_changes[_gauge_id][new_slope.end]
+    slope_change += new_slope.slope
+    self.vote_slope_changes[_gauge_id][new_slope.end] = slope_change
+    self.vote_user_slopes[msg.sender][_gauge_id] = new_slope
 
 
 @public
