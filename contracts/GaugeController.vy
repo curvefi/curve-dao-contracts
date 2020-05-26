@@ -321,8 +321,7 @@ def _enact_vote(_gauge_id: int128, dbias: int128):
         vote_point.bias -= vote_point.slope * convert(next_ts - vote_point.ts, int128)
         if vote_point.bias < 0:
             vote_point.bias = 0
-        if vote_point.ts != now:  # <- already saved in this timestamp
-            vote_point.slope -= dslope
+        vote_point.slope -= dslope
         vote_point.ts = next_ts
         if next_ts == now:
             break
