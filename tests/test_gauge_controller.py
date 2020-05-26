@@ -76,3 +76,25 @@ def test_gauge_controller(accounts, rpc, block_timestamp, gauge_controller, thre
         gauge_controller.gauge_relative_weight_write(three_gauges[i].address, p, {'from': admin})
         w2 = gauge_controller.gauge_relative_weight(three_gauges[i].address, p)
         assert w1 == w2
+
+
+def test_gauge_weight_vote(accounts, rpc, block_timestamp, gauge_controller, three_gauges, voting_escrow, token):
+    admin, bob = accounts[0:2]
+    gauge_controller.add_type(b'Liquidity', {'from': admin})  # 0
+    gauge_controller.change_type_weight(0, 10 ** 18, {'from': admin})
+
+    # Set up gauges and types
+    gauge_controller.add_gauge(three_gauges[0].address, 0, {'from': admin})
+    gauge_controller.add_gauge(three_gauges[1].address, 0, {'from': admin})
+    gauge_controller.add_gauge(three_gauges[2].address, 0, 10 ** 18, {'from': admin})
+
+    # Distribute coins
+    token.transfer(bob, 10 ** 6 * 10 ** 18, {'from': admin})
+    token.approve(voting_escrow, 5 * 10 ** 5 * 10 ** 18, {'from': admin})
+    token.approve(voting_escrow, 10 ** 6 * 10 ** 18, {'from': bob})
+
+    # Deposit for voting
+    t = block_timestamp()
+    # Same voting power initially, but as Bob unlocks, his power drops
+    voting_escrow.deposit(5 * 10 ** 5 * 10 ** 18, t + 86400 * 365 * 2, {'from': admin})
+    voting_escrow.deposit(10 ** 6 * 10 ** 18, t + 86400 * 365, {'from': bob})
