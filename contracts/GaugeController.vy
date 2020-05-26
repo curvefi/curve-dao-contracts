@@ -306,10 +306,33 @@ def change_gauge_weight(addr: address, weight: uint256):
 
 
 @private
-def _enact_vote(_gauge_id: int128):
+def _enact_vote(_gauge_id: int128, dbias: int128):
+    now: uint256 = as_unitless_number(block.timestamp)
+
+    # Update vote_point
+    vote_point: Point = self.vote_points[_gauge_id]
+    for i in range(500):
+        next_ts: uint256 = (vote_point.ts + WEEK) / WEEK * WEEK
+        dslope: int128 = 0
+        if next_ts > now:
+            next_ts = now
+        else:
+            dslope = self.vote_slope_changes[_gauge_id][next_ts]
+        vote_point.bias -= vote_point.slope * convert(next_ts - vote_point.ts, int128)
+        if vote_point.bias < 0:
+            vote_point.bias = 0
+        if vote_point.ts != now:  # <- already saved in this timestamp
+            vote_point.slope -= dslope
+        vote_point.ts = next_ts
+        if next_ts == now:
+            break
+    vote_point.bias += dbias
+    if vote_point.bias < 0:
+        vote_point.bias = 0
+    self.vote_points[_gauge_id] = vote_point
+
     ts: uint256 = self.vote_enacted_at[_gauge_id]
     if (ts + WEEK) / WEEK * WEEK <= block.timestamp:
-        now: uint256 = as_unitless_number(block.timestamp)
         pt: Point = self.vote_points[_gauge_id]
         pt.bias -= pt.slope * convert(now - ts, int128)
         if pt.bias < 0:
@@ -321,8 +344,7 @@ def _enact_vote(_gauge_id: int128):
 
 @public
 def enact_vote(_gauge_id: int128):
-    # XXX unsafe now
-    self._enact_vote(_gauge_id)
+    self._enact_vote(_gauge_id, 0)
 
 
 @public
@@ -364,30 +386,7 @@ def vote_for_gauge_weights(_gauge_id: int128, _user_weight: int128):
     self.vote_user_power[msg.sender] = power_used
     assert (power_used >= 0) and (power_used <= 10000), 'Used too much power'
 
-    # Update vote_point
-    vote_point: Point = self.vote_points[_gauge_id]
-    for i in range(500):
-        next_ts: uint256 = (vote_point.ts + WEEK) / WEEK * WEEK
-        dslope: int128 = 0
-        if next_ts > now:
-            next_ts = now
-        else:
-            dslope = self.vote_slope_changes[_gauge_id][next_ts]
-        vote_point.bias -= vote_point.slope * convert(next_ts - vote_point.ts, int128)
-        if vote_point.bias < 0:
-            vote_point.bias = 0
-        if vote_point.ts != now:  # <- already saved in this timestamp
-            vote_point.slope -= dslope
-
-        vote_point.ts = next_ts
-        if next_ts == now:
-            break
-    vote_point.bias += new_bias - old_bias
-    if vote_point.bias < 0:
-        vote_point.bias = bias
-    self.vote_points[_gauge_id] = vote_point
-
-    self._enact_vote(_gauge_id)
+    self._enact_vote(_gauge_id, new_bias - old_bias)
 
     ## Remove old and schedule new slope changes
     # Remove slope changes for old slopes
