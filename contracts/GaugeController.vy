@@ -323,7 +323,7 @@ def _enact_vote(_gauge_id: int128):
         vote_point.bias -= vote_point.slope * convert(next_ts - vote_point.ts, int128)
         if vote_point.bias < 0:
             vote_point.bias = 0
-        vote_point.slope -= dslope
+        vote_point.slope += dslope
         vote_point.ts = next_ts
         if next_ts == now:
             break
@@ -386,19 +386,18 @@ def vote_for_gauge_weights(_gauge_id: int128, _user_weight: int128):
 
     ## Remove old and schedule new slope changes
     # Remove slope changes for old slopes
+    # XXX schedule recording of initial slope for next_time XXX
     self.vote_bias_changes[_gauge_id][next_time] += new_bias - old_bias
+    if old_slope.end > next_time:
+        self.vote_slope_changes[_gauge_id][next_time] += (new_slope.slope - old_slope.slope)
+    else:
+        self.vote_slope_changes[_gauge_id][next_time] += new_slope.slope
     slope_change: int128 = 0
     if old_slope.end > block.timestamp:
         # Cancel old slope changes if they still didn't happen
-        slope_change = self.vote_slope_changes[_gauge_id][old_slope.end]
-        slope_change -= old_slope.slope
-        if slope_change < 0:
-            slope_change = 0
-        self.vote_slope_changes[_gauge_id][old_slope.end] = slope_change
+        self.vote_slope_changes[_gauge_id][old_slope.end] += old_slope.slope
     # Add slope changes for new slopes
-    slope_change = self.vote_slope_changes[_gauge_id][new_slope.end]
-    slope_change += new_slope.slope
-    self.vote_slope_changes[_gauge_id][new_slope.end] = slope_change
+    self.vote_slope_changes[_gauge_id][new_slope.end] -= new_slope.slope
     self.vote_user_slopes[msg.sender][_gauge_id] = new_slope
 
 

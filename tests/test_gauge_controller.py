@@ -113,7 +113,9 @@ def test_gauge_weight_vote(accounts, rpc, block_timestamp, gauge_controller, thr
         weights = [gauge_controller.gauge_relative_weight(three_gauges[j].address) / 1e18 for j in range(3)]
 
         print(voting_escrow.get_last_user_slope(admin))
-        print(gauge_controller.vote_points__bias(0))
+        print('BIAS', gauge_controller.vote_points__bias(0))
+        print('SLOPE', gauge_controller.vote_points__slope(0))
+        print('TS', gauge_controller.vote_points__ts(0))
         print(gauge_controller.vote_user_slopes__slope(admin, 0))
         print(gauge_controller.vote_user_slopes__power(admin, 0))
         print(gauge_controller.vote_user_slopes__end(admin, 0))
