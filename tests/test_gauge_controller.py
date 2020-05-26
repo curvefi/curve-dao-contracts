@@ -79,7 +79,7 @@ def test_gauge_controller(accounts, rpc, block_timestamp, gauge_controller, thre
 
 
 def test_gauge_weight_vote(accounts, rpc, block_timestamp, gauge_controller, three_gauges, voting_escrow, token):
-    admin, bob = accounts[0:2]
+    admin, bob, charlie = accounts[0:3]
     gauge_controller.add_type(b'Liquidity', {'from': admin})  # 0
     gauge_controller.change_type_weight(0, 10 ** 18, {'from': admin})
 
@@ -104,3 +104,14 @@ def test_gauge_weight_vote(accounts, rpc, block_timestamp, gauge_controller, thr
     gauge_controller.vote_for_gauge_weights(1, 3000, {'from': admin})
     gauge_controller.vote_for_gauge_weights(1, 3000, {'from': bob})
     gauge_controller.vote_for_gauge_weights(2, 6000, {'from': bob})
+
+    while True:
+        for j in range(3):
+            gauge_controller.enact_vote(j, {'from': charlie})
+        weights = [gauge_controller.gauge_relative_weight(three_gauges[j].address) / 1e18 for j in range(3)]
+        print((block_timestamp() - t) / (2 * 365 * 86400), weights)
+        if block_timestamp() - t > 2 * 365 * 86400:
+            break
+        dt = randrange(1, 30 * 86400)
+        rpc.sleep(dt)
+        rpc.mine()
