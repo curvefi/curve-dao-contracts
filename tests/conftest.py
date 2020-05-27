@@ -44,7 +44,7 @@ def token(ERC20CRV, accounts):
 
 @pytest.fixture(scope="function")
 def voting_escrow(VotingEscrow, accounts, token):
-    yield VotingEscrow.deploy(token, {'from': accounts[0]})
+    yield VotingEscrow.deploy(token, 'Voting-escrowed CRV', 'veCRV', 'veCRV_0.99', {'from': accounts[0]})
 
 
 @pytest.fixture(scope="function")

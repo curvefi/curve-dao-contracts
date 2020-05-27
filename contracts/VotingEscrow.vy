@@ -1,5 +1,3 @@
-from vyper.interfaces import ERC20
-
 # Voting escrow to have time-weighted votes
 # The idea: votes have a weight depending on time, so that users are committed
 # to the future of (whatever they are voting for).
@@ -27,6 +25,14 @@ struct LockedBalance:
     end: uint256
 
 
+contract ERC20:
+    def decimals() -> uint256: constant
+    def name() -> string[64]: constant
+    def symbol() -> string[32]: constant
+    def transfer(to: address, amount: uint256) -> bool: modifying
+    def transferFrom(spender: address, to: address, amount: uint256) -> bool: modifying
+
+
 Deposit: event({provider: indexed(address), value: uint256, locktime: indexed(uint256)})
 Withdraw: event({provider: indexed(address), value: uint256})
 
@@ -49,6 +55,11 @@ slope_changes: public(map(uint256, int128))  # time -> signed slope change
 controller: public(address)
 transfersEnabled: public(bool)
 
+name: public(string[64])
+symbol: public(string[32])
+version: public(string[32])
+decimals: public(uint256)
+
 # Whitelisted (smart contract) wallets which are allowed to deposit
 # The goal is to prevent tokenizing the escrow
 contracts_whitelist: public(map(address, bool))  # When sets?
@@ -56,7 +67,7 @@ admin: address  # Can and will be a smart contract
 
 
 @public
-def __init__(token_addr: address):
+def __init__(token_addr: address, _name: string[64], _symbol: string[32], _version: string[32]):
     self.admin = msg.sender
     self.token = token_addr
     self.point_history[0] = Point({
@@ -64,6 +75,10 @@ def __init__(token_addr: address):
         blk: block.number, ts: as_unitless_number(block.timestamp)})
     self.controller = msg.sender
     self.transfersEnabled = True
+    self.decimals = ERC20(token_addr).decimals()
+    self.name = _name
+    self.symbol = _symbol
+    self.version = _version
 
 
 @public
