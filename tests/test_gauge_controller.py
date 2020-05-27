@@ -109,29 +109,12 @@ def test_gauge_weight_vote(accounts, rpc, block_timestamp, gauge_controller, thr
     assert gauge_controller.vote_user_power(admin) == gauge_controller.vote_user_power(bob) == 9000
 
     while True:
-        bias2 = gauge_controller.vote_points__bias(2)
-        slope2 = gauge_controller.vote_points__slope(2)
-        ts2 = gauge_controller.vote_points__ts(2)
-
         for j in range(3):
             gauge_controller.enact_vote(j, {'from': charlie})
+
         weights = [gauge_controller.gauge_relative_weight(three_gauges[j].address) / 1e18 for j in range(3)]
 
-        print(voting_escrow.get_last_user_slope(admin))
-        print('BIAS', gauge_controller.vote_points__bias(0))
-        print('SLOPE', gauge_controller.vote_points__slope(0))
-        print('TS', gauge_controller.vote_points__ts(0))
-        ts2_ = gauge_controller.vote_points__ts(2)
-        print('BIAS 2', gauge_controller.vote_points__bias(2), bias2 - slope2 * (ts2_ - ts2))
-        print('SLOPE 2', gauge_controller.vote_points__slope(2))
-        print('TS 2', gauge_controller.vote_points__ts(2))
-        print(gauge_controller.vote_user_slopes__slope(admin, 0))
-        print(gauge_controller.vote_user_slopes__power(admin, 0))
-        print(gauge_controller.vote_user_slopes__end(admin, 0))
-        print(gauge_controller.vote_user_slopes__slope(bob, 0))
-        print(gauge_controller.vote_user_slopes__power(bob, 0))
-        print(gauge_controller.vote_user_slopes__end(bob, 0))
-        print((block_timestamp() - t) / (2 * 365 * 86400), weights)
+        print(block_timestamp() / (2 * 365 * 86400), weights)
 
         if block_timestamp() - t > 2 * 365 * 86400:
             break

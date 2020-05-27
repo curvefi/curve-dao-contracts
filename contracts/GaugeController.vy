@@ -100,7 +100,7 @@ def change_epoch(_p: int128) -> (int128, bool):
     # else use the current period for both weght and epoch change
     p: int128 = _p
     let: timestamp = CRV20(self.token).start_epoch_time_write()
-    epoch_changed: bool = (let > self.period_timestamp[p]) and (let < block.timestamp)
+    epoch_changed: bool = (let > self.period_timestamp[p]) and (let <= block.timestamp)
     if epoch_changed:
         p += 1
         self.period_timestamp[p] = let
@@ -227,6 +227,8 @@ def change_type_weight(type_id: int128, weight: uint256):
     p: int128 = self.period
     epoch_changed: bool = False
     p, epoch_changed = self.change_epoch(p)
+    if epoch_changed:
+        self.total_weight[p] = self.total_weight[p-1]
     p += 1
     self.period = p
     l: int128 = self.type_last[type_id]
@@ -245,8 +247,6 @@ def change_type_weight(type_id: int128, weight: uint256):
             self.type_weights[type_id][_p] = old_weight
             self.weight_sums_per_type[type_id][_p] = old_sum
 
-    if epoch_changed:
-        self.total_weight[p-1] = self.total_weight[p-2]
     self.total_weight[p] = old_total_weight + old_sum * weight - old_sum * old_weight
     self.type_weights[type_id][p] = weight
     self.weight_sums_per_type[type_id][p] = old_sum
@@ -261,6 +261,8 @@ def _change_gauge_weight(addr: address, weight: uint256):
     p: int128 = self.period
     epoch_changed: bool = False
     p, epoch_changed = self.change_epoch(p)
+    if epoch_changed:
+        self.total_weight[p] = self.total_weight[p-1]
     p += 1
     self.period = p
     gl: int128 = self.gauge_last[addr]
@@ -293,8 +295,6 @@ def _change_gauge_weight(addr: address, weight: uint256):
     new_sum: uint256 = old_sum + weight - old_gauge_weight
     self.gauge_weights[addr][p] = weight
     self.weight_sums_per_type[gauge_type][p] = new_sum
-    if epoch_changed:
-        self.total_weight[p-1] = self.total_weight[p-2]
     self.total_weight[p] = old_total + new_sum * type_weight - old_sum * type_weight
 
     self.period_timestamp[p] = block.timestamp
