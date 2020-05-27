@@ -84,7 +84,7 @@ def main():
     token = repeat(ERC20CRV.deploy, "Curve DAO Token", "CRV", 18, 10 ** 9, {'from': deployer})
     save_abi(token, 'token_crv')
 
-    escrow = repeat(VotingEscrow.deploy, token, {'from': deployer})
+    escrow = repeat(VotingEscrow.deploy, token, "Vote-escrowed CRV", "veCRV", "veCRV_0.99", {'from': deployer})
     save_abi(escrow, 'voting_escrow')
 
     repeat(escrow.changeController, TOKEN_MANAGER, {'from': deployer})
