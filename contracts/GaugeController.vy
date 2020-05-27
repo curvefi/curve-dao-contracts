@@ -309,36 +309,31 @@ def change_gauge_weight(addr: address, weight: uint256):
 @private
 def _enact_vote(_gauge_id: int128):
     now: uint256 = as_unitless_number(block.timestamp)
-
-    # Update vote_point
-    vote_point: Point = self.vote_points[_gauge_id]
-    for i in range(500):
-        next_ts: uint256 = (vote_point.ts + WEEK) / WEEK * WEEK
-        dslope: int128 = 0
-        if next_ts > now:
-            next_ts = now
-        else:
-            vote_point.bias += self.vote_bias_changes[_gauge_id][next_ts]
-            dslope = self.vote_slope_changes[_gauge_id][next_ts]
-        vote_point.bias -= vote_point.slope * convert(next_ts - vote_point.ts, int128)
-        if vote_point.bias < 0:
-            vote_point.bias = 0
-        vote_point.slope += dslope
-        vote_point.ts = next_ts
-        if next_ts == now:
-            break
-    self.vote_points[_gauge_id] = vote_point
-
     ts: uint256 = self.vote_enacted_at[_gauge_id]
+
     if (ts + WEEK) / WEEK * WEEK <= block.timestamp:
-        pt: Point = self.vote_points[_gauge_id]
-        pt.bias -= pt.slope * convert(now - ts, int128)
-        if pt.bias < 0:
-            pt.bias = 0
-        pt.ts = now
-        self.vote_points[_gauge_id] = pt
+        # Update vote_point
+        vote_point: Point = self.vote_points[_gauge_id]
+        if vote_point.ts == 0:
+            vote_point.ts = now
+        for i in range(500):
+            next_ts: uint256 = (vote_point.ts + WEEK) / WEEK * WEEK
+            dslope: int128 = 0
+            if next_ts > now:
+                next_ts = now
+            else:
+                vote_point.bias += self.vote_bias_changes[_gauge_id][next_ts]
+                dslope = self.vote_slope_changes[_gauge_id][next_ts]
+            vote_point.bias -= vote_point.slope * convert(next_ts - vote_point.ts, int128)
+            if vote_point.bias < 0:
+                vote_point.bias = 0
+            vote_point.slope += dslope
+            vote_point.ts = next_ts
+            if next_ts == now:
+                break
+        self.vote_points[_gauge_id] = vote_point
         self.vote_enacted_at[_gauge_id] = now
-        self._change_gauge_weight(self.gauges[_gauge_id], convert(pt.bias, uint256))
+        self._change_gauge_weight(self.gauges[_gauge_id], convert(vote_point.bias, uint256))
 
 
 @public
@@ -392,7 +387,6 @@ def vote_for_gauge_weights(_gauge_id: int128, _user_weight: int128):
         self.vote_slope_changes[_gauge_id][next_time] += (new_slope.slope - old_slope.slope)
     else:
         self.vote_slope_changes[_gauge_id][next_time] += new_slope.slope
-    slope_change: int128 = 0
     if old_slope.end > block.timestamp:
         # Cancel old slope changes if they still didn't happen
         self.vote_slope_changes[_gauge_id][old_slope.end] += old_slope.slope
