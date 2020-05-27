@@ -1,6 +1,8 @@
 from random import randrange
 from .conftest import YEAR
 
+WEEK = 7 * 86400
+
 
 def test_gauge_controller(accounts, rpc, block_timestamp, gauge_controller, three_gauges):
     admin = accounts[0]
@@ -97,8 +99,8 @@ def test_gauge_weight_vote(accounts, rpc, block_timestamp, gauge_controller, thr
     # Deposit for voting
     t = block_timestamp()
     # Same voting power initially, but as Bob unlocks, his power drops
-    voting_escrow.deposit(5 * 10 ** 5 * 10 ** 18, t + 86400 * 365 * 2, {'from': admin})
-    voting_escrow.deposit(10 ** 6 * 10 ** 18, t + 86400 * 365, {'from': bob})
+    voting_escrow.deposit(5 * 10 ** 5 * 10 ** 18, t + 2 * YEAR, {'from': admin})
+    voting_escrow.deposit(10 ** 6 * 10 ** 18, t + YEAR, {'from': bob})
 
     # Users vote. Initially total weights are equal, though will only be enacted in a week
     gauge_controller.vote_for_gauge_weights(0, 6000, {'from': admin})
@@ -108,13 +110,26 @@ def test_gauge_weight_vote(accounts, rpc, block_timestamp, gauge_controller, thr
 
     assert gauge_controller.vote_user_power(admin) == gauge_controller.vote_user_power(bob) == 9000
 
+    admin_initial_bias = voting_escrow.get_last_user_slope(admin) * (voting_escrow.locked__end(admin) - t)
+    bob_initial_bias = voting_escrow.get_last_user_slope(bob) * (voting_escrow.locked__end(bob) - t)
+    admin_model = lambda x: max(admin_initial_bias * (1 - x), 0)
+    bob_model = lambda x: max(bob_initial_bias * (1 - x * 2), 0)
+
     while True:
         for j in range(3):
             gauge_controller.enact_vote(j, {'from': charlie})
 
+        relative_time = (block_timestamp() - t) / (2 * YEAR)
         weights = [gauge_controller.gauge_relative_weight(three_gauges[j].address) / 1e18 for j in range(3)]
-
-        print(block_timestamp() / (2 * 365 * 86400), weights)
+        theoretical_weights = [
+            0.6 * admin_model(relative_time),
+            0.3 * (admin_model(relative_time) + bob_model(relative_time)),
+            0.6 * bob_model(relative_time)
+        ]
+        theoretical_weights = [w and (w / sum(theoretical_weights)) for w in theoretical_weights]
+        if block_timestamp() >= (t + WEEK) // WEEK * WEEK:
+            for j in range(3):
+                assert abs(weights[j] - theoretical_weights[j]) <= 0.01
 
         if block_timestamp() - t > 2 * 365 * 86400:
             break
