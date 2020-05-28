@@ -174,12 +174,13 @@ def _checkpoint(addr: address, old_locked: LockedBalance, new_locked: LockedBala
         last_point.ts = t_i
         last_point.blk = initial_last_point.blk + block_slope * (t_i - initial_last_point.ts) / 10 ** 18
         _epoch += 1
-        self.epoch = _epoch
         if t_i == t:
             last_point.blk = block.number
             break
         else:
             self.point_history[_epoch] = last_point
+
+    self.epoch = _epoch
     # Now point_history is filled until t=now
 
     # If last point was in this block, the slope change has been applied already
