@@ -8,10 +8,17 @@ MAX_TIME = 86400 * 365 * 4
 
 class StateMachine:
 
-    st_value = strategy('uint64')
-    st_lock_duration = strategy('uint8')
-    st_sleep_duration = strategy('uint', min_value=1, max_value=4)
+    # account to perform a deposit / withdrawal from
     st_account = strategy('address')
+
+    # amount to deposit / withdraw
+    st_value = strategy('uint64')
+
+    # number of weeks to lock a deposit
+    st_lock_duration = strategy('uint8')
+
+    # number of weeks to advance the clock
+    st_sleep_duration = strategy('uint', min_value=1, max_value=4)
 
     def __init__(self, accounts, token, voting_escrow):
         self.accounts = accounts
@@ -28,6 +35,9 @@ class StateMachine:
 
 
     def rule_new_deposit(self, st_account, st_value, st_lock_duration):
+        """
+        Make a deposit into the voting escrow, with a given lock time.
+        """
         unlock_time = (rpc.time() + st_lock_duration * WEEK) // WEEK * WEEK
 
         if 0 < self.voting_balances[st_account]['unlock_time'] < rpc.time():
@@ -70,7 +80,10 @@ class StateMachine:
             self.voting_balances[st_account]['unlock_time'] = tx.events['Deposit']['locktime']
 
 
-    def rule_increase_deposit_or_locktime(self, st_account, st_value):
+    def rule_increase_deposit(self, st_account, st_value):
+        """
+        Make a deposit into the voting escrow, without specifying a lock time.
+        """
         if self.voting_balances[st_account]['value'] == 0:
             # fail path - no tokens currently deposited
             with brownie.reverts("No existing lock found"):
@@ -92,6 +105,9 @@ class StateMachine:
             self.voting_balances[st_account]['value'] += st_value
 
     def rule_withdraw(self, st_account, st_value):
+        """
+        Withdraw tokens from the voting escrow.
+        """
         if self.voting_balances[st_account]['unlock_time'] > rpc.time():
             # fail path - before unlock time
             with brownie.reverts("The lock didn't expire"):
@@ -113,14 +129,25 @@ class StateMachine:
             self.voting_balances[st_account]['value'] -= st_value
 
     def rule_advance_time(self, st_sleep_duration):
+        """
+        Advance the clock.
+        """
         rpc.sleep(st_sleep_duration * WEEK)
+
+        # check the balance as a transaction, to ensure a block is mined after time travel
         self.token.balanceOf.transact(self.accounts[0], {'from': self.accounts[0]})
 
     def invariant_token_balances(self):
+        """
+        Verify that token balances are correct.
+        """
         for acct in self.accounts:
             assert self.token.balanceOf(acct) == 10**40 - self.voting_balances[acct]['value']
 
     def invariant_escrow_current_balances(self):
+        """
+        Verify the sum of all escrow balances is equal to the escrow totalSupply.
+        """
         total_supply = 0
         timestamp = history[-1].timestamp
 
@@ -138,6 +165,9 @@ class StateMachine:
         assert self.voting_escrow.totalSupply() == total_supply
 
     def invariant_historic_balances(self):
+        """
+        Verify the sum of historic escrow balances is equal to the historic totalSupply.
+        """
         total_supply = 0
         block_number = history[-4].block_number
 
@@ -150,5 +180,8 @@ class StateMachine:
 
 def test_state_machine(state_machine, accounts, ERC20, VotingEscrow):
     token = ERC20.deploy("", "", 18, {'from': accounts[0]})
-    voting_escrow = VotingEscrow.deploy(token, 'Voting-escrowed CRV', 'veCRV', 'veCRV_0.99', {'from': accounts[0]})
+    voting_escrow = VotingEscrow.deploy(
+        token, 'Voting-escrowed CRV', 'veCRV', 'veCRV_0.99', {'from': accounts[0]}
+    )
+
     state_machine(StateMachine, accounts, token, voting_escrow)
