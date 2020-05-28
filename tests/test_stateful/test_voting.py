@@ -3,9 +3,11 @@ from brownie import history, rpc
 from brownie.test import strategy
 
 WEEK = 86400 * 7
+MAX_TIME = 86400 * 365 * 4
 
 
 class StateMachine:
+
     st_value = strategy('uint64')
     st_lock_duration = strategy('uint8')
     st_sleep_duration = strategy('uint', min_value=1, max_value=4)
@@ -17,11 +19,11 @@ class StateMachine:
         self.voting_escrow = voting_escrow
 
         for acct in accounts:
-            token._mint_for_testing(1e30, {'from': acct})
+            token._mint_for_testing(10**40, {'from': acct})
             token.approve(voting_escrow, 2**256-1, {'from': acct})
 
     def setup(self):
-        self.token_balances = {i: 1e30 for i in self.accounts}
+        self.token_balances = {i: 10**40 for i in self.accounts}
         self.voting_balances = {i: {'value': 0, 'unlock_time': 0} for i in self.accounts}
 
 
@@ -112,15 +114,37 @@ class StateMachine:
 
     def rule_advance_time(self, st_sleep_duration):
         rpc.sleep(st_sleep_duration * WEEK)
-        rpc.mine()
+        self.token.balanceOf.transact(self.accounts[0], {'from': self.accounts[0]})
 
-    @property
-    def last_timestamp(self):
-        return history[-1].timestamp
+    def invariant_token_balances(self):
+        for acct in self.accounts:
+            assert self.token.balanceOf(acct) == 10**40 - self.voting_balances[acct]['value']
 
-    def invariant(self):
-        # TODO
-        pass
+    def invariant_escrow_current_balances(self):
+        total_supply = 0
+        timestamp = history[-1].timestamp
+
+        for acct in self.accounts:
+            data = self.voting_balances[acct]
+
+            balance = self.voting_escrow.balanceOf(acct)
+            total_supply += balance
+
+            if data['value'] * data['unlock_time'] > MAX_TIME * 1.1:
+                assert balance
+            elif not data['value'] or data['unlock_time'] < timestamp:
+                assert not balance
+
+        assert self.voting_escrow.totalSupply() == total_supply
+
+    def invariant_historic_balances(self):
+        total_supply = 0
+        block_number = history[-4].block_number
+
+        for acct in self.accounts:
+            total_supply += self.voting_escrow.balanceOfAt(acct, block_number)
+
+        assert self.voting_escrow.totalSupplyAt(block_number) == total_supply
 
 
 
