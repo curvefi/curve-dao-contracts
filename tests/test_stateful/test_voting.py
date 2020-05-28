@@ -7,7 +7,8 @@ WEEK = 86400 * 7
 
 class StateMachine:
     st_value = strategy('uint64')
-    st_duration = strategy('uint8')
+    st_lock_duration = strategy('uint8')
+    st_sleep_duration = strategy('uint', min_value=1, max_value=4)
     st_account = strategy('address')
 
     def __init__(self, accounts, token, voting_escrow):
@@ -24,8 +25,8 @@ class StateMachine:
         self.voting_balances = {i: {'value': 0, 'unlock_time': 0} for i in self.accounts}
 
 
-    def rule_new_deposit(self, st_account, st_value, st_duration):
-        unlock_time = (rpc.time() + st_duration * WEEK) // WEEK * WEEK
+    def rule_new_deposit(self, st_account, st_value, st_lock_duration):
+        unlock_time = (rpc.time() + st_lock_duration * WEEK) // WEEK * WEEK
 
         if 0 < self.voting_balances[st_account]['unlock_time'] < rpc.time():
             # fail path - tokens are deposited, current lock has expired
@@ -87,6 +88,35 @@ class StateMachine:
             # success path - tokens are deposited, lock has not expired
             self.voting_escrow.deposit(st_value, {'from': st_account})
             self.voting_balances[st_account]['value'] += st_value
+
+    def rule_withdraw(self, st_account, st_value):
+        if self.voting_balances[st_account]['unlock_time'] > rpc.time():
+            # fail path - before unlock time
+            with brownie.reverts("The lock didn't expire"):
+                self.voting_escrow.withdraw(st_value, {'from': st_account})
+
+        elif self.voting_balances[st_account]['value'] < st_value:
+            # fail path - withdraw amount exceeds locked amount
+            with brownie.reverts("Withdrawing more than you have"):
+                self.voting_escrow.withdraw(st_value, {'from': st_account})
+
+        elif st_value == 0:
+            # success path - zero amount equals full amount
+            self.voting_escrow.withdraw(st_value, {'from': st_account})
+            self.voting_balances[st_account] = {'value': 0, 'unlock_time': 0}
+
+        else:
+            # success path - specific amount
+            self.voting_escrow.withdraw(st_value, {'from': st_account})
+            self.voting_balances[st_account]['value'] -= st_value
+
+    def rule_advance_time(self, st_sleep_duration):
+        rpc.sleep(st_sleep_duration * WEEK)
+
+    def invariant(self):
+        # TODO
+        pass
+
 
 
 def test_state_machine(state_machine, accounts, ERC20, VotingEscrow):
