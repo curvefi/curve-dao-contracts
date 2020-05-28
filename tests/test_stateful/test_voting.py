@@ -1,5 +1,5 @@
 import brownie
-from brownie import rpc
+from brownie import history, rpc
 from brownie.test import strategy
 
 WEEK = 86400 * 7
@@ -112,6 +112,11 @@ class StateMachine:
 
     def rule_advance_time(self, st_sleep_duration):
         rpc.sleep(st_sleep_duration * WEEK)
+        rpc.mine()
+
+    @property
+    def last_timestamp(self):
+        return history[-1].timestamp
 
     def invariant(self):
         # TODO
