@@ -157,9 +157,11 @@ class StateMachine:
             balance = self.voting_escrow.balanceOf(acct)
             total_supply += balance
 
-            if data['value'] * data['unlock_time'] > MAX_TIME * 1.1:
+            lock_duration = data['unlock_time'] - timestamp
+
+            if data['unlock_time'] > timestamp and data['value'] // MAX_TIME * lock_duration > 0:
                 assert balance
-            elif not data['value'] or data['unlock_time'] < timestamp:
+            elif not data['value'] or data['unlock_time'] <= timestamp:
                 assert not balance
 
         assert self.voting_escrow.totalSupply() == total_supply
