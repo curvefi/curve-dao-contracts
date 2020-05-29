@@ -111,15 +111,18 @@ def test_gauge_weight_vote(accounts, rpc, block_timestamp, gauge_controller, thr
     assert gauge_controller.vote_user_power(admin) == gauge_controller.vote_user_power(bob) == 9000
 
     admin_initial_bias = voting_escrow.get_last_user_slope(admin) * (voting_escrow.locked__end(admin) - t)
+    admin_lock_duration = (t + 2 * YEAR) // WEEK * WEEK - t
     bob_initial_bias = voting_escrow.get_last_user_slope(bob) * (voting_escrow.locked__end(bob) - t)
+    bob_lock_duration = (t + YEAR) // WEEK * WEEK - t
+    bob_lock_fraction = bob_lock_duration / admin_lock_duration
     admin_model = lambda x: max(admin_initial_bias * (1 - x), 0)
-    bob_model = lambda x: max(bob_initial_bias * (1 - x * 2), 0)
+    bob_model = lambda x: max(bob_initial_bias * (1 - x / bob_lock_fraction), 0)
 
     while True:
         for j in range(3):
             gauge_controller.enact_vote(j, {'from': charlie})
 
-        relative_time = (block_timestamp() - t) / (2 * YEAR)
+        relative_time = (block_timestamp() - t) / admin_lock_duration
         weights = [gauge_controller.gauge_relative_weight(three_gauges[j].address) / 1e18 for j in range(3)]
         theoretical_weights = [
             0.6 * admin_model(relative_time),
@@ -129,7 +132,7 @@ def test_gauge_weight_vote(accounts, rpc, block_timestamp, gauge_controller, thr
         theoretical_weights = [w and (w / sum(theoretical_weights)) for w in theoretical_weights]
         if block_timestamp() >= (t + WEEK) // WEEK * WEEK:
             for j in range(3):
-                assert abs(weights[j] - theoretical_weights[j]) <= 0.01
+                assert abs(weights[j] - theoretical_weights[j]) <= WEEK / YEAR
 
         if block_timestamp() - t > 2 * 365 * 86400:
             break
