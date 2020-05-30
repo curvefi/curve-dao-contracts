@@ -10,11 +10,11 @@ from brownie import (
         )
 
 
-USE_STRATEGIES = True  # Needed for the ganache-cli tester which doesn't like middlewares
+USE_STRATEGIES = False  # Needed for the ganache-cli tester which doesn't like middlewares
 POA = True
 
-DEPLOYER = "0xFD3DeCC0cF498bb9f54786cb65800599De505706"  # "0x66aB6D9362d4F35596279692F0251Db635165871"
-# DEPLOYER = "0x66aB6D9362d4F35596279692F0251Db635165871"
+# DEPLOYER = "0xFD3DeCC0cF498bb9f54786cb65800599De505706"
+DEPLOYER = "0x66aB6D9362d4F35596279692F0251Db635165871"
 TOKEN_MANAGER = "0x1e25cdE876A49ee0001D523E6B5680b4d18Cf7e6"
 ARAGON_AGENT = "0xa01556dB443292BD3754C1CCd0B9ecFE8CE9E356"
 
@@ -98,7 +98,7 @@ def main():
     minter = repeat(Minter.deploy, token, gauge_controller, {'from': deployer})
     save_abi(minter, 'minter')
 
-    liquidity_gauge = repeat(LiquidityGauge.deploy, token, lp_token, gauge_controller, {'from': deployer})
+    liquidity_gauge = repeat(LiquidityGauge.deploy, lp_token, minter, {'from': deployer})
     save_abi(liquidity_gauge, 'liquidity_gauge')
 
     repeat(token.set_minter, minter, {'from': deployer})
