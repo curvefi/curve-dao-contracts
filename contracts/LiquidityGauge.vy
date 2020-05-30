@@ -11,6 +11,7 @@ contract Controller:
     def period_timestamp(p: int128) -> timestamp: constant
     def gauge_relative_weight(addr: address, _period: int128) -> uint256: constant
     def gauge_relative_weight_write(addr: address) -> uint256: modifying
+    def voting_escrow() -> address: constant
 
 
 Deposit: event({provider: indexed(address), value: uint256})
@@ -20,6 +21,7 @@ Withdraw: event({provider: indexed(address), value: uint256})
 crv_token: public(address)
 lp_token: public(address)
 controller: public(address)
+voting_escrow: public(address)
 balanceOf: public(map(address, uint256))
 totalSupply: public(uint256)
 
@@ -53,6 +55,7 @@ def __init__(crv_addr: address, lp_addr: address, controller_addr: address):
     self.integrate_checkpoint = block.timestamp
     self.integrate_inv_supply[0] = 0
     period: int128 = Controller(controller_addr).period()
+    self.voting_escrow = Controller(controller_addr).voting_escrow()
     self.last_period = period
     self.period_checkpoints[period] = Controller(controller_addr).period_timestamp(period)
     self.inflation_rate = CRV20(crv_addr).rate()

@@ -24,9 +24,9 @@ contract VotingEscrow:
     def locked__end(addr: address) -> uint256: constant
 
 
-admin: address  # Can and will be a smart contract
-token: address  # CRV token
-voting_escrow: address  # Voting escrow
+admin: public(address)  # Can and will be a smart contract
+token: public(address)  # CRV token
+voting_escrow: public(address)  # Voting escrow
 
 # Gauge parameters
 # All numbers are "fixed point" on the basis of 1e18
