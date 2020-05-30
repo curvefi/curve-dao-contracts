@@ -25,6 +25,9 @@ voting_escrow: public(address)
 balanceOf: public(map(address, uint256))
 totalSupply: public(uint256)
 
+liquidity_limits: public(map(address, uint256))
+supply_with_limits: public(uint256)
+
 # The goal is to be able to calculate ∫(rate * balance / totalSupply dt) from 0 till checkpoint
 # All values are kept in units of being multiplied by 1e18
 period_checkpoints: timestamp[100000000000000000000000000000]
@@ -59,6 +62,22 @@ def __init__(crv_addr: address, lp_addr: address, controller_addr: address):
     self.last_period = period
     self.period_checkpoints[period] = Controller(controller_addr).period_timestamp(period)
     self.inflation_rate = CRV20(crv_addr).rate()
+
+
+@private
+def _update_liquidity_limit(addr: address, l: uint256, L: uint256):
+    # To be called after totalSupply is updated
+    _voting_escrow: address = self.voting_escrow
+    voting_balance: uint256 = ERC20(_voting_escrow).balanceOf(addr)
+    voting_total: uint256 = ERC20(_voting_escrow).totalSupply()
+
+    lim: uint256 = l * 20 / 100
+    if voting_total > 0:
+        lim += L * voting_balance / voting_total * 80 / 100
+
+    old_lim: uint256 = self.liquidity_limits[addr]
+    self.liquidity_limits[addr] = lim
+    self.supply_with_limits = self.supply_with_limits + lim - old_lim
 
 
 @private
@@ -156,13 +175,17 @@ def user_checkpoint(addr: address):
 @public
 @nonreentrant('lock')
 def deposit(value: uint256):
-    old_value: uint256 = self.balanceOf[msg.sender]
-    old_supply: uint256 = self.totalSupply
+    _balance: uint256 = self.balanceOf[msg.sender]
+    _supply: uint256 = self.totalSupply
 
-    self._checkpoint(msg.sender, old_value, old_supply)
+    self._checkpoint(msg.sender, _balance, _supply)
 
-    self.balanceOf[msg.sender] = old_value + value
-    self.totalSupply = old_supply + value
+    _balance += value
+    _supply += value
+    self.balanceOf[msg.sender] = _balance
+    self.totalSupply = _supply
+
+    self._update_liquidity_limit(msg.sender, _balance, _supply)
 
     assert_modifiable(ERC20(self.lp_token).transferFrom(msg.sender, self, value))
 
@@ -172,13 +195,17 @@ def deposit(value: uint256):
 @public
 @nonreentrant('lock')
 def withdraw(value: uint256):
-    old_value: uint256 = self.balanceOf[msg.sender]
-    old_supply: uint256 = self.totalSupply
+    _balance: uint256 = self.balanceOf[msg.sender]
+    _supply: uint256 = self.totalSupply
 
-    self._checkpoint(msg.sender, old_value, old_supply)
+    self._checkpoint(msg.sender, _balance, _supply)
 
-    self.balanceOf[msg.sender] = old_value - value
-    self.totalSupply = old_supply - value
+    _balance -= value
+    _supply -= value
+    self.balanceOf[msg.sender] = _balance
+    self.totalSupply = _supply
+
+    self._update_liquidity_limit(msg.sender, _balance, _supply)
 
     assert_modifiable(ERC20(self.lp_token).transfer(msg.sender, value))
 
