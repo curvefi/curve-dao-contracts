@@ -1,6 +1,9 @@
 from random import random, randrange
 from .conftest import YEAR, approx
 
+MAX_UINT256 = 2 ** 256 - 1
+WEEK = 7 * 86400
+
 
 def test_gauge_integral(
         accounts, rpc, block_timestamp,
@@ -99,3 +102,79 @@ def test_gauge_integral(
         update_integral()
         print(i, dt / 86400, integral, liquidity_gauge.integrate_fraction(alice))
         assert approx(liquidity_gauge.integrate_fraction(alice), integral, 1e-15)
+
+
+def test_mining_with_votelock(
+        accounts, rpc, block_timestamp,
+        mock_lp_token, token, liquidity_gauge, gauge_controller, voting_escrow):
+    alice, bob = accounts[:2]
+
+    # Wire up Gauge to the controller to have proper rates and stuff
+    gauge_controller.add_type(b'Liquidity', {'from': alice})
+    gauge_controller.change_type_weight(0, 10 ** 18, {'from': alice})
+    gauge_controller.add_gauge(liquidity_gauge.address, 0, 10 ** 18, {'from': alice})
+
+    # Prepare tokens
+    token.transfer(bob, 10 ** 20, {'from': alice})
+    token.approve(voting_escrow, MAX_UINT256, {'from': alice})
+    token.approve(voting_escrow, MAX_UINT256, {'from': bob})
+    mock_lp_token.transfer(bob, mock_lp_token.balanceOf(alice) // 2, {'from': alice})
+    mock_lp_token.approve(liquidity_gauge.address, MAX_UINT256, {'from': alice})
+    mock_lp_token.approve(liquidity_gauge.address, MAX_UINT256, {'from': bob})
+
+    # Alice deposits to escrow. She now has a BOOST
+    t = block_timestamp()
+    voting_escrow.deposit(10 ** 20, t + 2 * WEEK, {'from': alice})
+
+    # Alice and Bob deposit some liquidity
+    liquidity_gauge.deposit(10 ** 21, {'from': alice})
+    liquidity_gauge.deposit(10 ** 21, {'from': bob})
+
+    # Time travel and checkpoint
+    rpc.sleep(4 * WEEK)
+    rpc.mine()
+    liquidity_gauge.user_checkpoint(alice, {'from': alice})
+    liquidity_gauge.user_checkpoint(bob, {'from': bob})
+
+    # Alice earned 5 times more CRV because she vote-locked her CRV
+    rewards_alice = liquidity_gauge.integrate_fraction(alice)
+    rewards_bob = liquidity_gauge.integrate_fraction(bob)
+    assert approx(rewards_alice / rewards_bob, 5, 1e-5)
+
+    # Time travel / checkpoint: no one has CRV vote-locked
+    rpc.sleep(4 * WEEK)
+    rpc.mine()
+    voting_escrow.withdraw({'from': alice})
+    liquidity_gauge.user_checkpoint(alice, {'from': alice})
+    liquidity_gauge.user_checkpoint(bob, {'from': bob})
+    old_rewards_alice = rewards_alice
+    old_rewards_bob = rewards_bob
+
+    # Alice earned the same as Bob now
+    rewards_alice = liquidity_gauge.integrate_fraction(alice)
+    rewards_bob = liquidity_gauge.integrate_fraction(bob)
+    d_alice = rewards_alice - old_rewards_alice
+    d_bob = rewards_bob - old_rewards_bob
+    assert d_alice == d_bob
+
+    # Both Alice and Bob votelock
+    t = block_timestamp()
+    voting_escrow.deposit(10 ** 20, t + 2 * WEEK, {'from': alice})
+    voting_escrow.deposit(10 ** 20, t + 2 * WEEK, {'from': bob})
+
+    # Time travel / checkpoint: no one has CRV vote-locked
+    rpc.sleep(4 * WEEK)
+    rpc.mine()
+    voting_escrow.withdraw({'from': alice})
+    voting_escrow.withdraw({'from': bob})
+    liquidity_gauge.user_checkpoint(alice, {'from': alice})
+    liquidity_gauge.user_checkpoint(bob, {'from': bob})
+    old_rewards_alice = rewards_alice
+    old_rewards_bob = rewards_bob
+
+    # Alice earned the same as Bob now
+    rewards_alice = liquidity_gauge.integrate_fraction(alice)
+    rewards_bob = liquidity_gauge.integrate_fraction(bob)
+    d_alice = rewards_alice - old_rewards_alice
+    d_bob = rewards_bob - old_rewards_bob
+    assert d_alice == d_bob
