@@ -58,20 +58,20 @@ def gauge_controller(GaugeController, accounts, token, voting_escrow):
 
 
 @pytest.fixture(scope="function")
-def liquidity_gauge(LiquidityGauge, accounts, gauge_controller, mock_lp_token, token):
-    yield LiquidityGauge.deploy(token, mock_lp_token, gauge_controller, {'from': accounts[0]})
+def minter(Minter, accounts, gauge_controller, token):
+    yield Minter.deploy(token, gauge_controller, {'from': accounts[0]})
 
 
 @pytest.fixture(scope="function")
-def three_gauges(LiquidityGauge, accounts, gauge_controller, mock_lp_token, token):
+def liquidity_gauge(LiquidityGauge, accounts, mock_lp_token, minter):
+    yield LiquidityGauge.deploy(mock_lp_token, minter, {'from': accounts[0]})
+
+
+@pytest.fixture(scope="function")
+def three_gauges(LiquidityGauge, accounts, mock_lp_token, minter):
     contracts = [
-        LiquidityGauge.deploy(token, mock_lp_token, gauge_controller, {'from': accounts[0]})
+        LiquidityGauge.deploy(mock_lp_token, minter, {'from': accounts[0]})
         for _ in range(3)
     ]
 
     yield contracts
-
-
-@pytest.fixture(scope="function")
-def minter(Minter, accounts, gauge_controller, token):
-    yield Minter.deploy(token, gauge_controller, {'from': accounts[0]})

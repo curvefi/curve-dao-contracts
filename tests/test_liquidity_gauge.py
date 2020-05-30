@@ -1,4 +1,4 @@
-from random import random, randrange, choice
+from random import random, randrange
 from .conftest import YEAR, approx
 
 
@@ -83,9 +83,9 @@ def test_gauge_integral(
         # Checking that updating the checkpoint in the same second does nothing
         # Also everyone can update: that should make no difference, too
         if random() < 0.5:
-            liquidity_gauge.user_checkpoint(alice, {'from': choice([alice, bob])})
+            liquidity_gauge.user_checkpoint(alice, {'from': alice})
         if random() < 0.5:
-            liquidity_gauge.user_checkpoint(bob, {'from': choice([alice, bob])})
+            liquidity_gauge.user_checkpoint(bob, {'from': bob})
 
         assert liquidity_gauge.balanceOf(alice) == alice_staked
         assert liquidity_gauge.balanceOf(bob) == bob_staked

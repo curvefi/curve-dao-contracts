@@ -14,10 +14,16 @@ contract Controller:
     def voting_escrow() -> address: constant
 
 
+contract Minter:
+    def token() -> address: constant
+    def controller() -> address: constant
+
+
 Deposit: event({provider: indexed(address), value: uint256})
 Withdraw: event({provider: indexed(address), value: uint256})
 
 
+minter: public(address)
 crv_token: public(address)
 lp_token: public(address)
 controller: public(address)
@@ -25,8 +31,8 @@ voting_escrow: public(address)
 balanceOf: public(map(address, uint256))
 totalSupply: public(uint256)
 
-liquidity_limits: public(map(address, uint256))
-supply_with_limits: public(uint256)
+working_balances: public(map(address, uint256))
+working_supply: public(uint256)
 
 # The goal is to be able to calculate ∫(rate * balance / totalSupply dt) from 0 till checkpoint
 # All values are kept in units of being multiplied by 1e18
@@ -50,13 +56,14 @@ inflation_rate: uint256
 
 
 @public
-def __init__(crv_addr: address, lp_addr: address, controller_addr: address):
-    self.crv_token = crv_addr
+def __init__(lp_addr: address, _minter: address):
     self.lp_token = lp_addr
+    self.minter = _minter
+    crv_addr: address = Minter(_minter).token()
+    self.crv_token = crv_addr
+    controller_addr: address = Minter(_minter).controller()
     self.controller = controller_addr
-    self.totalSupply = 0
     self.integrate_checkpoint = block.timestamp
-    self.integrate_inv_supply[0] = 0
     period: int128 = Controller(controller_addr).period()
     self.voting_escrow = Controller(controller_addr).voting_escrow()
     self.last_period = period
@@ -75,13 +82,14 @@ def _update_liquidity_limit(addr: address, l: uint256, L: uint256):
     if voting_total > 0:
         lim += L * voting_balance / voting_total * 80 / 100
 
-    old_lim: uint256 = self.liquidity_limits[addr]
-    self.liquidity_limits[addr] = lim
-    self.supply_with_limits = self.supply_with_limits + lim - old_lim
+    lim = min(l, lim)
+    old_bal: uint256 = self.working_balances[addr]
+    self.working_balances[addr] = lim
+    self.working_supply = self.working_supply + lim - old_bal
 
 
 @private
-def _checkpoint(addr: address, old_value: uint256, old_supply: uint256):
+def _checkpoint(addr: address):
     _integrate_checkpoint: timestamp = self.integrate_checkpoint
 
     _token: address = self.crv_token
@@ -93,6 +101,9 @@ def _checkpoint(addr: address, old_value: uint256, old_supply: uint256):
     new_period: int128 = Controller(_controller).period()
     _integrate_inv_supply: uint256 = self.integrate_inv_supply[old_period]
     rate: uint256 = self.inflation_rate
+
+    _working_balance: uint256 = self.working_balances[addr]
+    _working_supply: uint256 = self.working_supply
 
     dt: uint256 = 0
     w: uint256 = last_weight
@@ -112,8 +123,8 @@ def _checkpoint(addr: address, old_value: uint256, old_supply: uint256):
                 dt = as_unitless_number(new_period_time - _integrate_checkpoint)
             else:
                 dt = as_unitless_number(new_period_time - old_period_time)
-            if old_supply > 0:
-                _integrate_inv_supply += rate * w * dt / old_supply
+            if _working_supply > 0:
+                _integrate_inv_supply += rate * w * dt / _working_supply
             self.integrate_inv_supply[p] = _integrate_inv_supply
             if new_period_time == new_epoch:
                 rate = CRV20(_token).rate()
@@ -127,12 +138,12 @@ def _checkpoint(addr: address, old_value: uint256, old_supply: uint256):
         self.last_period = new_period
     else:
         dt = as_unitless_number(block.timestamp - _integrate_checkpoint)
-    if old_supply > 0:
-        # No need to integrate if old_supply == 0
+    if _working_supply > 0:
+        # No need to integrate if _working_supply == 0
         # because no one staked then anyway
-        # If old_supply == 1, we can have 1e32 dollars
+        # If _working_supply == 1, we can have 1e32 dollars
         # - should be all right even if we go full Zimbabwe
-        _integrate_inv_supply += rate * last_weight * dt / old_supply
+        _integrate_inv_supply += rate * last_weight * dt / _working_supply
 
     # Update user-specific integrals
     user_period: int128 = new_period
@@ -147,7 +158,7 @@ def _checkpoint(addr: address, old_value: uint256, old_supply: uint256):
         if user_period < 0 or user_checkpoint >= user_period_time:
             # Last cycle => we are in the period of the user checkpoint
             dI: uint256 = _period_inv_supply - _integrate_inv_supply_of
-            _integrate_fraction += old_value * dI / 10 ** 18
+            _integrate_fraction += _working_balance * dI / 10 ** 18
             break
         else:
             user_period -= 1
@@ -158,7 +169,7 @@ def _checkpoint(addr: address, old_value: uint256, old_supply: uint256):
             _period_inv_supply = prev_period_inv_supply
             if user_period >= 0:
                 user_period_time = self.period_checkpoints[user_period]
-            _integrate_fraction += old_value * dI / 10 ** 18
+            _integrate_fraction += _working_balance * dI / 10 ** 18
 
     self.integrate_inv_supply[new_period] = _integrate_inv_supply
     self.integrate_inv_supply_of[addr] = _integrate_inv_supply
@@ -169,19 +180,17 @@ def _checkpoint(addr: address, old_value: uint256, old_supply: uint256):
 
 @public
 def user_checkpoint(addr: address):
-    self._checkpoint(addr, self.balanceOf[addr], self.totalSupply)
+    assert (msg.sender == addr) or (msg.sender == self.minter)
+    self._checkpoint(addr)
 
 
 @public
 @nonreentrant('lock')
 def deposit(value: uint256):
-    _balance: uint256 = self.balanceOf[msg.sender]
-    _supply: uint256 = self.totalSupply
+    self._checkpoint(msg.sender)
 
-    self._checkpoint(msg.sender, _balance, _supply)
-
-    _balance += value
-    _supply += value
+    _balance: uint256 = self.balanceOf[msg.sender] + value
+    _supply: uint256 = self.totalSupply + value
     self.balanceOf[msg.sender] = _balance
     self.totalSupply = _supply
 
@@ -195,13 +204,10 @@ def deposit(value: uint256):
 @public
 @nonreentrant('lock')
 def withdraw(value: uint256):
-    _balance: uint256 = self.balanceOf[msg.sender]
-    _supply: uint256 = self.totalSupply
+    self._checkpoint(msg.sender)
 
-    self._checkpoint(msg.sender, _balance, _supply)
-
-    _balance -= value
-    _supply -= value
+    _balance: uint256 = self.balanceOf[msg.sender] - value
+    _supply: uint256 = self.totalSupply - value
     self.balanceOf[msg.sender] = _balance
     self.totalSupply = _supply
 
