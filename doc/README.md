@@ -28,6 +28,8 @@ return the time-weighted voting weight $w$ and the sum of all of those weights
 $W = \sum w_i$ respectively. Aragon can interface VotingEscrow as if it was
 a typical governance token.
 
+![Voting weight of vote-locked tokens](votelock.pdf){width=280px}
+
 Locks can be created or extended in time or token amount with `deposit()`,
 and `withdraw()` can remove tokens from the escrow when the lock is expired.
 
