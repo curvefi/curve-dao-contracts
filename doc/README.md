@@ -138,8 +138,6 @@ provided. However, if a user stakes much enough CRV, he is able to boost his
 stream of CRV by up to factor of 5 (reducing it slightly for all users who are
 not doing that).
 
-### GaugeController implementation details
-
 ## Weight voting for gauges
 
 Instead of simply voting for weight change in Aragon, users can allocate their
@@ -147,3 +145,22 @@ vote-locked tokens towards one or other Gauge (pool). That pool will be getting
 a fraction of CRV tokens minted proportional to how much vote-locked tokens are
 allocated to it. Eeach user with tokens in VotingEscrow can change his/her
 preference at any time.
+
+### GaugeController implementation details
+
+In order to implement weight voting, _GaugeController_ has to include parameters
+handling linear character of voting power each user has.
+
+Similarly to how it is done in _VotingEscrow_, _GaugeController_ records
+points (bias+slope) per gauge in `vote_points`, _scheduled_ changes in biases
+and slopes for those points in `vote_bias_changes` and `vote_slope_changes`,
+with those changes happening every round week, as well as current slopes for
+every user per-gauge in `vote_user_slopes`, along with the power the user has
+used and the time their vote-lock ends.
+Scheduling of the changes is handled by the private method `enact_vote`.
+
+When user changes his preferences, the change of the gauge weight is scheduled
+for the next round week, not immediately. This is done in order to reduce the
+number of blockchain reads which need to be performed by each user: that will
+be proportional to the number of weeks since the last change instead of the
+number of interactions other users did.
