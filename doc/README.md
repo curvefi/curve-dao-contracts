@@ -164,3 +164,17 @@ for the next round week, not immediately. This is done in order to reduce the
 number of blockchain reads which need to be performed by each user: that will
 be proportional to the number of weeks since the last change instead of the
 number of interactions other users did.
+
+## Fee burner
+
+Every pool allows the admin to collect fees using `withdraw_admin_fees`. Aragon
+should be able to collect those fees to the admin account and use them to buy
+and burn CRV on a free market once that free market exists.
+That should be possible to be done by anyone without a vote.
+
+## Gauges to rewards trading volume and governance votes
+
+Both votes and trades are discrete events, so they can use the same sort of gauge.
+The idea is that each event has a weight which exponentially decays over time.
+
+It should be possible to call a gauge contract every time a user votes in Aragon.
