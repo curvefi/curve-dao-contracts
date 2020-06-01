@@ -139,7 +139,6 @@ def test_relative_weight_write(accounts, rpc, gauge_controller, three_gauges):
         assert gauge_controller.gauge_relative_weight(gauge, period) == weight
 
 
-@pytest.mark.skip
 def test_gauge_weight_vote(accounts, rpc, block_timestamp, gauge_controller, three_gauges, voting_escrow, token):
     admin, bob, charlie = accounts[0:3]
     gauge_controller.add_type(b'Liquidity', {'from': admin})  # 0
