@@ -396,25 +396,30 @@ def vote_for_gauge_weights(_gauge_id: int128, _user_weight: int128):
 
 
 @public
+@constant
 def last_change() -> timestamp:
     return self.period_timestamp[self.period]
 
 
 @public
+@constant
 def get_gauge_weight(addr: address) -> uint256:
     return self.gauge_weights[addr][self.gauge_last[addr]]
 
 
 @public
+@constant
 def get_type_weight(type_id: int128) -> uint256:
     return self.type_weights[type_id][self.type_last[type_id]]
 
 
 @public
+@constant
 def get_total_weight() -> uint256:
     return self.total_weight[self.period]
 
 
 @public
+@constant
 def get_weights_sum_per_type(type_id: int128) -> uint256:
     return self.weight_sums_per_type[type_id][self.type_last[type_id]]
