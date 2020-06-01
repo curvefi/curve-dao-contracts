@@ -37,37 +37,37 @@ def theoretical_supply(rpc, token, block_timestamp):
     yield _fn
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="module")
 def token(ERC20CRV, accounts):
     yield ERC20CRV.deploy("Curve DAO Token", "CRV", 18, 10 ** 9, {'from': accounts[0]})
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="module")
 def voting_escrow(VotingEscrow, accounts, token):
     yield VotingEscrow.deploy(token, 'Voting-escrowed CRV', 'veCRV', 'veCRV_0.99', {'from': accounts[0]})
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="module")
 def mock_lp_token(ERC20LP, accounts):  # Not using the actual Curve contract
     yield ERC20LP.deploy("Curve LP token", "usdCrv", 18, 10 ** 9, {'from': accounts[0]})
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="module")
 def gauge_controller(GaugeController, accounts, token, voting_escrow):
     yield GaugeController.deploy(token, voting_escrow, {'from': accounts[0]})
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="module")
 def minter(Minter, accounts, gauge_controller, token):
     yield Minter.deploy(token, gauge_controller, {'from': accounts[0]})
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="module")
 def liquidity_gauge(LiquidityGauge, accounts, mock_lp_token, minter):
     yield LiquidityGauge.deploy(mock_lp_token, minter, {'from': accounts[0]})
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="module")
 def three_gauges(LiquidityGauge, accounts, mock_lp_token, minter):
     contracts = [
         LiquidityGauge.deploy(mock_lp_token, minter, {'from': accounts[0]})

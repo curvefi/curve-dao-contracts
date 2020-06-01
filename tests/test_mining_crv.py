@@ -50,7 +50,9 @@ def test_mintable_in_timeframe(
             assert token.mintable_in_timeframe(t0, t0 + dt) < rate * dt
 
 
-def test_mint(accounts, rpc, block_timestamp, token):
+def test_mint(ERC20CRV, accounts, rpc, block_timestamp):
+    token = ERC20CRV.deploy("Curve DAO Token", "CRV", 18, 10 ** 9, {'from': accounts[0]})
+
     owner, bob = accounts[:2]
 
     # Sometimes can go across epochs
