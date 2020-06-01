@@ -82,16 +82,6 @@ def transfer_ownership(addr: address):
     self.admin = addr
 
 
-@public
-def add_type(_name: string[64]):
-    assert msg.sender == self.admin
-    n: int128 = self.n_gauge_types
-    self.gauge_type_names[n] = _name
-    self.n_gauge_types = n + 1
-    # maps contain 0 values by default, no need to do anything
-    # zero weights don't change other weights - no need to change last_change
-
-
 @private
 def change_epoch(_p: int128) -> (int128, bool):
     # Handle change of epoch
@@ -220,10 +210,8 @@ def gauge_relative_weight_write(addr: address, _period: int128=-1) -> uint256:
         return 0
 
 
-@public
-def change_type_weight(type_id: int128, weight: uint256):
-    assert msg.sender == self.admin
-
+@private
+def _change_type_weight(type_id: int128, weight: uint256):
     p: int128 = self.period
     epoch_changed: bool = False
     p, epoch_changed = self.change_epoch(p)
@@ -252,6 +240,22 @@ def change_type_weight(type_id: int128, weight: uint256):
     self.weight_sums_per_type[type_id][p] = old_sum
 
     self.period_timestamp[p] = block.timestamp
+
+
+@public
+def add_type(_name: string[64], weight: uint256 = 0):
+    assert msg.sender == self.admin
+    type_id: int128 = self.n_gauge_types
+    self.gauge_type_names[type_id] = _name
+    self.n_gauge_types = type_id + 1
+    if weight != 0:
+        self._change_type_weight(type_id, weight)
+
+
+@public
+def change_type_weight(type_id: int128, weight: uint256):
+    assert msg.sender == self.admin
+    self._change_type_weight(type_id, weight)
 
 
 @private
