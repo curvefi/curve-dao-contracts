@@ -83,7 +83,7 @@ def burn_coin(_coin: address):
 @payable
 @nonreentrant('lock')
 def burn_eth():
-    Burner(self.burners[ZERO_ADDRESS]).burn_eth(value=msg.value)
+    Burner(self.burners[ZERO_ADDRESS]).burn_eth(value=self.balance)
 
 
 @public
