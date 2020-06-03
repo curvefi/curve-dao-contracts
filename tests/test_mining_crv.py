@@ -1,4 +1,5 @@
 import brownie
+from brownie.test import strategy, given
 
 from random import random, randrange
 from math import log10
@@ -6,50 +7,71 @@ from .conftest import approx
 from .conftest import YEAR, YEAR_1_SUPPLY
 
 
-def test_mintable_in_timeframe(
-        accounts, rpc, block_timestamp,
-        theoretical_supply, token):
-    owner = accounts[0]
+def test_update_mining_parameters(token, rpc, accounts):
     creation_time = token.start_epoch_time()
+    new_epoch = creation_time + YEAR - rpc.time()
+    rpc.sleep(new_epoch)
+    token.update_mining_parameters({'from': accounts[0]})
 
-    # Sometimes can go across epochs
-    for i in range(20):
-        dt = int(10 ** (random() * log10(300 * 86400)))
-        t0 = token.start_epoch_time()
-        rpc.sleep(dt)
+
+def test_update_mining_parameters_same_epoch(token, rpc, accounts):
+    creation_time = token.start_epoch_time()
+    new_epoch = creation_time + YEAR - rpc.time()
+    rpc.sleep(new_epoch - 3)
+    with brownie.reverts("dev: too soon!"):
+        token.update_mining_parameters({'from': accounts[0]})
+
+
+@given(time=strategy("decimal", min_value=1, max_value=7))
+def test_mintable_in_timeframe(accounts, token, block_timestamp, theoretical_supply, time, rpc):
+    t0 = token.start_epoch_time()
+    rpc.sleep(int(10 ** time))
+    rpc.mine()
+    t1 = block_timestamp()
+    if t1 - t0 >= YEAR:
+        token.update_mining_parameters({'from': accounts[0]})
+
+    t1 = block_timestamp()
+    available_supply = token.available_supply()
+    mintable = token.mintable_in_timeframe(t0, t1)
+    assert (available_supply - (10 ** 9 * 10 ** 18)) >= mintable  # Should only round down, not up
+    if t1 == t0:
+        assert mintable == 0
+    else:
+        assert (available_supply - (10 ** 9 * 10 ** 18)) / mintable - 1 < 1e-7
+    assert approx(theoretical_supply(), available_supply, 1e-16)
+
+
+@given(time1=strategy('uint', max_value=YEAR), time2=strategy('uint', max_value=YEAR))
+def test_random_range_year_one(token, block_timestamp, rpc, accounts, time1, time2):
+    creation_time = token.start_epoch_time()
+    start, end = sorted((creation_time+time1, creation_time+time2))
+    rate = YEAR_1_SUPPLY // YEAR
+
+    assert token.mintable_in_timeframe(start, end) ==  rate * (end-start)
+
+
+@given(start=strategy('uint', max_value=YEAR*6), duration=strategy('uint', max_value=YEAR))
+def test_random_range_multiple_epochs(token, block_timestamp, rpc, accounts, start, duration):
+    creation_time = token.start_epoch_time()
+    start += creation_time
+    end = duration + start
+    start_epoch = (start - creation_time) // YEAR
+    end_epoch = (end - creation_time) // YEAR
+    rate = int(YEAR_1_SUPPLY // YEAR / (2 ** 0.5) ** start_epoch)
+
+    for i in range(end_epoch):
+        rpc.sleep(YEAR)
         rpc.mine()
-        t1 = block_timestamp()
-        if t1 - t0 >= YEAR:
-            token.update_mining_parameters({'from': owner})
-        else:
-            with brownie.reverts():
-                token.update_mining_parameters({'from': owner})
-        t1 = block_timestamp()
+        token.update_mining_parameters({'from': accounts[0]})
 
-        available_supply = token.available_supply()
-        mintable = token.mintable_in_timeframe(creation_time, t1)
-        assert (available_supply - (10 ** 9 * 10 ** 18)) >= mintable  # Should only round down, not up
-        if t1 == t0:
-            assert mintable == 0
-        else:
-            assert (available_supply - (10 ** 9 * 10 ** 18)) / mintable - 1 < 1e-7
-        assert approx(theoretical_supply(), available_supply, 1e-16)
-
-    now = block_timestamp()
-    # Check random ranges
-    for i in range(20):
-        t0 = randrange(creation_time, now)
-        dt = int(10 ** (random() * log10(now - t0)))
-        start_epoch = (t0 - creation_time) // YEAR
-        end_epoch = (t0 + dt - creation_time) // YEAR
-        rate = int(YEAR_1_SUPPLY // YEAR / (2 ** 0.5) ** start_epoch)
-
-        if start_epoch == end_epoch:
-            assert approx(token.mintable_in_timeframe(t0, t0 + dt), rate * dt, 1e-16)
-        else:
-            assert token.mintable_in_timeframe(t0, t0 + dt) < rate * dt
+    if start_epoch == end_epoch:
+        assert approx(token.mintable_in_timeframe(start, end), rate * (end-start), 1e-16)
+    else:
+        assert token.mintable_in_timeframe(start, end) < rate * end
 
 
+# TODO
 def test_mint(ERC20CRV, accounts, rpc, block_timestamp):
     token = ERC20CRV.deploy("Curve DAO Token", "CRV", 18, 10 ** 9, {'from': accounts[0]})
 

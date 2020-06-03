@@ -74,7 +74,7 @@ def _update_mining_parameters():
 def update_mining_parameters():
     # Everyone can do this but only once per epoch
     # Total supply becomes slightly larger if this function is called late
-    assert block.timestamp >= self.start_epoch_time + RATE_REDUCTION_TIME
+    assert block.timestamp >= self.start_epoch_time + RATE_REDUCTION_TIME  # dev: too soon!
     self._update_mining_parameters()
 
 
