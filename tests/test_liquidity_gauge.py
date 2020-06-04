@@ -105,7 +105,7 @@ def test_gauge_integral(
 
 
 def test_mining_with_votelock(
-        accounts, rpc, block_timestamp,
+        accounts, rpc, block_timestamp, history,
         mock_lp_token, token, liquidity_gauge, gauge_controller, voting_escrow):
     alice, bob = accounts[:2]
 
@@ -133,8 +133,13 @@ def test_mining_with_votelock(
     # Time travel and checkpoint
     rpc.sleep(4 * WEEK)
     rpc.mine()
-    liquidity_gauge.user_checkpoint(alice, {'from': alice})
-    liquidity_gauge.user_checkpoint(bob, {'from': bob})
+    while True:
+        liquidity_gauge.user_checkpoint(alice, {'from': alice})
+        liquidity_gauge.user_checkpoint(bob, {'from': bob})
+        if history[-1].timestamp != history[-2].timestamp:
+            rpc.undo(2)
+        else:
+            break
 
     # Alice earned 5 times more CRV because she vote-locked her CRV
     rewards_alice = liquidity_gauge.integrate_fraction(alice)
@@ -145,8 +150,13 @@ def test_mining_with_votelock(
     rpc.sleep(4 * WEEK)
     rpc.mine()
     voting_escrow.withdraw({'from': alice})
-    liquidity_gauge.user_checkpoint(alice, {'from': alice})
-    liquidity_gauge.user_checkpoint(bob, {'from': bob})
+    while True:
+        liquidity_gauge.user_checkpoint(alice, {'from': alice})
+        liquidity_gauge.user_checkpoint(bob, {'from': bob})
+        if history[-1].timestamp != history[-2].timestamp:
+            rpc.undo(2)
+        else:
+            break
     old_rewards_alice = rewards_alice
     old_rewards_bob = rewards_bob
 
@@ -158,17 +168,27 @@ def test_mining_with_votelock(
     assert d_alice == d_bob
 
     # Both Alice and Bob votelock
-    t = block_timestamp()
-    voting_escrow.deposit(10 ** 20, t + 2 * WEEK, {'from': alice})
-    voting_escrow.deposit(10 ** 20, t + 2 * WEEK, {'from': bob})
+    while True:
+        t = block_timestamp()
+        voting_escrow.deposit(10 ** 20, t + 2 * WEEK, {'from': alice})
+        voting_escrow.deposit(10 ** 20, t + 2 * WEEK, {'from': bob})
+        if history[-1].timestamp != history[-2].timestamp:
+            rpc.undo(2)
+        else:
+            break
 
     # Time travel / checkpoint: no one has CRV vote-locked
     rpc.sleep(4 * WEEK)
     rpc.mine()
     voting_escrow.withdraw({'from': alice})
     voting_escrow.withdraw({'from': bob})
-    liquidity_gauge.user_checkpoint(alice, {'from': alice})
-    liquidity_gauge.user_checkpoint(bob, {'from': bob})
+    while True:
+        liquidity_gauge.user_checkpoint(alice, {'from': alice})
+        liquidity_gauge.user_checkpoint(bob, {'from': bob})
+        if history[-1].timestamp != history[-2].timestamp:
+            rpc.undo(2)
+        else:
+            break
     old_rewards_alice = rewards_alice
     old_rewards_bob = rewards_bob
 

@@ -40,12 +40,12 @@ period_checkpoints: timestamp[100000000000000000000000000000]
 last_period: int128
 
 # 1e18 * ∫(rate(t) / totalSupply(t) dt) from 0 till checkpoint
-integrate_inv_supply: uint256[100000000000000000000000000000]  # bump epoch when rate() changes
-integrate_checkpoint: timestamp
+integrate_inv_supply: public(uint256[100000000000000000000000000000])  # bump epoch when rate() changes
+integrate_checkpoint: public(timestamp)
 
 # 1e18 * ∫(rate(t) / totalSupply(t) dt) from (last_action) till checkpoint
-integrate_inv_supply_of: map(address, uint256)
-integrate_checkpoint_of: map(address, timestamp)
+integrate_inv_supply_of: public(map(address, uint256))
+integrate_checkpoint_of: public(map(address, timestamp))
 
 
 # ∫(balance * rate(t) / totalSupply(t) dt) from 0 till checkpoint
