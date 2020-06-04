@@ -132,7 +132,7 @@ def test_mining_with_votelock(
 
     # Time travel and checkpoint
     rpc.sleep(4 * WEEK)
-    rpc.mine()
+    alice.transfer(alice, 1)
     while True:
         liquidity_gauge.user_checkpoint(alice, {'from': alice})
         liquidity_gauge.user_checkpoint(bob, {'from': bob})
@@ -152,7 +152,7 @@ def test_mining_with_votelock(
 
     # Time travel / checkpoint: no one has CRV vote-locked
     rpc.sleep(4 * WEEK)
-    rpc.mine()
+    alice.transfer(alice, 1)
     voting_escrow.withdraw({'from': alice})
     while True:
         liquidity_gauge.user_checkpoint(alice, {'from': alice})
@@ -183,7 +183,7 @@ def test_mining_with_votelock(
 
     # Time travel / checkpoint: no one has CRV vote-locked
     rpc.sleep(4 * WEEK)
-    rpc.mine()
+    alice.transfer(alice, 1)
     voting_escrow.withdraw({'from': alice})
     voting_escrow.withdraw({'from': bob})
     while True:
