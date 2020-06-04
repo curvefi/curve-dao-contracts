@@ -141,6 +141,10 @@ def test_mining_with_votelock(
         else:
             break
 
+    # 4 weeks down the road, balanceOf must be 0
+    assert voting_escrow.balanceOf(alice) == 0
+    assert voting_escrow.balanceOf(bob) == 0
+
     # Alice earned 5 times more CRV because she vote-locked her CRV
     rewards_alice = liquidity_gauge.integrate_fraction(alice)
     rewards_bob = liquidity_gauge.integrate_fraction(bob)
