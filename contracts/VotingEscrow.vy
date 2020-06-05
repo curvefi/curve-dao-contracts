@@ -200,8 +200,9 @@ def _checkpoint(addr: address, old_locked: LockedBalance, new_locked: LockedBala
     # and add old_user_slope to [old_locked.end]
     if old_locked.end > block.timestamp:
         # old_dslope was <something> - u_old.slope, so we cancel that
-        # and subtract u_new.slope
-        old_dslope += (u_old.slope - u_new.slope)
+        old_dslope += u_old.slope
+        if new_locked.end == old_locked.end:
+            old_dslope -= u_new.slope  # It was a new deposit, not extension
         self.slope_changes[old_locked.end] = old_dslope
 
     if new_locked.end > block.timestamp:
