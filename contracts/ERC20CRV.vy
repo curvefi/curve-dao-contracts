@@ -107,7 +107,7 @@ def mintable_in_timeframe(start: uint256, end: uint256) -> uint256:
     """
     How much supply is mintable from start timestamp till end timestamp
     """
-    assert start <= end
+    assert start <= end  # dev: start > end
     to_mint: uint256 = 0
     current_epoch_time: uint256 = as_unitless_number(self.start_epoch_time)
     current_rate: uint256 = self.rate
@@ -117,7 +117,7 @@ def mintable_in_timeframe(start: uint256, end: uint256) -> uint256:
         current_epoch_time += RATE_REDUCTION_TIME
         current_rate = current_rate * RATE_DENOMINATOR / RATE_REDUCTION_COEFFICIENT
 
-    assert end <= current_epoch_time + RATE_REDUCTION_TIME  # Not too far in future
+    assert end <= current_epoch_time + RATE_REDUCTION_TIME  # dev: too far in future
 
     for i in range(999):  # Curve will not work in 1000 years. Darn!
         if end >= current_epoch_time:
@@ -252,7 +252,7 @@ def mint(_to: address, _value: uint256):
         self._update_mining_parameters()
 
     _total_supply: uint256 = self.total_supply + _value
-    assert _total_supply <= self._available_supply()
+    assert _total_supply <= self._available_supply()  # dev: exceeds allowable mint amount
     self.total_supply = _total_supply
 
     self.balanceOf[_to] += _value
