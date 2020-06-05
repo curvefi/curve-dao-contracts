@@ -7,7 +7,7 @@ env:
 
 jobs:
 
-  tests:
+  unitary:
     runs-on: ubuntu-latest
 
     steps:
@@ -28,9 +28,9 @@ jobs:
       run: pip install -r requirements.txt
 
     - name: Run Tests
-      run: brownie test -C --stateful=false
+      run: brownie test tests/unitary -C -n auto
 
-  stateful:
+  integration:
     runs-on: ubuntu-latest
 
     steps:
@@ -51,4 +51,4 @@ jobs:
       run: pip install -r requirements.txt
 
     - name: Run Tests
-      run: brownie test --stateful=true
+      run: brownie test tests/integration -n auto
