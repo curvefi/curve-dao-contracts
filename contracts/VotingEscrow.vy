@@ -237,10 +237,10 @@ def _deposit_for(addr: address, value: uint256, _unlock_time: uint256):
         if _locked.end <= block.timestamp:
             assert _locked.amount == 0, "Withdraw old tokens first"
         assert unlock_time >= _locked.end, "Cannot decrease the lock duration"
+        assert unlock_time > block.timestamp, "Can only lock until time in the future"
         if (unlock_time == _locked.end) or (_locked.end <= block.timestamp):
             # If lock is not extended, we must be adding more to it
             assert value > 0
-        assert unlock_time > block.timestamp, "Can only lock until time in the future"
         assert unlock_time <= as_unitless_number(block.timestamp) + MAXTIME, "Voting lock can be 4 years max"
 
     self.supply += value

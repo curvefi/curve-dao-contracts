@@ -50,7 +50,7 @@ class StateMachine:
             with brownie.reverts("Cannot decrease the lock duration"):
                 self.voting_escrow.deposit(st_value, unlock_time, {'from': st_account})
 
-        elif st_value == 0:
+        elif st_value == 0 and not (unlock_time > self.voting_balances[st_account]['unlock_time']):
             # fail path - tokens deposited, not advancing lock time or adding balance
             with brownie.reverts():
                 self.voting_escrow.deposit(st_value, unlock_time, {'from': st_account})
@@ -73,7 +73,7 @@ class StateMachine:
                 'unlock_time': tx.events['Deposit']['locktime'],
             }
 
-        elif self.voting_balances[st_account]['unlock_time'] < unlock_time:
+        elif self.voting_balances[st_account]['unlock_time'] < unlock_time and st_value > 0:
             # success path - tokens are deposited, current lock is < new lock
             tx = self.voting_escrow.deposit(st_value, unlock_time, {'from': st_account})
             self.voting_balances[st_account]['value'] += st_value
