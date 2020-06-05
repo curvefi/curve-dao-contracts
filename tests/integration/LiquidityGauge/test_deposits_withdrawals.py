@@ -4,14 +4,21 @@ from brownie.test import strategy
 
 
 class StateMachine:
+    """
+    Validate that deposits and withdrawals work correctly over time.
 
-    # account to perform a deposit / withdrawal from
+    Strategies
+    ----------
+    st_account : Account
+        Account to perform deposit or withdrawal from
+    st_value : int
+        Amount to deposit or withdraw
+    st_time : int
+        Amount of time to advance the clock
+    """
+
     st_account = strategy("address", length=5)
-
-    # amount to deposit / withdraw
     st_value = strategy("uint64")
-
-    # number of weeks to lock a deposit
     st_time = strategy("uint", max_value=86400 * 365)
 
     def __init__(self, accounts, liquidity_gauge, mock_lp_token):
@@ -89,20 +96,16 @@ class StateMachine:
             assert self.token.balanceOf(account) == initial + balance
 
 
-def test_state_machine(
-    state_machine, accounts, liquidity_gauge, mock_lp_token, no_call_coverage
-):
-
+def test_state_machine(state_machine, accounts, liquidity_gauge, mock_lp_token, no_call_coverage):
+    # fund accounts to be used in the test
     for acct in accounts[1:5]:
         mock_lp_token.transfer(acct, 10 ** 21, {"from": accounts[0]})
 
+    # approve liquidity_gauge from the funded accounts
     for acct in accounts[:5]:
         mock_lp_token.approve(liquidity_gauge, 2 ** 256 - 1, {"from": acct})
 
-    state_machine(
-        StateMachine,
-        accounts,
-        liquidity_gauge,
-        mock_lp_token,
-        settings={"stateful_step_count": 25},
-    )
+    # because this is a simple state machine, we use more steps than normal
+    settings = {"stateful_step_count": 25}
+
+    state_machine(StateMachine, accounts, liquidity_gauge, mock_lp_token, settings=settings)

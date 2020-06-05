@@ -1,15 +1,8 @@
-import brownie
-
 from random import random, randrange
 from .conftest import YEAR, approx
 
 MAX_UINT256 = 2 ** 256 - 1
 WEEK = 7 * 86400
-
-
-def test_user_checkpoint_wrong_account(accounts, liquidity_gauge):
-    with brownie.reverts("dev: unauthorized"):
-        liquidity_gauge.user_checkpoint(accounts[2], {'from': accounts[1]})
 
 
 def test_gauge_integral(

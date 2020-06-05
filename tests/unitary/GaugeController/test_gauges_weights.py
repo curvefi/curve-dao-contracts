@@ -1,22 +1,10 @@
 import pytest
 
-from random import randrange
-from .conftest import YEAR
-
 WEEK = 7 * 86400
+YEAR = 365 * 86400
 
 TYPE_WEIGHTS = [5 * 10 ** 17, 2 * 10 ** 18]
 GAUGE_WEIGHTS = [2 * 10 ** 18, 10 ** 18, 5 * 10 ** 17]
-
-
-@pytest.fixture(scope="module", autouse=True)
-def gauge_setup(gauge_controller, accounts):
-    gauge_controller.add_type(b'Liquidity', TYPE_WEIGHTS[0], {'from': accounts[0]})
-
-
-@pytest.fixture(scope="module")
-def gauge(three_gauges):
-    yield three_gauges[0]
 
 
 def test_add_gauges(accounts, gauge_controller, three_gauges):
@@ -97,29 +85,6 @@ def test_change_type_weight(accounts, gauge_controller):
 
     assert gauge_controller.get_type_weight.call(0) == 31337
     assert gauge_controller.get_type_weight.call(1) == TYPE_WEIGHTS[1]
-
-
-def test_advance_period(accounts, rpc, gauge_controller):
-    before = gauge_controller.period()
-    rpc.sleep(int(1.1 * YEAR))
-    gauge_controller.period_write({'from': accounts[0]})
-
-    assert gauge_controller.period() == before + 1
-
-
-
-def test_period_timestamps(accounts, rpc, gauge_controller):
-    for i in range(5):
-        rpc.sleep(int(1.1 * YEAR))
-        gauge_controller.period_write({'from': accounts[0]})
-
-    # Check that no timestamps are missed and everything is incremental
-    prev_ts = 0
-    for i in range(gauge_controller.period()):
-        ts = gauge_controller.period_timestamp(i)
-        assert ts > 0
-        assert ts >= prev_ts
-        prev_ts = ts
 
 
 def test_relative_weight_write(accounts, rpc, gauge_controller, three_gauges):

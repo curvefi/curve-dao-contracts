@@ -33,7 +33,6 @@ class StateMachine:
         self.token_balances = {i: 10**40 for i in self.accounts}
         self.voting_balances = {i: {'value': 0, 'unlock_time': 0} for i in self.accounts}
 
-
     def rule_new_deposit(self, st_account, st_value, st_lock_duration):
         """
         Make a deposit into the voting escrow, with a given lock time.
@@ -78,7 +77,6 @@ class StateMachine:
             tx = self.voting_escrow.deposit(st_value, unlock_time, {'from': st_account})
             self.voting_balances[st_account]['value'] += st_value
             self.voting_balances[st_account]['unlock_time'] = tx.events['Deposit']['locktime']
-
 
     def rule_increase_deposit(self, st_account, st_value):
         """
@@ -175,7 +173,6 @@ class StateMachine:
             total_supply += self.voting_escrow.balanceOfAt(acct, block_number)
 
         assert self.voting_escrow.totalSupplyAt(block_number) == total_supply
-
 
 
 def test_state_machine(state_machine, accounts, ERC20, VotingEscrow):
