@@ -11,6 +11,7 @@ YEAR = 86400 * 365
 
 @pytest.fixture(scope="module", autouse=True)
 def setup(gauge_controller, accounts, three_gauges, token, voting_escrow):
+    # We handle setup logic in a fixture to avoid repeating it in each test run
 
     # Set up gauges and types
     gauge_controller.add_type(b'Liquidity', 10**18, {'from': accounts[0]})
@@ -30,9 +31,18 @@ def setup(gauge_controller, accounts, three_gauges, token, voting_escrow):
 )
 @settings(max_examples=10)
 def test_gauge_weight_vote(accounts, gauge_controller, three_gauges, voting_escrow, st_deposits, st_length, st_votes):
-    # st_deposits: numbers of coins deposited
-    # st_length: policy duration in weeks
-    # st_votes: [[vote_for_gauge_0, vote_for_gauge_1], [vote_for_gauge_0, vote_for_gauge_1], ...], in units of 10%
+    """
+    Test that gauge weights correctly adjust over time.
+
+    Strategies
+    ---------
+    st_deposits : [int, int, int]
+        Number of coins to be deposited per account
+    st_length : [int, int, int]
+        Policy duration in weeks
+    st_votes : [(int, int), (int, int), (int, int)]
+        (vote for gauge 0, vote for gauge 1) for each account, in units of 10%
+    """
 
     # Deposit for voting
     timestamp = history[-1].timestamp
@@ -53,14 +63,17 @@ def test_gauge_weight_vote(accounts, gauge_controller, three_gauges, voting_escr
         assert gauge_controller.vote_user_power(acct) == 10000
 
     # Calculate slope data, build model functions
-    data = []
+    slope_data = []
     for i, acct in enumerate(accounts[:3]):
         initial_bias = voting_escrow.get_last_user_slope(acct) * (voting_escrow.locked__end(acct) - timestamp)
         duration = (timestamp + st_length[i] * WEEK) // WEEK * WEEK - timestamp  # <- endtime rounded to whole weeks
-        data.append((initial_bias, duration))
+        slope_data.append((initial_bias, duration))
 
-    max_duration = max(duration for bias, duration in data)
-    models = lambda i, x: max(data[i][0] * (1 - x * max_duration / data[i][1]), 0)
+    max_duration = max(duration for bias, duration in slope_data)
+
+    def models(idx, relative_time):
+        bias, duration = slope_data[idx]
+        return max(bias * (1 - relative_time * max_duration / duration), 0)
 
     rpc.sleep(WEEK * 4)
     rpc.mine()

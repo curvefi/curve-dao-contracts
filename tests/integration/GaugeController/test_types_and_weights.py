@@ -1,17 +1,22 @@
-import pytest
-
 from brownie.test import strategy
 
 
 class StateMachine:
+    """
+    Validate gauge weights and gauge weight sum.
 
-    # gauge type - multiplied by `len(self.gauges)` to choose a value
+    Strategies
+    ----------
+    st_type : Decimal
+        Gauge type, multiplied by `len(self.gauges)` to choose a value
+    st_gauge_weight : int
+        Gauge weight
+    st_type_wiehgt : int
+        Type weight
+    """
+
     st_type = strategy("decimal", min_value=0, max_value="0.99999999")
-
-    # gauge weights
     st_gauge_weight = strategy("uint", min_value=10 ** 17, max_value=10 ** 19)
-
-    # type weights
     st_type_weight = strategy("uint", min_value=10 ** 17, max_value=10 ** 19)
 
     def __init__(self, LiquidityGauge, accounts, gauge_controller, mock_lp_token, minter):
