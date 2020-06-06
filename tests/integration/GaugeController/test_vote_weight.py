@@ -26,7 +26,7 @@ def setup(gauge_controller, accounts, three_gauges, token, voting_escrow):
 @given(
     st_deposits = strategy('uint256[3]', min_value=10**21, max_value=10**23),
     st_length = strategy('uint256[3]', min_value=52, max_value=100),
-    st_votes = strategy('uint[2][3]', min_value=1, max_value=5)  # Why from 1, not 0?  XXX
+    st_votes = strategy('uint[2][3]', min_value=0, max_value=5)
 )
 @settings(max_examples=10)
 def test_gauge_weight_vote(accounts, gauge_controller, three_gauges, voting_escrow, st_deposits, st_length, st_votes):
