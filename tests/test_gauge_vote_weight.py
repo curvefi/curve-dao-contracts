@@ -54,13 +54,13 @@ def test_gauge_weight_vote(accounts, gauge_controller, three_gauges, voting_escr
 
     # Calculate slope data, build model functions
     data = []
-    for acct in accounts[:3]:
+    for i, acct in enumerate(accounts[:3]):
         initial_bias = voting_escrow.get_last_user_slope(acct) * (voting_escrow.locked__end(acct) - timestamp)
         duration = (timestamp + st_length[i] * WEEK) // WEEK * WEEK - timestamp  # <- endtime rounded to whole weeks
         data.append((initial_bias, duration))
 
     max_duration = max(duration for bias, duration in data)
-    models = [lambda x: max(bias * (1 - x * max_duration / duration), 0) for bias, duration in data]
+    models = lambda i, x: max(data[i][0] * (1 - x * max_duration / data[i][1]), 0)
 
     rpc.sleep(WEEK * 4)
     rpc.mine()
@@ -75,9 +75,9 @@ def test_gauge_weight_vote(accounts, gauge_controller, three_gauges, voting_escr
 
         if relative_time < 1:
             theoretical_weights = [
-                sum((votes[i][0]/10000) * models[i](relative_time) for i in range(3)),
-                sum((votes[i][1]/10000) * models[i](relative_time) for i in range(3)),
-                sum((votes[i][2]/10000) * models[i](relative_time) for i in range(3)),
+                sum((votes[i][0]/10000) * models(i, relative_time) for i in range(3)),
+                sum((votes[i][1]/10000) * models(i, relative_time) for i in range(3)),
+                sum((votes[i][2]/10000) * models(i, relative_time) for i in range(3)),
             ]
             theoretical_weights = [w and (w / sum(theoretical_weights)) for w in theoretical_weights]
         else:
@@ -86,7 +86,7 @@ def test_gauge_weight_vote(accounts, gauge_controller, three_gauges, voting_escr
         print(relative_time, weights, theoretical_weights)
         if relative_time != 1:  # XXX 1 is odd: let's look at it separately
             for i in range(3):
-                assert abs(weights[i] - theoretical_weights[i]) <= 1 / WEEK
+                assert abs(weights[i] - theoretical_weights[i]) <= (history[-1].timestamp - timestamp) / WEEK + 1  # 1 s per week?
 
         rpc.sleep(WEEK * 4)
         rpc.mine()
