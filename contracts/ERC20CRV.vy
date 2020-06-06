@@ -245,8 +245,8 @@ def mint(_to: address, _value: uint256):
     @param _to The account that will receive the created tokens.
     @param _value The amount that will be created.
     """
-    assert msg.sender == self.minter
-    assert _to != ZERO_ADDRESS
+    assert msg.sender == self.minter  # dev: minter only
+    assert _to != ZERO_ADDRESS  # dev: zero address
 
     if block.timestamp >= self.start_epoch_time + RATE_REDUCTION_TIME:
         self._update_mining_parameters()
