@@ -24,7 +24,6 @@ def test_n_gauges(accounts, gauge_controller, three_gauges):
     assert gauge_controller.n_gauges() == 2
 
 
-@pytest.mark.xfail(reason="Adding a gauge twice overwrites the data but the count still increments")
 def test_n_gauges_same_gauge(accounts, gauge_controller, three_gauges):
 
     assert gauge_controller.n_gauges() == 0

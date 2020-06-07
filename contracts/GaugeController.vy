@@ -43,7 +43,10 @@ period: public(int128)
 period_timestamp: public(map(int128, timestamp))
 
 gauges: public(map(int128, address))
-gauge_types: public(map(address, int128))
+
+# we increment values by 1 prior to storing them here so we can rely on a value
+# of zero as meaning the gauge has not been set
+gauge_types_: map(address, int128)
 
 gauge_weights: map(address, map(int128, uint256))  # address -> period -> weight
 type_weights: map(int128, map(int128, uint256))  # type_id -> period -> weight
@@ -82,6 +85,15 @@ def transfer_ownership(addr: address):
     self.admin = addr
 
 
+@public
+@constant
+def gauge_types(_addr: address) -> int128:
+    gauge_type: int128 = self.gauge_types_[_addr]
+    assert gauge_type != 0
+
+    return gauge_type - 1
+
+
 @private
 def change_epoch(_p: int128) -> (int128, bool):
     # Handle change of epoch
@@ -115,11 +127,12 @@ def add_gauge(addr: address, gauge_type: int128, weight: uint256 = 0):
     # If someone adds the same gauge twice, it will override the previous one
     # That's probably ok
 
-    n: int128 = self.n_gauges
-    self.n_gauges = n + 1
+    if self.gauge_types_[addr] == 0:
+        n: int128 = self.n_gauges
+        self.n_gauges = n + 1
+        self.gauges[n] = addr
 
-    self.gauges[n] = addr
-    self.gauge_types[addr] = gauge_type
+    self.gauge_types_[addr] = gauge_type + 1
 
     if weight > 0:
         p: int128 = self.period
@@ -158,7 +171,7 @@ def gauge_relative_weight(addr: address, _period: int128=-1) -> uint256:
         p = self.period
     _total_weight: uint256 = self.total_weight[p]
     if _total_weight > 0:
-        gauge_type: int128 = self.gauge_types[addr]
+        gauge_type: int128 = self.gauge_types_[addr] - 1
         tl: int128 = self.type_last[gauge_type]
         gl: int128 = self.gauge_last[addr]
         return 10 ** 18 * self.type_weights[gauge_type][tl] * self.gauge_weights[addr][gl] / _total_weight
@@ -184,7 +197,7 @@ def gauge_relative_weight_write(addr: address, _period: int128=-1) -> uint256:
         assert p <= self.period
     _total_weight: uint256 = self.total_weight[p]
     if _total_weight > 0:
-        gauge_type: int128 = self.gauge_types[addr]
+        gauge_type: int128 = self.gauge_types_[addr] - 1
         tl: int128 = self.type_last[gauge_type]
         gl: int128 = self.gauge_last[addr]
         if p > tl and tl > 0:
@@ -261,7 +274,7 @@ def change_type_weight(type_id: int128, weight: uint256):
 @private
 def _change_gauge_weight(addr: address, weight: uint256):
     # Fill weight from gauge_last to now, type_sums from type_last till now, total
-    gauge_type: int128 = self.gauge_types[addr]
+    gauge_type: int128 = self.gauge_types_[addr] - 1
     p: int128 = self.period
     epoch_changed: bool = False
     p, epoch_changed = self.change_epoch(p)
