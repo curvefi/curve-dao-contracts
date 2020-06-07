@@ -145,19 +145,19 @@ def mintable_in_timeframe(start: uint256, end: uint256) -> uint256:
 
 @public
 def set_minter(_minter: address):
-    assert msg.sender == self.admin
+    assert msg.sender == self.admin  # dev: admin only
     self.minter = _minter
 
 
 @public
 def set_admin(_admin: address):
-    assert msg.sender == self.admin
+    assert msg.sender == self.admin  # dev: admin only
     self.admin = _admin
 
 
 @public
 def set_burner(_burner: address):
-    assert msg.sender == self.admin
+    assert msg.sender == self.admin  # dev: admin only
     self.burner = _burner
 
 
