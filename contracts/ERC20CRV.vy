@@ -267,7 +267,7 @@ def _burn(_to: address, _value: uint256):
     @param _to The account whose tokens will be burned.
     @param _value The amount that will be burned.
     """
-    assert _to != ZERO_ADDRESS
+    assert _to != ZERO_ADDRESS  # dev: zero address
     self.total_supply -= _value
     self.balanceOf[_to] -= _value
     log.Transfer(_to, ZERO_ADDRESS, _value)
