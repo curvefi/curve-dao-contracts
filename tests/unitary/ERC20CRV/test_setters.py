@@ -6,11 +6,6 @@ def test_set_minter_admin_only(accounts, token):
         token.set_minter(accounts[2], {'from': accounts[1]})
 
 
-def test_set_burner_admin_only(accounts, token):
-    with brownie.reverts("dev: admin only"):
-        token.set_burner(accounts[2], {'from': accounts[1]})
-
-
 def test_set_admin_admin_only(accounts, token):
     with brownie.reverts("dev: admin only"):
         token.set_admin(accounts[2], {'from': accounts[1]})
@@ -25,12 +20,6 @@ def test_set_minter(accounts, token):
     token.set_minter(accounts[1], {'from': accounts[0]})
 
     assert token.minter() == accounts[1]
-
-
-def test_set_burner(accounts, token):
-    token.set_burner(accounts[1], {'from': accounts[0]})
-
-    assert token.burner() == accounts[1]
 
 
 def test_set_admin(accounts, token):
