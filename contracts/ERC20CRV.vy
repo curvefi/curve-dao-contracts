@@ -18,7 +18,6 @@ allowances: map(address, map(address, uint256))
 total_supply: uint256
 
 minter: public(address)
-burner: public(address)
 admin: public(address)
 
 # General constants
@@ -48,10 +47,8 @@ def __init__(_name: string[64], _symbol: string[32], _decimals: uint256, _supply
     self.total_supply = init_supply
     self.admin = msg.sender
     self.minter = msg.sender
-    self.burner = msg.sender
     log.Transfer(ZERO_ADDRESS, msg.sender, init_supply)
 
-    self.mining_epoch = 0
     self.start_epoch_time = block.timestamp
     self.rate = INITIAL_RATE
     self.start_epoch_supply = init_supply
@@ -156,12 +153,6 @@ def set_admin(_admin: address):
 
 
 @public
-def set_burner(_burner: address):
-    assert msg.sender == self.admin  # dev: admin only
-    self.burner = _burner
-
-
-@public
 @constant
 def totalSupply() -> uint256:
     """
@@ -259,39 +250,17 @@ def mint(_to: address, _value: uint256):
     log.Transfer(ZERO_ADDRESS, _to, _value)
 
 
-@private
-def _burn(_to: address, _value: uint256):
-    """
-    @dev Internal function that burns an amount of the token of a given
-         account.
-    @param _to The account whose tokens will be burned.
-    @param _value The amount that will be burned.
-    """
-    assert _to != ZERO_ADDRESS  # dev: zero address
-    self.total_supply -= _value
-    self.balanceOf[_to] -= _value
-    log.Transfer(_to, ZERO_ADDRESS, _value)
-
-
 @public
-def burn(_value: uint256):
+def burn(_value: uint256) -> bool:
     """
     @dev Burn an amount of the token of msg.sender.
     @param _value The amount that will be burned.
     """
-    assert msg.sender == self.burner, "Only burner is allowed to burn"
-    self._burn(msg.sender, _value)
+    self.balanceOf[msg.sender] -= _value
+    self.total_supply -= _value
 
-
-@public
-def burnFrom(_to: address, _value: uint256):
-    """
-    @dev Burn an amount of the token from a given account.
-    @param _to The account whose tokens will be burned.
-    @param _value The amount that will be burned.
-    """
-    assert msg.sender == self.burner, "Only burner is allowed to burn"
-    self._burn(_to, _value)
+    log.Transfer(msg.sender, ZERO_ADDRESS, _value)
+    return True
 
 
 @public
