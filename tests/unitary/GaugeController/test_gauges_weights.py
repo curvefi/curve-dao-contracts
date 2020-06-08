@@ -1,5 +1,3 @@
-import pytest
-
 WEEK = 7 * 86400
 YEAR = 365 * 86400
 
