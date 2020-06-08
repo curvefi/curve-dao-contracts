@@ -16,6 +16,8 @@ def isolation_setup(fn_isolation):
     pass
 
 
+# helper functions as fixtures
+
 @pytest.fixture(scope="function")
 def block_timestamp(web3):
     def _fn():
@@ -37,6 +39,8 @@ def theoretical_supply(rpc, token, block_timestamp):
     yield _fn
 
 
+# core contracts
+
 @pytest.fixture(scope="module")
 def token(ERC20CRV, accounts):
     yield ERC20CRV.deploy("Curve DAO Token", "CRV", 18, 10 ** 9, {'from': accounts[0]})
@@ -48,11 +52,6 @@ def voting_escrow(VotingEscrow, accounts, token):
 
 
 @pytest.fixture(scope="module")
-def mock_lp_token(ERC20LP, accounts):  # Not using the actual Curve contract
-    yield ERC20LP.deploy("Curve LP token", "usdCrv", 18, 10 ** 9, {'from': accounts[0]})
-
-
-@pytest.fixture(scope="module")
 def gauge_controller(GaugeController, accounts, token, voting_escrow):
     yield GaugeController.deploy(token, voting_escrow, {'from': accounts[0]})
 
@@ -60,6 +59,11 @@ def gauge_controller(GaugeController, accounts, token, voting_escrow):
 @pytest.fixture(scope="module")
 def minter(Minter, accounts, gauge_controller, token):
     yield Minter.deploy(token, gauge_controller, {'from': accounts[0]})
+
+
+@pytest.fixture(scope="module")
+def pool_proxy(PoolProxy, accounts):
+    yield PoolProxy.deploy({'from': accounts[0]})
 
 
 @pytest.fixture(scope="module")
@@ -75,3 +79,30 @@ def three_gauges(LiquidityGauge, accounts, mock_lp_token, minter):
     ]
 
     yield contracts
+
+
+# testing contracts
+
+@pytest.fixture(scope="module")
+def coin_a(ERC20, accounts):
+    yield ERC20.deploy("Coin A", "USDA", 18, {'from': accounts[0]})
+
+
+@pytest.fixture(scope="module")
+def coin_b(ERC20, accounts):
+    yield ERC20.deploy("Coin B", "USDB", 18, {'from': accounts[0]})
+
+
+@pytest.fixture(scope="module")
+def mock_lp_token(ERC20LP, accounts):  # Not using the actual Curve contract
+    yield ERC20LP.deploy("Curve LP token", "usdCrv", 18, 10 ** 9, {'from': accounts[0]})
+
+
+@pytest.fixture(scope="module")
+def pool(CurvePool, accounts, mock_lp_token, coin_a, coin_b):
+    curve_pool = CurvePool.deploy(
+        [coin_a, coin_b], mock_lp_token, 100, 4 * 10 ** 6, {'from': accounts[0]}
+    )
+    mock_lp_token.set_minter(curve_pool, {'from': accounts[0]})
+
+    yield curve_pool
