@@ -8,55 +8,6 @@ MAXTIME = 126144000
 TOL = 120 / WEEK
 
 
-def test_escrow_deposit_withdraw(rpc, accounts, token, voting_escrow, block_timestamp):
-    alice, bob = accounts[0:2]
-    from_alice = {'from': alice}
-    from_bob = {'from': bob}
-
-    token.transfer(bob, 2 * 10 ** 18, from_alice)
-    token.approve(voting_escrow.address, 2 * 10 ** 18, from_bob)
-
-    alice_amount = 1000 * 10 ** 18
-    alice_unlock_time = (block_timestamp() + 2 * WEEK) // WEEK * WEEK
-    token.approve(voting_escrow.address, alice_amount * 10, from_alice)
-
-    # Bob cannot deposit for Alice too early
-    with brownie.reverts("First tx should be done by user"):
-        voting_escrow.deposit_for(alice, 10 ** 18, from_bob)
-
-    # Simple deposit / withdraw
-    voting_escrow.deposit(alice_amount, alice_unlock_time, from_alice)
-    with brownie.reverts():
-        voting_escrow.withdraw(alice_amount, from_alice)
-    rpc.sleep(2 * WEEK)
-    rpc.mine()
-    voting_escrow.withdraw(alice_amount, from_alice)
-    with brownie.reverts():
-        voting_escrow.withdraw(1, from_alice)
-
-    # Deposit, add more, withdraw all
-    alice_unlock_time = (block_timestamp() + 2 * WEEK) // WEEK * WEEK
-    voting_escrow.deposit(alice_amount, alice_unlock_time, from_alice)
-    rpc.sleep(WEEK)
-    rpc.mine()
-    with brownie.reverts():
-        voting_escrow.deposit(alice_amount, alice_unlock_time - 1, from_alice)
-    voting_escrow.deposit(alice_amount, from_alice)
-    voting_escrow.deposit_for(alice, 10 ** 18, from_bob)
-    rpc.sleep(WEEK)
-    rpc.mine()
-
-    with brownie.reverts('Withdraw old tokens first'):
-        voting_escrow.deposit(1, block_timestamp() + 4 * WEEK, from_alice)
-
-    balance_before = token.balanceOf(alice)
-    voting_escrow.withdraw(from_alice)
-    assert token.balanceOf(alice) == 2 * alice_amount + 10 ** 18 + balance_before
-
-    with brownie.reverts('No existing lock found'):
-        voting_escrow.deposit_for(alice, 10 ** 18, from_bob)
-
-
 def test_voting_powers(web3, rpc, accounts, block_timestamp,
                        token, voting_escrow):
     """

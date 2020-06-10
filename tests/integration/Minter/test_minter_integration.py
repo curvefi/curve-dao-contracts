@@ -1,7 +1,7 @@
 
 import brownie
 
-from .conftest import approx
+from tests.conftest import approx
 
 
 def to_int(*args):
