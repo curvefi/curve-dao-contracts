@@ -1,5 +1,5 @@
 from random import random, randrange
-from .conftest import YEAR, approx
+from tests.conftest import YEAR, approx
 
 MAX_UINT256 = 2 ** 256 - 1
 WEEK = 7 * 86400
