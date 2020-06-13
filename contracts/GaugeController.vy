@@ -72,9 +72,6 @@ def __init__(_token: address, _voting_escrow: address):
     self.admin = msg.sender
     self.token = _token
     self.voting_escrow = _voting_escrow
-    self.n_gauge_types = 0
-    self.n_gauges = 0
-    self.period = 0
     self.period_timestamp[0] = block.timestamp
     self.last_epoch_time = CRV20(_token).start_epoch_time_write()
 
