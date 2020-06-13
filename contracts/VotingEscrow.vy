@@ -231,7 +231,7 @@ def _deposit_for(addr: address, value: uint256, _unlock_time: uint256):
         # It means that a workable lock should already exist
         assert _locked.amount > 0, "No existing lock found"
         assert _locked.end > block.timestamp, "Cannot add to expired lock. Withdraw"
-        assert value > 0  # Why add zero to existing lock
+        assert value != 0  # Why add zero to existing lock
 
     else:
         # Lock is extended, or a new one is created, with deposit added or not
@@ -241,14 +241,14 @@ def _deposit_for(addr: address, value: uint256, _unlock_time: uint256):
         assert unlock_time > block.timestamp, "Can only lock until time in the future"
         if (unlock_time == _locked.end) or (_locked.end <= block.timestamp):
             # If lock is not extended, we must be adding more to it
-            assert value > 0
+            assert value != 0
         assert unlock_time <= as_unitless_number(block.timestamp) + MAXTIME, "Voting lock can be 4 years max"
 
     self.supply += value
     old_locked: LockedBalance = _locked
     # Adding to existing lock, or if a lock is expired - creating a new one
     _locked.amount += convert(value, int128)
-    if unlock_time > 0:
+    if unlock_time != 0:
         _locked.end = unlock_time
     self.locked[addr] = _locked
 
@@ -258,7 +258,7 @@ def _deposit_for(addr: address, value: uint256, _unlock_time: uint256):
     # _locked.end > block.timestamp (always)
     self._checkpoint(addr, old_locked, _locked)
 
-    if value > 0:
+    if value != 0:
         assert_modifiable(ERC20(self.token).transferFrom(addr, self, value))
 
     log.Deposit(addr, value, _locked.end)
@@ -383,7 +383,7 @@ def balanceOfAt(addr: address, _block: uint256) -> uint256:
         d_block = block.number - point_0.blk
         d_t = as_unitless_number(block.timestamp) - point_0.ts
     block_time: uint256 = point_0.ts
-    if d_block > 0:
+    if d_block != 0:
         block_time += d_t * (_block - point_0.blk) / d_block
 
     upoint.bias -= upoint.slope * convert(block_time - upoint.ts, int128)

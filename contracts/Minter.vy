@@ -35,6 +35,6 @@ def mint(gauge_id: int128):
     total_mint: uint256 = Gauge(gauge_addr).integrate_fraction(msg.sender)
     to_mint: uint256 = total_mint - self.minted[msg.sender][gauge_addr]
 
-    if to_mint > 0:
+    if to_mint != 0:
         MERC20(self.token).mint(msg.sender, to_mint)
         self.minted[msg.sender][gauge_addr] = total_mint
