@@ -10,8 +10,6 @@ weight also proportional to locktime, as will be described below.
   <img width="400px" src="https://github.com/curvefi/curve-dao-contracts/blob/master/doc/dao-overview.png" />
 </p>
 
-/Users/julien/Projects/Blockchain/curve/curve-dao-contracts/doc/dao-overview.png
-
 Curve DAO has a token CRV which is used for both governance and value accrual.
 
 ## Time-weighted voting. Vote-locked tokens in VotingEscrow
