@@ -4,7 +4,7 @@ Curve DAO consists of multuple smart contracts connected by Aragon. Apart from
 that, standard Aragon's 1 token = 1 vote method is replaced with the voting
 weight also proportional to locktime, as will be described below.
 
-## Curve DAO contracts managed by Aragon
+Curve DAO contracts managed by Aragon
 
 <p align="center">
   <img width="400px" src="https://github.com/curvefi/curve-dao-contracts/blob/master/doc/dao-overview.png" />
