@@ -4,7 +4,13 @@ Curve DAO consists of multuple smart contracts connected by Aragon. Apart from
 that, standard Aragon's 1 token = 1 vote method is replaced with the voting
 weight also proportional to locktime, as will be described below.
 
-![Curve DAO contracts managed by Aragon](dao-overview.pdf)
+## Curve DAO contracts managed by Aragon
+
+<p align="center">
+  <img width="400px" src="https://github.com/curvefi/curve-dao-contracts/blob/master/doc/dao-overview.png" />
+</p>
+
+/Users/julien/Projects/Blockchain/curve/curve-dao-contracts/doc/dao-overview.png
 
 Curve DAO has a token CRV which is used for both governance and value accrual.
 
@@ -28,7 +34,12 @@ return the time-weighted voting weight $w$ and the sum of all of those weights
 $W = \sum w_i$ respectively. Aragon can interface _VotingEscrow_ as if it was
 a typical governance token.
 
-![Voting weight of vote-locked tokens](votelock.pdf){width=280px}
+Voting weight of vote-locked tokens:
+
+<p align="center">
+  <img width="400px" src="https://github.com/curvefi/curve-dao-contracts/blob/master/doc/votelock.png" />
+</p>
+
 
 Locks can be created or extended in time or token amount with `deposit()`,
 and `withdraw()` can remove tokens from the escrow when the lock is expired.
@@ -60,7 +71,12 @@ defined by inflation.
 
 Each time the inflation changes, a new mining epoch starts.
 
-![CRV token inflation schedule](inflation.pdf){width=280px}
+CRV token inflation schedule:
+
+<p align="center">
+  <img width="400px" src="https://github.com/curvefi/curve-dao-contracts/blob/master/doc/inflation.png" />
+</p>
+
 
 Initial supply of CRV is $1$ billion tokens, which is $33\%$ of the eventual
 ($t\rightarrow\infty$) supply of $\approx 3.03$ billion tokens.
