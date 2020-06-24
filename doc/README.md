@@ -1,8 +1,8 @@
 # Curve DAO
 
-Curve DAO consists of multuple smart contracts connected by Aragon. Apart from
+Curve DAO consists of multiple smart contracts connected by Aragon. Apart from
 that, standard Aragon's 1 token = 1 vote method is replaced with the voting
-weight also proportional to locktime, as will be described below.
+weight proportional to locktime, as will be described below.
 
 ![Curve DAO contracts managed by Aragon](dao-overview.pdf)
 
@@ -16,7 +16,7 @@ and $t_{\max} = 4~\text{years}$. After locking, the time _left to unlock_
 is $t\le t_l$. The voting weight is equal to:
 $$w = a \frac{t}{t_{\max}}.$$
 In other words, the vote is both amount- and time-weighted, where the time
-counted is how long the tokens cannot be moved in fututre.
+counted is how long the tokens cannot be moved in future.
 
 The account which locks the tokens cannot be a smart contract (because can be
 tradable and/or tokenized), unless it is one of whitelisted smart contracts
