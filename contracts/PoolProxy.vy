@@ -96,7 +96,7 @@ def kill_me(_pool: address):
 @public
 @nonreentrant('lock')
 def unkill_me(_pool: address):
-    assert msg.sender == self.emergency_admin, "Access denied"
+    assert msg.sender == self.emergency_admin or msg.sender == self.ownership_admin, "Access denied"
     Curve(_pool).unkill_me()
 
 
