@@ -10,15 +10,15 @@ aave: public(uint256)
 donated: public(bool)
 withdrawn: public(bool)
 
-@public
+@external
 def set_aave_referral(referral_code: uint256):
     self.aave = referral_code
 
-@public
+@external
 def donate_admin_fees():
     self.donated = True
 
-@public
+@external
 def withdraw_admin_fees():
     self.withdrawn = True
 """
@@ -70,7 +70,7 @@ def test_set_aave_referral(accounts, pool_proxy, owner_pool):
 
 
 def test_set_aave_referral_not_exists(accounts, pool_proxy, pool):
-    with brownie.reverts('dev: if implemented by the pool'):
+    with brownie.reverts():
         pool_proxy.set_aave_referral(pool, 42, {'from': accounts[0]})
 
 
@@ -87,7 +87,7 @@ def test_donate_fees(accounts, pool_proxy, owner_pool):
 
 
 def test_donate_fees_not_exists(accounts, pool_proxy, pool):
-    with brownie.reverts('dev: if implemented by the pool'):
+    with brownie.reverts():
         pool_proxy.donate_admin_fees(pool, {'from': accounts[0]})
 
 

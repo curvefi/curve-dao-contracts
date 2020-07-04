@@ -25,12 +25,14 @@ def setup(gauge_controller, accounts, three_gauges, token, voting_escrow):
 
 
 @given(
-    st_deposits = strategy('uint256[3]', min_value=10**21, max_value=10**23),
-    st_length = strategy('uint256[3]', min_value=52, max_value=100),
-    st_votes = strategy('uint[2][3]', min_value=0, max_value=5)
+    st_deposits=strategy('uint256[3]', min_value=10**21, max_value=10**23),
+    st_length=strategy('uint256[3]', min_value=52, max_value=100),
+    st_votes=strategy('uint[2][3]', min_value=0, max_value=5)
 )
 @settings(max_examples=10)
-def test_gauge_weight_vote(accounts, gauge_controller, three_gauges, voting_escrow, st_deposits, st_length, st_votes):
+def test_gauge_weight_vote(
+    accounts, gauge_controller, three_gauges, voting_escrow, st_deposits, st_length, st_votes
+):
     """
     Test that gauge weights correctly adjust over time.
 
@@ -65,7 +67,7 @@ def test_gauge_weight_vote(accounts, gauge_controller, three_gauges, voting_escr
     # Calculate slope data, build model functions
     slope_data = []
     for i, acct in enumerate(accounts[:3]):
-        initial_bias = voting_escrow.get_last_user_slope(acct) * (voting_escrow.locked__end(acct) - timestamp)
+        initial_bias = voting_escrow.get_last_user_slope(acct) * (voting_escrow.locked(acct)[1] - timestamp)
         duration = (timestamp + st_length[i] * WEEK) // WEEK * WEEK - timestamp  # <- endtime rounded to whole weeks
         slope_data.append((initial_bias, duration))
 

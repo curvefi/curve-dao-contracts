@@ -8,8 +8,9 @@ def test_kill(accounts, pool_proxy, pool):
     pool_proxy.kill_me(pool, {'from': accounts[2]})
 
 
-def test_unkill(accounts, pool_proxy, pool):
-    pool_proxy.unkill_me(pool, {'from': accounts[2]})
+@pytest.mark.parametrize('idx', [0, 2])
+def test_unkill(accounts, pool_proxy, pool, idx):
+    pool_proxy.unkill_me(pool, {'from': accounts[idx]})
 
 
 @pytest.mark.parametrize('idx', [0, 1, 3])
