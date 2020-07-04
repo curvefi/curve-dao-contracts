@@ -19,8 +19,15 @@ contract Minter:
     def controller() -> address: constant
 
 
+contract VotingEscrow:
+    def user_point_epoch(addr: address) -> int128: constant
+    def user_point_history__ts(addr: address, epoch: int128) -> uint256: constant
+
+
 Deposit: event({provider: indexed(address), value: uint256})
 Withdraw: event({provider: indexed(address), value: uint256})
+
+TOKENLESS_PRODUCTION: constant(uint256) = 40
 
 
 minter: public(address)
@@ -78,9 +85,9 @@ def _update_liquidity_limit(addr: address, l: uint256, L: uint256):
     voting_balance: uint256 = ERC20(_voting_escrow).balanceOf(addr)
     voting_total: uint256 = ERC20(_voting_escrow).totalSupply()
 
-    lim: uint256 = l * 40 / 100
+    lim: uint256 = l * TOKENLESS_PRODUCTION / 100
     if voting_total > 0:
-        lim += L * voting_balance / voting_total * 60 / 100
+        lim += L * voting_balance / voting_total * (100 - TOKENLESS_PRODUCTION) / 100
 
     lim = min(l, lim)
     old_bal: uint256 = self.working_balances[addr]
@@ -182,7 +189,24 @@ def _checkpoint(addr: address):
 def user_checkpoint(addr: address):
     assert (msg.sender == addr) or (msg.sender == self.minter)  # dev: unauthorized
     self._checkpoint(addr)
-    self._update_liquidity_limit(msg.sender, self.balanceOf[addr], self.totalSupply)
+    self._update_liquidity_limit(addr, self.balanceOf[addr], self.totalSupply)
+
+
+@public
+def kick_boost(addr: address):
+    # Kick someone who is abusing his boost
+    # Only if either they had another VE event, or they had VE lock expired
+    _voting_escrow: address = self.voting_escrow
+    t_last: uint256 = as_unitless_number(self.integrate_checkpoint_of[addr])
+    t_ve: uint256 = VotingEscrow(_voting_escrow).user_point_history__ts(
+        addr, VotingEscrow(_voting_escrow).user_point_epoch(addr))
+    _balance: uint256 = self.balanceOf[addr]
+
+    assert ERC20(self.voting_escrow).balanceOf(addr) == 0 or t_ve > t_last # dev: kick not allowed
+    assert self.working_balances[addr] > _balance * TOKENLESS_PRODUCTION / 100  # dev: kick not needed
+
+    self._checkpoint(addr)
+    self._update_liquidity_limit(addr, self.balanceOf[addr], self.totalSupply)
 
 
 @public
