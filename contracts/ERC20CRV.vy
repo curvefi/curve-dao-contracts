@@ -143,6 +143,7 @@ def mintable_in_timeframe(start: uint256, end: uint256) -> uint256:
 @public
 def set_minter(_minter: address):
     assert msg.sender == self.admin  # dev: admin only
+    assert self.minter == ZERO_ADDRESS  # dev: can set the minter only once, at creation
     self.minter = _minter
 
 
