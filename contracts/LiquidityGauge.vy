@@ -78,9 +78,9 @@ def _update_liquidity_limit(addr: address, l: uint256, L: uint256):
     voting_balance: uint256 = ERC20(_voting_escrow).balanceOf(addr)
     voting_total: uint256 = ERC20(_voting_escrow).totalSupply()
 
-    lim: uint256 = l * 20 / 100
+    lim: uint256 = l * 40 / 100
     if voting_total > 0:
-        lim += L * voting_balance / voting_total * 80 / 100
+        lim += L * voting_balance / voting_total * 60 / 100
 
     lim = min(l, lim)
     old_bal: uint256 = self.working_balances[addr]

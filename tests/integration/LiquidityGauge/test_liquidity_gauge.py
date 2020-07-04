@@ -148,7 +148,7 @@ def test_mining_with_votelock(
     # Alice earned 5 times more CRV because she vote-locked her CRV
     rewards_alice = liquidity_gauge.integrate_fraction(alice)
     rewards_bob = liquidity_gauge.integrate_fraction(bob)
-    assert approx(rewards_alice / rewards_bob, 5, 1e-5)
+    assert approx(rewards_alice / rewards_bob, 2.5, 1e-5)
 
     # Time travel / checkpoint: no one has CRV vote-locked
     rpc.sleep(4 * WEEK)
