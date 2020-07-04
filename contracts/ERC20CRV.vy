@@ -46,7 +46,6 @@ def __init__(_name: string[64], _symbol: string[32], _decimals: uint256, _supply
     self.balanceOf[msg.sender] = init_supply
     self.total_supply = init_supply
     self.admin = msg.sender
-    self.minter = msg.sender
     log.Transfer(ZERO_ADDRESS, msg.sender, init_supply)
 
     self.start_epoch_time = block.timestamp

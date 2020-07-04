@@ -17,6 +17,7 @@ def test_available_supply(rpc, web3, token):
 
 
 def test_mint(accounts, rpc, token):
+    token.set_minter(accounts[0], {'from': accounts[0]})
     creation_time = token.start_epoch_time()
     initial_supply = token.totalSupply()
     rate = token.rate()
@@ -30,6 +31,7 @@ def test_mint(accounts, rpc, token):
 
 
 def test_overmint(accounts, rpc, token):
+    token.set_minter(accounts[0], {'from': accounts[0]})
     creation_time = token.start_epoch_time()
     rate = token.rate()
     rpc.sleep(WEEK)
@@ -39,10 +41,12 @@ def test_overmint(accounts, rpc, token):
 
 
 def test_minter_only(accounts, token):
+    token.set_minter(accounts[0], {'from': accounts[0]})
     with brownie.reverts("dev: minter only"):
         token.mint(accounts[1], 0, {'from': accounts[1]})
 
 
 def test_zero_address(accounts, token):
+    token.set_minter(accounts[0], {'from': accounts[0]})
     with brownie.reverts("dev: zero address"):
         token.mint(ZERO_ADDRESS, 0, {'from': accounts[0]})
