@@ -14,14 +14,14 @@ struct VotedSlope:
     end: uint256
 
 
-contract CRV20:
-    def start_epoch_time_write() -> timestamp: modifying
-    def start_epoch_time() -> timestamp: constant
+interface CRV20:
+    def start_epoch_time_write() -> uint256: nonpayable
+    def start_epoch_time() -> uint256: view
 
 
-contract VotingEscrow:
-    def get_last_user_slope(addr: address) -> int128: constant
-    def locked__end(addr: address) -> uint256: constant
+interface VotingEscrow:
+    def get_last_user_slope(addr: address) -> int128: view
+    def locked(addr: address) -> (uint256, uint256): view
 
 
 admin: public(address)  # Can and will be a smart contract
@@ -32,7 +32,7 @@ voting_escrow: public(address)  # Voting escrow
 # All numbers are "fixed point" on the basis of 1e18
 n_gauge_types: public(int128)
 n_gauges: public(int128)
-gauge_type_names: public(map(int128, string[64]))
+gauge_type_names: public(HashMap[int128, String[64]])
 
 # Every time a weight or epoch changes, period increases
 # The idea is: relative weights are guaranteed to not change within the period
@@ -40,34 +40,34 @@ gauge_type_names: public(map(int128, string[64]))
 # Period is guaranteed to not have a change of epoch (e.g. mining rate) in the
 # middle of it
 period: public(int128)
-period_timestamp: public(map(int128, timestamp))
+period_timestamp: public(HashMap[int128, uint256])
 
-gauges: public(map(int128, address))
+gauges: public(HashMap[int128, address])
 
 # we increment values by 1 prior to storing them here so we can rely on a value
 # of zero as meaning the gauge has not been set
-gauge_types_: map(address, int128)
+gauge_types_: HashMap[address, int128]
 
-gauge_weights: map(address, map(int128, uint256))  # address -> period -> weight
-type_weights: map(int128, map(int128, uint256))  # type_id -> period -> weight
-weight_sums_per_type: map(int128, map(int128, uint256))  # type_id -> period -> weight
-total_weight: map(int128, uint256)  # period -> total_weight
+gauge_weights: HashMap[address, HashMap[int128, uint256]]  # address -> period -> weight
+type_weights: HashMap[int128, HashMap[int128, uint256]]  # type_id -> period -> weight
+weight_sums_per_type: HashMap[int128, HashMap[int128, uint256]]  # type_id -> period -> weight
+total_weight: HashMap[int128, uint256]  # period -> total_weight
 
-type_last: map(int128, int128)  # Last period for type update type_id -> period
-gauge_last: map(address, int128)  # Last period for gauge update gauge_addr -> period
+type_last: HashMap[int128, int128]  # Last period for type update type_id -> period
+gauge_last: HashMap[address, int128]  # Last period for gauge update gauge_addr -> period
 # Total is always at the last updated state
 
-last_epoch_time: public(timestamp)
+last_epoch_time: public(uint256)
 
-vote_points: public(map(int128, Point))  # gauge_id -> Point
-vote_enacted_at: public(map(int128, uint256))  # gauge_id -> timestamp
-vote_slope_changes: public(map(int128, map(uint256, int128)))  # gauge_id -> time -> slope
-vote_bias_changes: public(map(int128, map(uint256, int128)))  # gauge_id -> time -> bias
-vote_user_slopes: public(map(address, map(int128, VotedSlope)))  # user -> gauge_id -> VotedSlope
-vote_user_power: public(map(address, int128))  # Total vote power used by user
+vote_points: public(HashMap[int128, Point])  # gauge_id -> Point
+vote_enacted_at: public(HashMap[int128, uint256])  # gauge_id -> timestamp
+vote_slope_changes: public(HashMap[int128, HashMap[uint256, int128]])  # gauge_id -> time -> slope
+vote_bias_changes: public(HashMap[int128, HashMap[uint256, int128]])  # gauge_id -> time -> bias
+vote_user_slopes: public(HashMap[address, HashMap[int128, VotedSlope]])  # user -> gauge_id -> VotedSlope
+vote_user_power: public(HashMap[address, int128])  # Total vote power used by user
 
 
-@public
+@external
 def __init__(_token: address, _voting_escrow: address):
     self.admin = msg.sender
     self.token = _token
@@ -76,14 +76,14 @@ def __init__(_token: address, _voting_escrow: address):
     self.last_epoch_time = CRV20(_token).start_epoch_time_write()
 
 
-@public
+@external
 def transfer_ownership(addr: address):
     assert msg.sender == self.admin
     self.admin = addr
 
 
-@public
-@constant
+@external
+@view
 def gauge_types(_addr: address) -> int128:
     gauge_type: int128 = self.gauge_types_[_addr]
     assert gauge_type != 0
@@ -91,14 +91,14 @@ def gauge_types(_addr: address) -> int128:
     return gauge_type - 1
 
 
-@private
+@internal
 def change_epoch(_p: int128) -> (int128, bool):
     # Handle change of epoch
     # If epoch change happened after the last point but before current-
     #     insert a new period
     # else use the current period for both weght and epoch change
     p: int128 = _p
-    let: timestamp = CRV20(self.token).start_epoch_time_write()
+    let: uint256 = CRV20(self.token).start_epoch_time_write()
     epoch_changed: bool = (let > self.period_timestamp[p]) and (let <= block.timestamp)
     if epoch_changed:
         p += 1
@@ -106,7 +106,7 @@ def change_epoch(_p: int128) -> (int128, bool):
     return (p, epoch_changed)
 
 
-@public
+@external
 def period_write() -> int128:
     p: int128 = self.period
     epoch_changed: bool = False
@@ -117,7 +117,7 @@ def period_write() -> int128:
     return p
 
 
-@public
+@external
 def add_gauge(addr: address, gauge_type: int128, weight: uint256 = 0):
     assert msg.sender == self.admin
     assert (gauge_type >= 0) and (gauge_type < self.n_gauge_types)
@@ -160,8 +160,8 @@ def add_gauge(addr: address, gauge_type: int128, weight: uint256 = 0):
         self.period_timestamp[p] = block.timestamp
 
 
-@public
-@constant
+@external
+@view
 def gauge_relative_weight(addr: address, _period: int128=-1) -> uint256:
     p: int128 = _period
     if _period < 0:
@@ -176,7 +176,7 @@ def gauge_relative_weight(addr: address, _period: int128=-1) -> uint256:
         return 0
 
 
-@public
+@external
 def gauge_relative_weight_write(addr: address, _period: int128=-1) -> uint256:
     """
     Same as gauge_relative_weight(), but also fill all the unfilled values
@@ -220,7 +220,7 @@ def gauge_relative_weight_write(addr: address, _period: int128=-1) -> uint256:
         return 0
 
 
-@private
+@internal
 def _change_type_weight(type_id: int128, weight: uint256):
     p: int128 = self.period
     epoch_changed: bool = False
@@ -252,8 +252,8 @@ def _change_type_weight(type_id: int128, weight: uint256):
     self.period_timestamp[p] = block.timestamp
 
 
-@public
-def add_type(_name: string[64], weight: uint256 = 0):
+@external
+def add_type(_name: String[64], weight: uint256 = 0):
     assert msg.sender == self.admin
     type_id: int128 = self.n_gauge_types
     self.gauge_type_names[type_id] = _name
@@ -262,13 +262,13 @@ def add_type(_name: string[64], weight: uint256 = 0):
         self._change_type_weight(type_id, weight)
 
 
-@public
+@external
 def change_type_weight(type_id: int128, weight: uint256):
     assert msg.sender == self.admin
     self._change_type_weight(type_id, weight)
 
 
-@private
+@internal
 def _change_gauge_weight(addr: address, weight: uint256):
     # Fill weight from gauge_last to now, type_sums from type_last till now, total
     gauge_type: int128 = self.gauge_types_[addr] - 1
@@ -314,27 +314,25 @@ def _change_gauge_weight(addr: address, weight: uint256):
     self.period_timestamp[p] = block.timestamp
 
 
-@public
+@external
 def change_gauge_weight(addr: address, weight: uint256):
     assert msg.sender == self.admin
     self._change_gauge_weight(addr, weight)
 
 
-@private
+@internal
 def _enact_vote(_gauge_id: int128):
-    now: uint256 = as_unitless_number(block.timestamp)
     ts: uint256 = self.vote_enacted_at[_gauge_id]
-
     if (ts + WEEK) / WEEK * WEEK <= block.timestamp:
         # Update vote_point
         vote_point: Point = self.vote_points[_gauge_id]
         if vote_point.ts == 0:
-            vote_point.ts = now
+            vote_point.ts = block.timestamp
         for i in range(500):
             next_ts: uint256 = (vote_point.ts + WEEK) / WEEK * WEEK
             dslope: int128 = 0
-            if next_ts > now:
-                next_ts = now
+            if next_ts > block.timestamp:
+                next_ts = block.timestamp
             else:
                 vote_point.bias += self.vote_bias_changes[_gauge_id][next_ts]
                 dslope = self.vote_slope_changes[_gauge_id][next_ts]
@@ -343,19 +341,19 @@ def _enact_vote(_gauge_id: int128):
                 vote_point.bias = 0
             vote_point.slope += dslope
             vote_point.ts = next_ts
-            if next_ts == now:
+            if next_ts == block.timestamp:
                 break
         self.vote_points[_gauge_id] = vote_point
-        self.vote_enacted_at[_gauge_id] = now
+        self.vote_enacted_at[_gauge_id] = block.timestamp
         self._change_gauge_weight(self.gauges[_gauge_id], convert(vote_point.bias, uint256))
 
 
-@public
+@external
 def enact_vote(_gauge_id: int128):
     self._enact_vote(_gauge_id)
 
 
-@public
+@external
 def vote_for_gauge_weights(_gauge_id: int128, _user_weight: int128):
     """
     @notice Allocate voting power for changing pool weights
@@ -364,9 +362,9 @@ def vote_for_gauge_weights(_gauge_id: int128, _user_weight: int128):
     """
     escrow: address = self.voting_escrow
     slope: int128 = VotingEscrow(escrow).get_last_user_slope(msg.sender)
-    lock_end: uint256 = VotingEscrow(escrow).locked__end(msg.sender)
+    lock_end: uint256 = VotingEscrow(escrow).locked(msg.sender)[1]
     _n_gauges: int128 = self.n_gauges
-    next_time: uint256 = (as_unitless_number(block.timestamp) + WEEK) / WEEK * WEEK
+    next_time: uint256 = (block.timestamp + WEEK) / WEEK * WEEK
     assert lock_end > next_time, "Your token lock expires too soon"
     assert (_gauge_id < _n_gauges) and (_gauge_id >= 0)  # dev: wrong gauge id
     assert (_user_weight >= 0) and (_user_weight <= 10000), "You used all your voting power"
@@ -409,31 +407,31 @@ def vote_for_gauge_weights(_gauge_id: int128, _user_weight: int128):
     self.vote_user_slopes[msg.sender][_gauge_id] = new_slope
 
 
-@public
-@constant
-def last_change() -> timestamp:
+@external
+@view
+def last_change() -> uint256:
     return self.period_timestamp[self.period]
 
 
-@public
-@constant
+@external
+@view
 def get_gauge_weight(addr: address) -> uint256:
     return self.gauge_weights[addr][self.gauge_last[addr]]
 
 
-@public
-@constant
+@external
+@view
 def get_type_weight(type_id: int128) -> uint256:
     return self.type_weights[type_id][self.type_last[type_id]]
 
 
-@public
-@constant
+@external
+@view
 def get_total_weight() -> uint256:
     return self.total_weight[self.period]
 
 
-@public
-@constant
+@external
+@view
 def get_weights_sum_per_type(type_id: int128) -> uint256:
     return self.weight_sums_per_type[type_id][self.type_last[type_id]]

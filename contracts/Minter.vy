@@ -1,28 +1,29 @@
-contract Controller:
-    def gauges(gauge_id: int128) -> address: constant
+interface Controller:
+    def gauges(gauge_id: int128) -> address: view
 
-contract Gauge:
+interface Gauge:
     # Presumably, other gauges will provide the same interfaces
-    def integrate_fraction(addr: address) -> uint256: constant
-    def user_checkpoint(addr: address): modifying
+    def integrate_fraction(addr: address) -> uint256: view
+    def user_checkpoint(addr: address): nonpayable
 
-contract MERC20:
-    def mint(_to: address, _value: uint256): modifying
+interface MERC20:
+    def mint(_to: address, _value: uint256): nonpayable
 
 
 token: public(address)
 controller: public(address)
 
-minted: public(map(address, map(address, uint256)))  # user -> gauge -> value
+# user -> gauge -> value
+minted: public(HashMap[address, HashMap[address, uint256]])
 
 
-@public
+@external
 def __init__(_token: address, _controller: address):
     self.token = _token
     self.controller = _controller
 
 
-@public
+@external
 @nonreentrant('lock')
 def mint(gauge_id: int128):
     """

@@ -6,15 +6,24 @@ from vyper.interfaces import ERC20
 
 implements: ERC20
 
-Transfer: event({_from: indexed(address), _to: indexed(address), _value: uint256})
-Approval: event({_owner: indexed(address), _spender: indexed(address), _value: uint256})
 
-name: public(string[64])
-symbol: public(string[32])
+event Transfer:
+    _from: indexed(address)
+    _to: indexed(address)
+    _value: uint256
+
+event Approval:
+    _owner: indexed(address)
+    _spender: indexed(address)
+    _value: uint256
+
+
+name: public(String[64])
+symbol: public(String[32])
 decimals: public(uint256)
 
-balanceOf: public(map(address, uint256))
-allowances: map(address, map(address, uint256))
+balanceOf: public(HashMap[address, uint256])
+allowances: HashMap[address, HashMap[address, uint256]]
 total_supply: uint256
 
 minter: public(address)
@@ -31,14 +40,14 @@ RATE_DENOMINATOR: constant(uint256) = 10 ** 18
 
 # Supply variables
 mining_epoch: public(int128)
-start_epoch_time: public(timestamp)
+start_epoch_time: public(uint256)
 rate: public(uint256)
 
 start_epoch_supply: uint256
 
 
-@public
-def __init__(_name: string[64], _symbol: string[32], _decimals: uint256, _supply: uint256):
+@external
+def __init__(_name: String[64], _symbol: String[32], _decimals: uint256, _supply: uint256):
     init_supply: uint256 = _supply * 10 ** _decimals
     self.name = _name
     self.symbol = _symbol
@@ -46,14 +55,14 @@ def __init__(_name: string[64], _symbol: string[32], _decimals: uint256, _supply
     self.balanceOf[msg.sender] = init_supply
     self.total_supply = init_supply
     self.admin = msg.sender
-    log.Transfer(ZERO_ADDRESS, msg.sender, init_supply)
+    log Transfer(ZERO_ADDRESS, msg.sender, init_supply)
 
     self.start_epoch_time = block.timestamp
     self.rate = INITIAL_RATE
     self.start_epoch_supply = init_supply
 
 
-@private
+@internal
 def _update_mining_parameters():
     # Any mining call must also call this if it is required
 
@@ -66,7 +75,7 @@ def _update_mining_parameters():
     self.start_epoch_supply += _rate * RATE_REDUCTION_TIME
 
 
-@public
+@external
 def update_mining_parameters():
     # Everyone can do this but only once per epoch
     # Total supply becomes slightly larger if this function is called late
@@ -74,9 +83,9 @@ def update_mining_parameters():
     self._update_mining_parameters()
 
 
-@public
-def start_epoch_time_write() -> timestamp:
-    _start_epoch_time: timestamp = self.start_epoch_time
+@external
+def start_epoch_time_write() -> uint256:
+    _start_epoch_time: uint256 = self.start_epoch_time
     if block.timestamp >= _start_epoch_time + RATE_REDUCTION_TIME:
         self._update_mining_parameters()
         return self.start_epoch_time
@@ -84,28 +93,28 @@ def start_epoch_time_write() -> timestamp:
         return _start_epoch_time
 
 
-@private
-@constant
+@internal
+@view
 def _available_supply() -> uint256:
-    return self.start_epoch_supply + as_unitless_number(block.timestamp - self.start_epoch_time) * self.rate
+    return self.start_epoch_supply + (block.timestamp - self.start_epoch_time) * self.rate
 
 
-@public
-@constant
+@external
+@view
 def available_supply() -> uint256:
     return self._available_supply()
 
 
 # XXX this might end up being not needed
-@public
-@constant
+@external
+@view
 def mintable_in_timeframe(start: uint256, end: uint256) -> uint256:
     """
     How much supply is mintable from start timestamp till end timestamp
     """
     assert start <= end  # dev: start > end
     to_mint: uint256 = 0
-    current_epoch_time: uint256 = as_unitless_number(self.start_epoch_time)
+    current_epoch_time: uint256 = self.start_epoch_time
     current_rate: uint256 = self.rate
 
     # Special case if end is in future (not yet minted) epoch
@@ -139,21 +148,21 @@ def mintable_in_timeframe(start: uint256, end: uint256) -> uint256:
     return to_mint
 
 
-@public
+@external
 def set_minter(_minter: address):
     assert msg.sender == self.admin  # dev: admin only
     assert self.minter == ZERO_ADDRESS  # dev: can set the minter only once, at creation
     self.minter = _minter
 
 
-@public
+@external
 def set_admin(_admin: address):
     assert msg.sender == self.admin  # dev: admin only
     self.admin = _admin
 
 
-@public
-@constant
+@external
+@view
 def totalSupply() -> uint256:
     """
     @dev Total number of tokens in existence.
@@ -161,8 +170,8 @@ def totalSupply() -> uint256:
     return self.total_supply
 
 
-@public
-@constant
+@external
+@view
 def allowance(_owner : address, _spender : address) -> uint256:
     """
     @dev Function to check the amount of tokens that an owner allowed to a spender.
@@ -173,7 +182,7 @@ def allowance(_owner : address, _spender : address) -> uint256:
     return self.allowances[_owner][_spender]
 
 
-@public
+@external
 def transfer(_to : address, _value : uint256) -> bool:
     """
     @dev Transfer token for a specified address
@@ -184,16 +193,14 @@ def transfer(_to : address, _value : uint256) -> bool:
     #       so the following subtraction would revert on insufficient balance
     self.balanceOf[msg.sender] -= _value
     self.balanceOf[_to] += _value
-    log.Transfer(msg.sender, _to, _value)
+    log Transfer(msg.sender, _to, _value)
     return True
 
 
-@public
+@external
 def transferFrom(_from : address, _to : address, _value : uint256) -> bool:
     """
      @dev Transfer tokens from one address to another.
-          Note that while this function emits a Transfer event, this is not required as per the specification,
-          and other compliant implementations may not emit the event.
      @param _from address The address which you want to send tokens from
      @param _to address The address which you want to transfer to
      @param _value uint256 the amount of tokens to be transferred
@@ -206,11 +213,11 @@ def transferFrom(_from : address, _to : address, _value : uint256) -> bool:
         # NOTE: vyper does not allow underflows
         # so the following subtraction would revert on insufficient allowance
         self.allowances[_from][msg.sender] -= _value
-    log.Transfer(_from, _to, _value)
+    log Transfer(_from, _to, _value)
     return True
 
 
-@public
+@external
 def approve(_spender : address, _value : uint256) -> bool:
     """
     @dev Approve the passed address to spend the specified amount of tokens on behalf of msg.sender.
@@ -223,11 +230,11 @@ def approve(_spender : address, _value : uint256) -> bool:
     """
     assert _value == 0 or self.allowances[msg.sender][_spender] == 0
     self.allowances[msg.sender][_spender] = _value
-    log.Approval(msg.sender, _spender, _value)
+    log Approval(msg.sender, _spender, _value)
     return True
 
 
-@public
+@external
 def mint(_to: address, _value: uint256):
     """
     @dev Mint an amount of the token and assigns it to an account.
@@ -247,10 +254,10 @@ def mint(_to: address, _value: uint256):
     self.total_supply = _total_supply
 
     self.balanceOf[_to] += _value
-    log.Transfer(ZERO_ADDRESS, _to, _value)
+    log Transfer(ZERO_ADDRESS, _to, _value)
 
 
-@public
+@external
 def burn(_value: uint256) -> bool:
     """
     @dev Burn an amount of the token of msg.sender.
@@ -259,12 +266,12 @@ def burn(_value: uint256) -> bool:
     self.balanceOf[msg.sender] -= _value
     self.total_supply -= _value
 
-    log.Transfer(msg.sender, ZERO_ADDRESS, _value)
+    log Transfer(msg.sender, ZERO_ADDRESS, _value)
     return True
 
 
-@public
-def set_name(_name: string[64], _symbol: string[32]):
+@external
+def set_name(_name: String[64], _symbol: String[32]):
     assert msg.sender == self.admin, "Only admin is allowed to change name"
     self.name = _name
     self.symbol = _symbol
