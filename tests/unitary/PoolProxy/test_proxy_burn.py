@@ -8,16 +8,16 @@ burner_mock = """
 is_burned: public(bool)
 burned_coin: public(address)
 
-@public
+@external
 def burn():
     self.is_burned = True
 
-@public
+@external
 @payable
 def burn_eth():
     return
 
-@public
+@external
 def burn_coin(_coin: address):
     self.burned_coin = _coin
 """

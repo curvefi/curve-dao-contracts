@@ -10,15 +10,15 @@ aave: public(uint256)
 donated: public(bool)
 withdrawn: public(bool)
 
-@public
+@external
 def set_aave_referral(referral_code: uint256):
     self.aave = referral_code
 
-@public
+@external
 def donate_admin_fees():
     self.donated = True
 
-@public
+@external
 def withdraw_admin_fees():
     self.withdrawn = True
 """

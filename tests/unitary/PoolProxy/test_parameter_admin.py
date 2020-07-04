@@ -13,13 +13,13 @@ future_amp: public(uint256)
 future_fee: public(uint256)
 future_admin_fee: public(uint256)
 
-@public
+@external
 def commit_new_parameters(amplification: uint256, new_fee: uint256, new_admin_fee: uint256):
     self.future_amp = amplification
     self.future_fee = new_fee
     self.future_admin_fee = new_admin_fee
 
-@public
+@external
 def apply_new_parameters():
     self.amp = self.future_amp
     self.fee = self.future_fee
@@ -28,7 +28,7 @@ def apply_new_parameters():
     self.future_fee = 0
     self.future_admin_fee = 0
 
-@public
+@external
 def revert_new_parameters():
     self.future_amp = 0
     self.future_fee = 0
