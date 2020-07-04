@@ -18,7 +18,7 @@ def test_kill_no_access(accounts, pool_proxy, pool, idx):
         pool_proxy.kill_me(pool, {'from': accounts[idx]})
 
 
-@pytest.mark.parametrize('idx', [0, 1, 3])
+@pytest.mark.parametrize('idx', [1, 3])
 def test_unkill_no_access(accounts, pool_proxy, pool, idx):
     with brownie.reverts('Access denied'):
         pool_proxy.unkill_me(pool, {'from': accounts[idx]})
