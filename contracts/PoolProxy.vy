@@ -1,42 +1,42 @@
 from vyper.interfaces import ERC20
 
-contract Burner:
-    def burn(): modifying
-    def burn_eth(): modifying
-    def burn_coin(_coin: address): modifying
+interface Burner:
+    def burn(): nonpayable
+    def burn_eth(): payable
+    def burn_coin(_coin: address): nonpayable
 
-contract Curve:
-    def withdraw_admin_fees(): modifying
-    def kill_me(): modifying
-    def unkill_me(): modifying
-    def commit_transfer_ownership(new_owner: address): modifying
-    def apply_transfer_ownership(): modifying
-    def revert_transfer_ownership(): modifying
-    def commit_new_parameters(amplification: uint256, new_fee: uint256, new_admin_fee: uint256): modifying
-    def apply_new_parameters(): modifying
-    def revert_new_parameters(): modifying
-    def commit_new_fee(new_fee: uint256, new_admin_fee: uint256): modifying
-    def apply_new_fee(): modifying
-    def ramp_A(_future_A: uint256, _future_time: timestamp): modifying
-    def stop_ramp_A(): modifying
-    def set_aave_referral(referral_code: uint256): modifying
-    def donate_admin_fees(): modifying
+interface Curve:
+    def withdraw_admin_fees(): nonpayable
+    def kill_me(): nonpayable
+    def unkill_me(): nonpayable
+    def commit_transfer_ownership(new_owner: address): nonpayable
+    def apply_transfer_ownership(): nonpayable
+    def revert_transfer_ownership(): nonpayable
+    def commit_new_parameters(amplification: uint256, new_fee: uint256, new_admin_fee: uint256): nonpayable
+    def apply_new_parameters(): nonpayable
+    def revert_new_parameters(): nonpayable
+    def commit_new_fee(new_fee: uint256, new_admin_fee: uint256): nonpayable
+    def apply_new_fee(): nonpayable
+    def ramp_A(_future_A: uint256, _future_time: uint256): nonpayable
+    def stop_ramp_A(): nonpayable
+    def set_aave_referral(referral_code: uint256): nonpayable
+    def donate_admin_fees(): nonpayable
 
 
 ownership_admin: public(address)
 parameter_admin: public(address)
 emergency_admin: public(address)
-burners: public(map(address, address))
+burners: public(HashMap[address, address])
 
 
-@public
+@external
 def __init__():
     self.ownership_admin = msg.sender
     self.parameter_admin = msg.sender
     self.emergency_admin = msg.sender
 
 
-@public
+@external
 def set_admins(_o_admin: address, _p_admin: address, _e_admin: address):
     assert msg.sender == self.ownership_admin, "Access denied"
 
@@ -45,7 +45,7 @@ def set_admins(_o_admin: address, _p_admin: address, _e_admin: address):
     self.emergency_admin = _e_admin
 
 
-@public
+@external
 @nonreentrant('lock')
 def set_burner(_token: address, _burner: address):
     assert msg.sender == self.ownership_admin, "Access denied"
@@ -61,66 +61,66 @@ def set_burner(_token: address, _burner: address):
     self.burners[_token] = _burner
 
 
-@public
+@external
 @nonreentrant('lock')
 def withdraw_admin_fees(_pool: address):
     Curve(_pool).withdraw_admin_fees()
 
 
-@public
+@external
 @nonreentrant('lock')
 def burn(_burner: address):
     Burner(_burner).burn()  # dev: should implement burn()
 
 
-@public
+@external
 @nonreentrant('lock')
 def burn_coin(_coin: address):
     Burner(self.burners[_coin]).burn_coin(_coin)  # dev: should implement burn_coin()
 
 
-@public
+@external
 @payable
 @nonreentrant('lock')
 def burn_eth():
     Burner(self.burners[ZERO_ADDRESS]).burn_eth(value=self.balance)  # dev: should implement burn_eth()
 
 
-@public
+@external
 @nonreentrant('lock')
 def kill_me(_pool: address):
     assert msg.sender == self.emergency_admin, "Access denied"
     Curve(_pool).kill_me()
 
 
-@public
+@external
 @nonreentrant('lock')
 def unkill_me(_pool: address):
     assert msg.sender == self.emergency_admin or msg.sender == self.ownership_admin, "Access denied"
     Curve(_pool).unkill_me()
 
 
-@public
+@external
 @nonreentrant('lock')
 def commit_transfer_ownership(_pool: address, new_owner: address):
     assert msg.sender == self.ownership_admin, "Access denied"
     Curve(_pool).commit_transfer_ownership(new_owner)
 
 
-@public
+@external
 @nonreentrant('lock')
 def apply_transfer_ownership(_pool: address):
     Curve(_pool).apply_transfer_ownership()
 
 
-@public
+@external
 @nonreentrant('lock')
 def revert_transfer_ownership(_pool: address):
     assert msg.sender == self.ownership_admin, "Access denied"
     Curve(_pool).revert_transfer_ownership()
 
 
-@public
+@external
 @nonreentrant('lock')
 def commit_new_parameters(_pool: address,
                           amplification: uint256,
@@ -130,54 +130,54 @@ def commit_new_parameters(_pool: address,
     Curve(_pool).commit_new_parameters(amplification, new_fee, new_admin_fee)  # dev: if implemented by the pool
 
 
-@public
+@external
 @nonreentrant('lock')
 def apply_new_parameters(_pool: address):
     Curve(_pool).apply_new_parameters()  # dev: if implemented by the pool
 
 
-@public
+@external
 @nonreentrant('lock')
 def revert_new_parameters(_pool: address):
     assert msg.sender == self.parameter_admin, "Access denied"
     Curve(_pool).revert_new_parameters()  # dev: if implemented by the pool
 
 
-@public
+@external
 @nonreentrant('lock')
 def commit_new_fee(_pool: address, new_fee: uint256, new_admin_fee: uint256):
     assert msg.sender == self.parameter_admin, "Access denied"
     Curve(_pool).commit_new_fee(new_fee, new_admin_fee)
 
 
-@public
+@external
 @nonreentrant('lock')
 def apply_new_fee(_pool: address):
     Curve(_pool).apply_new_fee()
 
 
-@public
+@external
 @nonreentrant('lock')
-def ramp_A(_pool: address, _future_A: uint256, _future_time: timestamp):
+def ramp_A(_pool: address, _future_A: uint256, _future_time: uint256):
     assert msg.sender == self.parameter_admin, "Access denied"
     Curve(_pool).ramp_A(_future_A, _future_time)
 
 
-@public
+@external
 @nonreentrant('lock')
 def stop_ramp_A(_pool: address):
     assert msg.sender == self.parameter_admin, "Access denied"
     Curve(_pool).stop_ramp_A()
 
 
-@public
+@external
 @nonreentrant('lock')
 def set_aave_referral(_pool: address, referral_code: uint256):
     assert msg.sender == self.ownership_admin, "Access denied"
     Curve(_pool).set_aave_referral(referral_code)  # dev: if implemented by the pool
 
 
-@public
+@external
 @nonreentrant('lock')
 def donate_admin_fees(_pool: address):
     assert msg.sender == self.ownership_admin, "Access denied"
