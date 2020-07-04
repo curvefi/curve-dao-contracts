@@ -6,6 +6,7 @@ from tests.conftest import YEAR
 
 @given(duration=strategy('uint', min_value=1, max_value=YEAR))
 def test_mint(accounts, rpc, token, duration):
+    token.set_minter(accounts[0], {'from': accounts[0]})
     creation_time = token.start_epoch_time()
     initial_supply = token.totalSupply()
     rate = token.rate()
@@ -20,6 +21,7 @@ def test_mint(accounts, rpc, token, duration):
 
 @given(duration=strategy('uint', min_value=1, max_value=YEAR))
 def test_overmint(accounts, rpc, token, duration):
+    token.set_minter(accounts[0], {'from': accounts[0]})
     creation_time = token.start_epoch_time()
     rate = token.rate()
     rpc.sleep(duration)
@@ -30,6 +32,7 @@ def test_overmint(accounts, rpc, token, duration):
 
 @given(durations=strategy('uint[5]', min_value=YEAR*0.33, max_value=YEAR*0.9))
 def test_mint_multiple(accounts, rpc, token, durations):
+    token.set_minter(accounts[0], {'from': accounts[0]})
     total_supply = token.totalSupply()
     balance = 0
     epoch_start = token.start_epoch_time()
