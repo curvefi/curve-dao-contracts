@@ -76,12 +76,8 @@ admin: address  # Can and will be a smart contract
 def __init__(token_addr: address, _name: String[64], _symbol: String[32], _version: String[32]):
     self.admin = msg.sender
     self.token = token_addr
-    self.point_history[0] = Point({
-        bias: 0,
-        slope: 0,
-        blk: block.number,
-        ts: block.timestamp,
-    })
+    self.point_history[0].blk = block.number
+    self.point_history[0].ts = block.timestamp
     self.controller = msg.sender
     self.transfersEnabled = True
     self.decimals = ERC20(token_addr).decimals()
@@ -129,10 +125,10 @@ def _checkpoint(addr: address, old_locked: LockedBalance, new_locked: LockedBala
 
     # Calculate slopes and biases
     # Kept at zero when they have to
-    if old_locked.amount > 0 and old_locked.end > block.timestamp and old_locked.end != 0:
+    if old_locked.end > block.timestamp and old_locked.amount > 0:
         u_old.slope = old_locked.amount / MAXTIME
         u_old.bias = u_old.slope * convert(old_locked.end - block.timestamp, int128)
-    if new_locked.amount > 0 and new_locked.end > block.timestamp and new_locked.end != 0:
+    if new_locked.end > block.timestamp and new_locked.amount > 0:
         u_new.slope = new_locked.amount / MAXTIME
         u_new.bias = u_new.slope * convert(new_locked.end - block.timestamp, int128)
 
