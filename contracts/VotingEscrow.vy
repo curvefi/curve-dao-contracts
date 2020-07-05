@@ -80,7 +80,11 @@ def __init__(token_addr: address, _name: String[64], _symbol: String[32], _versi
     self.point_history[0].ts = block.timestamp
     self.controller = msg.sender
     self.transfersEnabled = True
-    self.decimals = ERC20(token_addr).decimals()
+
+    _decimals: uint256 = ERC20(token_addr).decimals()
+    assert _decimals <= 255
+    self.decimals = _decimals
+
     self.name = _name
     self.symbol = _symbol
     self.version = _version
