@@ -1,9 +1,9 @@
 from vyper.interfaces import ERC20
 
 interface Burner:
-    def burn(): nonpayable
-    def burn_eth(): payable
-    def burn_coin(_coin: address): nonpayable
+    def burn() -> bool: nonpayable
+    def burn_eth() -> bool: payable
+    def burn_coin(_coin: address)-> bool: nonpayable
 
 interface Curve:
     def withdraw_admin_fees(): nonpayable

@@ -9,17 +9,19 @@ is_burned: public(bool)
 burned_coin: public(address)
 
 @external
-def burn():
+def burn() -> bool:
     self.is_burned = True
+    return True
 
 @external
 @payable
-def burn_eth():
-    return
+def burn_eth() -> bool:
+    return True
 
 @external
-def burn_coin(_coin: address):
+def burn_coin(_coin: address) -> bool:
     self.burned_coin = _coin
+    return True
 """
 
 

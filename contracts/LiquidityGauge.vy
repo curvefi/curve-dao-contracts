@@ -184,10 +184,11 @@ def _checkpoint(addr: address):
 
 
 @external
-def user_checkpoint(addr: address):
+def user_checkpoint(addr: address) -> bool:
     assert (msg.sender == addr) or (msg.sender == self.minter)  # dev: unauthorized
     self._checkpoint(addr)
     self._update_liquidity_limit(msg.sender, self.balanceOf[addr], self.totalSupply)
+    return True
 
 
 @external
