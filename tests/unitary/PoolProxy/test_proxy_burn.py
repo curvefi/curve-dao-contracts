@@ -57,7 +57,7 @@ def test_burn_eth(accounts, pool_proxy, burner, idx):
 
 
 def test_burn_not_exists(accounts, pool_proxy, pool):
-    with brownie.reverts('dev: should implement burn()'):
+    with brownie.reverts():  # TODO 'dev: should implement burn()' when Brownie is fixed
         pool_proxy.burn(pool, {'from': accounts[0]})
 
 
