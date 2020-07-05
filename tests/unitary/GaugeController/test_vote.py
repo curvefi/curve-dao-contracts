@@ -26,15 +26,22 @@ def test_vote_partial(accounts, gauge_controller):
     assert gauge_controller.vote_user_power(accounts[0]) == 1234
 
 
-def test_vote_change(accounts, gauge_controller):
+def test_vote_change(rpc, accounts, gauge_controller):
     gauge_controller.vote_for_gauge_weights(1, 1234, {'from': accounts[0]})
+
+    with brownie.reverts('Cannot vote so often'):
+        gauge_controller.vote_for_gauge_weights(1, 42, {'from': accounts[0]})
+    rpc.sleep(10 * 86400)
     gauge_controller.vote_for_gauge_weights(1, 42, {'from': accounts[0]})
 
     assert gauge_controller.vote_user_power(accounts[0]) == 42
 
 
-def test_vote_remove(accounts, gauge_controller):
+def test_vote_remove(rpc, accounts, gauge_controller):
     gauge_controller.vote_for_gauge_weights(1, 10000, {'from': accounts[0]})
+    with brownie.reverts('Cannot vote so often'):
+        gauge_controller.vote_for_gauge_weights(1, 0, {'from': accounts[0]})
+    rpc.sleep(10 * 86400)
     gauge_controller.vote_for_gauge_weights(1, 0, {'from': accounts[0]})
 
     assert gauge_controller.vote_user_power(accounts[0]) == 0
@@ -74,8 +81,10 @@ def test_over_weight_multiple(accounts, gauge_controller):
         gauge_controller.vote_for_gauge_weights(1, 4000, {'from': accounts[0]})
 
 
-def test_over_weight_adjust_existing(accounts, gauge_controller):
+def test_over_weight_adjust_existing(rpc, accounts, gauge_controller):
     gauge_controller.vote_for_gauge_weights(0, 6000, {'from': accounts[0]})
     gauge_controller.vote_for_gauge_weights(1, 3000, {'from': accounts[0]})
+
+    rpc.sleep(10 * 86400)
     with brownie.reverts('Used too much power'):
         gauge_controller.vote_for_gauge_weights(0, 8000, {'from': accounts[0]})
