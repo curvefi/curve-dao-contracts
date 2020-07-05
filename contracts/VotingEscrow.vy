@@ -117,6 +117,18 @@ def get_last_user_slope(addr: address) -> int128:
     return self.user_point_history[addr][uepoch].slope
 
 
+@external
+@view
+def user_point_history__ts(_addr: address, _idx: uint256) -> uint256:
+    return self.user_point_history[_addr][_idx].ts
+
+
+@external
+@view
+def locked__end(_addr: address) -> uint256:
+    return self.locked[_addr].end
+
+
 @internal
 def _checkpoint(addr: address, old_locked: LockedBalance, new_locked: LockedBalance):
     u_old: Point = empty(Point)

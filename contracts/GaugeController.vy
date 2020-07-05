@@ -21,7 +21,7 @@ interface CRV20:
 
 interface VotingEscrow:
     def get_last_user_slope(addr: address) -> int128: view
-    def locked(addr: address) -> (uint256, uint256): view
+    def locked__end(addr: address) -> uint256: view
 
 
 admin: public(address)  # Can and will be a smart contract
@@ -362,7 +362,7 @@ def vote_for_gauge_weights(_gauge_id: int128, _user_weight: int128):
     """
     escrow: address = self.voting_escrow
     slope: int128 = VotingEscrow(escrow).get_last_user_slope(msg.sender)
-    lock_end: uint256 = VotingEscrow(escrow).locked(msg.sender)[1]
+    lock_end: uint256 = VotingEscrow(escrow).locked__end(msg.sender)
     _n_gauges: int128 = self.n_gauges
     next_time: uint256 = (block.timestamp + WEEK) / WEEK * WEEK
     assert lock_end > next_time, "Your token lock expires too soon"

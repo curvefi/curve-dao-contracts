@@ -20,7 +20,7 @@ interface Minter:
 
 interface VotingEscrow:
     def user_point_epoch(addr: address) -> uint256: view
-    def user_point_history(addr: address, epoch: uint256) -> (int128, int128, uint256, uint256): view
+    def user_point_history__ts(addr: address, epoch: uint256) -> uint256: view
 
 
 event Deposit:
@@ -203,9 +203,9 @@ def kick(addr: address):
     # Only if either they had another VE event, or they had VE lock expired
     _voting_escrow: address = self.voting_escrow
     t_last: uint256 = self.integrate_checkpoint_of[addr]
-    t_ve: uint256 = VotingEscrow(_voting_escrow).user_point_history(
+    t_ve: uint256 = VotingEscrow(_voting_escrow).user_point_history__ts(
         addr, VotingEscrow(_voting_escrow).user_point_epoch(addr)
-    )[2]
+    )
     _balance: uint256 = self.balanceOf[addr]
 
     assert ERC20(self.voting_escrow).balanceOf(addr) == 0 or t_ve > t_last # dev: kick not allowed
