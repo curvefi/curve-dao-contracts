@@ -193,7 +193,7 @@ def user_checkpoint(addr: address):
 
 
 @public
-def kick_boost(addr: address):
+def kick(addr: address):
     # Kick someone who is abusing his boost
     # Only if either they had another VE event, or they had VE lock expired
     _voting_escrow: address = self.voting_escrow
