@@ -156,6 +156,13 @@ def _checkpoint(addr: address):
         # - should be all right even if we go full Zimbabwe
         _integrate_inv_supply += rate * last_weight * dt / _working_supply
 
+        # On precisions of the calculation
+        # rate ~= 10e18
+        # last_weight > 0.01 * 1e18 = 1e16 (if pool weight is 1%)
+        # _working_supply ~= TVL * 1e18 ~= 1e26 ($100M for example)
+        # The largest loss is at dt = 1
+        # Loss is 1e-9 - acceptable
+
     # Update user-specific integrals
     user_period: int128 = new_period
     user_period_time: uint256 = old_period_time
