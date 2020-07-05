@@ -19,7 +19,7 @@ interface Minter:
     def controller() -> address: view
 
 interface VotingEscrow:
-    def user_point_epoch(addr: address) -> int128: view
+    def user_point_epoch(addr: address) -> uint256: view
     def user_point_history(addr: address, epoch: uint256) -> (int128, int128, uint256, uint256): view
 
 
@@ -204,7 +204,7 @@ def kick(addr: address):
     _voting_escrow: address = self.voting_escrow
     t_last: uint256 = self.integrate_checkpoint_of[addr]
     t_ve: uint256 = VotingEscrow(_voting_escrow).user_point_history(
-        addr, convert(VotingEscrow(_voting_escrow).user_point_epoch(addr), uint256)
+        addr, VotingEscrow(_voting_escrow).user_point_epoch(addr)
     )[2]
     _balance: uint256 = self.balanceOf[addr]
 

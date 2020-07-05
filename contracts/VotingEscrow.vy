@@ -51,10 +51,10 @@ supply: public(uint256)
 
 locked: public(HashMap[address, LockedBalance])
 
-epoch: public(int128)
+epoch: public(uint256)
 point_history: public(Point[100000000000000000000000000000])  # epoch -> unsigned point
 user_point_history: public(HashMap[address, Point[1000000000]])  # user -> Point[user_epoch]
-user_point_epoch: public(HashMap[address, int128])
+user_point_epoch: public(HashMap[address, uint256])
 slope_changes: public(HashMap[uint256, int128])  # time -> signed slope change
 
 # Aragon's view methods for compatibility
@@ -113,7 +113,7 @@ def assert_not_contract(addr: address):
 @external
 @view
 def get_last_user_slope(addr: address) -> int128:
-    uepoch: int128 = self.user_point_epoch[addr]
+    uepoch: uint256 = self.user_point_epoch[addr]
     return self.user_point_history[addr][uepoch].slope
 
 
@@ -121,7 +121,7 @@ def get_last_user_slope(addr: address) -> int128:
 def _checkpoint(addr: address, old_locked: LockedBalance, new_locked: LockedBalance):
     u_old: Point = empty(Point)
     u_new: Point = empty(Point)
-    _epoch: int128 = self.epoch
+    _epoch: uint256 = self.epoch
 
     # Calculate slopes and biases
     # Kept at zero when they have to
@@ -216,9 +216,8 @@ def _checkpoint(addr: address, old_locked: LockedBalance, new_locked: LockedBala
         # else: we recorded it already in old_dslope
 
     # Now handle user history
-    user_epoch: int128 = self.user_point_epoch[addr]
+    user_epoch: uint256 = self.user_point_epoch[addr] + 1
 
-    user_epoch += 1
     self.user_point_epoch[addr] = user_epoch
     u_new.ts = block.timestamp
     u_new.blk = block.number
@@ -275,7 +274,7 @@ def deposit_for(_addr: address, _value: uint256):
     """
     Anyone can deposit for someone else, but cannot extend their locktime
     """
-    assert self.user_point_epoch[_addr] > 0, "First tx should be done by user"
+    assert self.user_point_epoch[_addr] != 0, "First tx should be done by user"
     self._deposit_for(_addr, _value, 0)
 
 
@@ -325,14 +324,14 @@ def withdraw(_value: uint256 = 0):
 # real coins.
 @internal
 @view
-def find_block_epoch(_block: uint256, max_epoch: int128) -> int128:
+def find_block_epoch(_block: uint256, max_epoch: uint256) -> uint256:
     # Binary search
-    _min: int128 = 0
-    _max: int128 = max_epoch
+    _min: uint256 = 0
+    _max: uint256 = max_epoch
     for i in range(128):  # Will be always enough for 128-bit numbers
         if _min >= _max:
             break
-        _mid: int128 = (_min + _max + 1) / 2
+        _mid: uint256 = (_min + _max + 1) / 2
         if self.point_history[_mid].blk <= _block:
             _min = _mid
         else:
@@ -343,7 +342,7 @@ def find_block_epoch(_block: uint256, max_epoch: int128) -> int128:
 @external
 @view
 def balanceOf(addr: address) -> uint256:
-    _epoch: int128 = self.user_point_epoch[addr]
+    _epoch: uint256 = self.user_point_epoch[addr]
     if _epoch == 0:
         return 0
     else:
@@ -362,12 +361,12 @@ def balanceOfAt(addr: address, _block: uint256) -> uint256:
     assert _block <= block.number
 
     # Binary search
-    _min: int128 = 0
-    _max: int128 = self.user_point_epoch[addr]
+    _min: uint256 = 0
+    _max: uint256 = self.user_point_epoch[addr]
     for i in range(128):  # Will be always enough for 128-bit numbers
         if _min >= _max:
             break
-        _mid: int128 = (_min + _max + 1) / 2
+        _mid: uint256 = (_min + _max + 1) / 2
         if self.user_point_history[addr][_mid].blk <= _block:
             _min = _mid
         else:
@@ -375,8 +374,8 @@ def balanceOfAt(addr: address, _block: uint256) -> uint256:
 
     upoint: Point = self.user_point_history[addr][_min]
 
-    max_epoch: int128 = self.epoch
-    _epoch: int128 = self.find_block_epoch(_block, max_epoch)
+    max_epoch: uint256 = self.epoch
+    _epoch: uint256 = self.find_block_epoch(_block, max_epoch)
     point_0: Point = self.point_history[_epoch]
     d_block: uint256 = 0
     d_t: uint256 = 0
@@ -424,7 +423,7 @@ def supply_at(point: Point, t: uint256) -> uint256:
 @external
 @view
 def totalSupply() -> uint256:
-    _epoch: int128 = self.epoch
+    _epoch: uint256 = self.epoch
     last_point: Point = self.point_history[_epoch]
     return self.supply_at(last_point, block.timestamp)
 
@@ -433,8 +432,8 @@ def totalSupply() -> uint256:
 @view
 def totalSupplyAt(_block: uint256) -> uint256:
     assert _block <= block.number
-    _epoch: int128 = self.epoch
-    target_epoch: int128 = self.find_block_epoch(_block, _epoch)
+    _epoch: uint256 = self.epoch
+    target_epoch: uint256 = self.find_block_epoch(_block, _epoch)
 
     point: Point = self.point_history[target_epoch]
     dt: uint256 = 0
