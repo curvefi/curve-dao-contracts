@@ -126,13 +126,11 @@ def period_write() -> int128:
 def add_gauge(addr: address, gauge_type: int128, weight: uint256 = 0):
     assert msg.sender == self.admin
     assert (gauge_type >= 0) and (gauge_type < self.n_gauge_types)
-    # If someone adds the same gauge twice, it will override the previous one
-    # That's probably ok
+    assert self.gauge_types_[addr] == 0  # dev: cannot add the same gauge twice
 
-    if self.gauge_types_[addr] == 0:
-        n: int128 = self.n_gauges
-        self.n_gauges = n + 1
-        self.gauges[n] = addr
+    n: int128 = self.n_gauges
+    self.n_gauges = n + 1
+    self.gauges[n] = addr
 
     self.gauge_types_[addr] = gauge_type + 1
 

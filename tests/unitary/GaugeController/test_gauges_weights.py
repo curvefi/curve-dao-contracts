@@ -1,3 +1,5 @@
+import brownie
+
 WEEK = 7 * 86400
 YEAR = 365 * 86400
 
@@ -26,7 +28,8 @@ def test_n_gauges_same_gauge(accounts, gauge_controller, three_gauges):
 
     assert gauge_controller.n_gauges() == 0
     gauge_controller.add_gauge(three_gauges[0], 0, {'from': accounts[0]})
-    gauge_controller.add_gauge(three_gauges[0], 0, {'from': accounts[0]})
+    with brownie.reverts('dev: cannot add the same gauge twice'):
+        gauge_controller.add_gauge(three_gauges[0], 0, {'from': accounts[0]})
 
     assert gauge_controller.n_gauges() == 1
 
