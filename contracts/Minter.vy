@@ -4,10 +4,10 @@ interface Controller:
 interface Gauge:
     # Presumably, other gauges will provide the same interfaces
     def integrate_fraction(addr: address) -> uint256: view
-    def user_checkpoint(addr: address): nonpayable
+    def user_checkpoint(addr: address) -> bool: nonpayable
 
 interface MERC20:
-    def mint(_to: address, _value: uint256): nonpayable
+    def mint(_to: address, _value: uint256) -> bool: nonpayable
 
 
 token: public(address)

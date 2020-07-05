@@ -190,13 +190,14 @@ def _checkpoint(addr: address):
 
 
 @external
-def user_checkpoint(addr: address):
+def user_checkpoint(addr: address) -> bool:
     assert (msg.sender == addr) or (msg.sender == self.minter)  # dev: unauthorized
     self._checkpoint(addr)
     self._update_liquidity_limit(addr, self.balanceOf[addr], self.totalSupply)
+    return True
 
 
-@public
+@external
 def kick(addr: address):
     # Kick someone who is abusing his boost
     # Only if either they had another VE event, or they had VE lock expired

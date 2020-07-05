@@ -235,7 +235,7 @@ def approve(_spender : address, _value : uint256) -> bool:
 
 
 @external
-def mint(_to: address, _value: uint256):
+def mint(_to: address, _value: uint256) -> bool:
     """
     @dev Mint an amount of the token and assigns it to an account.
          This encapsulates the modification of balances such that the
@@ -255,6 +255,8 @@ def mint(_to: address, _value: uint256):
 
     self.balanceOf[_to] += _value
     log Transfer(ZERO_ADDRESS, _to, _value)
+
+    return True
 
 
 @external
