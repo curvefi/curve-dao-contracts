@@ -1,6 +1,10 @@
 # The contract which controls gauges and issuance of coins through those
 
-WEEK: constant(uint256) = 604800  # 7 * 86400 seconds - all future times are rounded by week
+# 7 * 86400 seconds - all future times are rounded by week
+WEEK: constant(uint256) = 604800
+
+# Cannot change weight votes more often than once in 10 days
+WEIGHT_VOTE_DELAY: constant(uint256) = 10 * 86400
 
 
 struct Point:
@@ -65,6 +69,7 @@ vote_slope_changes: public(HashMap[int128, HashMap[uint256, int128]])  # gauge_i
 vote_bias_changes: public(HashMap[int128, HashMap[uint256, int128]])  # gauge_id -> time -> bias
 vote_user_slopes: public(HashMap[address, HashMap[int128, VotedSlope]])  # user -> gauge_id -> VotedSlope
 vote_user_power: public(HashMap[address, int128])  # Total vote power used by user
+last_user_vote: public(HashMap[address, uint256[10000000000000000]])  # Last user vote's timestamp for each gauge id
 
 
 @external
@@ -368,6 +373,7 @@ def vote_for_gauge_weights(_gauge_id: int128, _user_weight: int128):
     assert lock_end > next_time, "Your token lock expires too soon"
     assert (_gauge_id < _n_gauges) and (_gauge_id >= 0)  # dev: wrong gauge id
     assert (_user_weight >= 0) and (_user_weight <= 10000), "You used all your voting power"
+    assert block.timestamp >= self.last_user_vote[msg.sender][_gauge_id] + WEIGHT_VOTE_DELAY, "Cannot vote so often"
 
     # Prepare slopes and biases in memory
     old_slope: VotedSlope = self.vote_user_slopes[msg.sender][_gauge_id]
@@ -405,6 +411,9 @@ def vote_for_gauge_weights(_gauge_id: int128, _user_weight: int128):
     # Add slope changes for new slopes
     self.vote_slope_changes[_gauge_id][new_slope.end] -= new_slope.slope
     self.vote_user_slopes[msg.sender][_gauge_id] = new_slope
+
+    # Record last action time
+    self.last_user_vote[msg.sender][_gauge_id] = block.timestamp
 
 
 @external
