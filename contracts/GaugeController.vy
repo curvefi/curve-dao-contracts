@@ -84,8 +84,8 @@ def __init__(_token: address, _voting_escrow: address):
 @external
 def transfer_ownership(addr: address):
     """
-        @notice Transfer ownership of GaugeController to `addr`
-        @param addr Address to have ownership transferred to
+    @notice Transfer ownership of GaugeController to `addr`
+    @param addr Address to have ownership transferred to
     """
     assert msg.sender == self.admin
     self.admin = addr
