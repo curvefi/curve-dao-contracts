@@ -38,6 +38,12 @@ def __init__():
 
 @external
 def set_admins(_o_admin: address, _p_admin: address, _e_admin: address):
+    """
+        @notice Set ownership admin to `_o_admin`, parameter admin to `_p_admin` and emergency admin to `_e_admin`
+        @param _o_admin Ownership admin
+        @param _p_admin Parameter admin
+        @param _e_admin Emergency admin
+    """
     assert msg.sender == self.ownership_admin, "Access denied"
 
     self.ownership_admin = _o_admin
@@ -48,6 +54,11 @@ def set_admins(_o_admin: address, _p_admin: address, _e_admin: address):
 @external
 @nonreentrant('lock')
 def set_burner(_token: address, _burner: address):
+    """
+        @notice Set burner of `_token` to `_burner` address
+        @param _token Token address
+        @param _burner Burner contract address
+    """
     assert msg.sender == self.ownership_admin, "Access denied"
 
     _old_burner: address = self.burners[_token]
@@ -64,18 +75,30 @@ def set_burner(_token: address, _burner: address):
 @external
 @nonreentrant('lock')
 def withdraw_admin_fees(_pool: address):
+    """
+        @notice Withdraw admin fees from `_pool`
+        @param _pool Pool address to withdraw admin fees from
+    """
     Curve(_pool).withdraw_admin_fees()
 
 
 @external
 @nonreentrant('lock')
 def burn(_burner: address):
+    """
+        @notice Burn CRV tokens using `_burner` contract
+        @param _burner Burner contract
+    """
     Burner(_burner).burn()  # dev: should implement burn()
 
 
 @external
 @nonreentrant('lock')
 def burn_coin(_coin: address):
+    """
+        @notice Burn CRV tokens and buy `_coin`
+        @param _coin Coin address
+    """
     Burner(self.burners[_coin]).burn_coin(_coin)  # dev: should implement burn_coin()
 
 
@@ -83,12 +106,19 @@ def burn_coin(_coin: address):
 @payable
 @nonreentrant('lock')
 def burn_eth():
+    """
+        @notice Burn ETH 
+    """
     Burner(self.burners[ZERO_ADDRESS]).burn_eth(value=self.balance)  # dev: should implement burn_eth()
 
 
 @external
 @nonreentrant('lock')
 def kill_me(_pool: address):
+    """
+        @notice Pause a `_pool` pool, remove_liquidity will be able to be called only
+        @param _pool Pool address
+    """
     assert msg.sender == self.emergency_admin, "Access denied"
     Curve(_pool).kill_me()
 
@@ -96,6 +126,10 @@ def kill_me(_pool: address):
 @external
 @nonreentrant('lock')
 def unkill_me(_pool: address):
+    """
+        @notice Unpause a `_pool` pool and enable back all functionality
+        @param _pool Pool address
+    """
     assert msg.sender == self.emergency_admin or msg.sender == self.ownership_admin, "Access denied"
     Curve(_pool).unkill_me()
 
@@ -103,6 +137,11 @@ def unkill_me(_pool: address):
 @external
 @nonreentrant('lock')
 def commit_transfer_ownership(_pool: address, new_owner: address):
+    """
+        @notice Transfer ownership for `_pool` pool to `new_owner` address
+        @param _pool Pool which ownership is to be tranaferred
+        @param new_owner New pool owner address
+    """ 
     assert msg.sender == self.ownership_admin, "Access denied"
     Curve(_pool).commit_transfer_ownership(new_owner)
 
@@ -110,12 +149,20 @@ def commit_transfer_ownership(_pool: address, new_owner: address):
 @external
 @nonreentrant('lock')
 def apply_transfer_ownership(_pool: address):
+    """
+        @notice Apply transferring ownership of `_pool`
+        @param _pool Pool address
+    """
     Curve(_pool).apply_transfer_ownership()
 
 
 @external
 @nonreentrant('lock')
 def revert_transfer_ownership(_pool: address):
+    """
+        @notice Revert commited transferring ownership for `_pool`
+        @param _pool Pool address
+    """
     assert msg.sender == self.ownership_admin, "Access denied"
     Curve(_pool).revert_transfer_ownership()
 
@@ -126,6 +173,12 @@ def commit_new_parameters(_pool: address,
                           amplification: uint256,
                           new_fee: uint256,
                           new_admin_fee: uint256):
+    """
+        @notice Commit new parameters for `_pool`, A: `amplification`, fee: `new_fee` and admin fee: `new_admin_fee`
+        @param _pool Pool address
+        @param new_fee New fee
+        @param new_admin_fee New admin fee
+    """
     assert msg.sender == self.parameter_admin, "Access denied"
     Curve(_pool).commit_new_parameters(amplification, new_fee, new_admin_fee)  # dev: if implemented by the pool
 
@@ -133,12 +186,20 @@ def commit_new_parameters(_pool: address,
 @external
 @nonreentrant('lock')
 def apply_new_parameters(_pool: address):
+    """
+        @notice Apply new parameters for `_pool` pool
+        @param _pool Pool address
+    """
     Curve(_pool).apply_new_parameters()  # dev: if implemented by the pool
 
 
 @external
 @nonreentrant('lock')
 def revert_new_parameters(_pool: address):
+    """
+        @notice Revert comitted new parameters for `_pool` pool
+        @param _pool Pool address
+    """
     assert msg.sender == self.parameter_admin, "Access denied"
     Curve(_pool).revert_new_parameters()  # dev: if implemented by the pool
 
@@ -146,6 +207,12 @@ def revert_new_parameters(_pool: address):
 @external
 @nonreentrant('lock')
 def commit_new_fee(_pool: address, new_fee: uint256, new_admin_fee: uint256):
+    """
+        @notice Commit new fees for `_pool` pool, fee: `new_fee` and admin fee: `new_admin_fee`
+        @param _pool Pool address
+        @param new_fee New fee
+        @param new_admin_fee New admin fee
+    """
     assert msg.sender == self.parameter_admin, "Access denied"
     Curve(_pool).commit_new_fee(new_fee, new_admin_fee)
 
@@ -153,12 +220,22 @@ def commit_new_fee(_pool: address, new_fee: uint256, new_admin_fee: uint256):
 @external
 @nonreentrant('lock')
 def apply_new_fee(_pool: address):
+    """
+        @notice Apply new fees for `_pool` pool
+        @param _pool Pool address
+    """
     Curve(_pool).apply_new_fee()
 
 
 @external
 @nonreentrant('lock')
 def ramp_A(_pool: address, _future_A: uint256, _future_time: uint256):
+    """
+        @notice Start gradually increasing A of `_pool` reaching `_future_A` at `_future_time` time
+        @param _pool Pool address
+        @param _future_A Future A
+        @param _future_time Future time
+    """
     assert msg.sender == self.parameter_admin, "Access denied"
     Curve(_pool).ramp_A(_future_A, _future_time)
 
@@ -166,6 +243,10 @@ def ramp_A(_pool: address, _future_A: uint256, _future_time: uint256):
 @external
 @nonreentrant('lock')
 def stop_ramp_A(_pool: address):
+    """
+        @notice Stop gradually increasing A of `_pool`
+        @param _pool Pool address
+    """
     assert msg.sender == self.parameter_admin, "Access denied"
     Curve(_pool).stop_ramp_A()
 
@@ -173,6 +254,11 @@ def stop_ramp_A(_pool: address):
 @external
 @nonreentrant('lock')
 def set_aave_referral(_pool: address, referral_code: uint256):
+    """
+        @notice Set Aave referral for undelying tokens of `_pool` to `referral_code`
+        @param _pool Pool address
+        @param referral_code Aave referral code
+    """
     assert msg.sender == self.ownership_admin, "Access denied"
     Curve(_pool).set_aave_referral(referral_code)  # dev: if implemented by the pool
 
@@ -180,5 +266,9 @@ def set_aave_referral(_pool: address, referral_code: uint256):
 @external
 @nonreentrant('lock')
 def donate_admin_fees(_pool: address):
+    """
+        @notice Donate admin fees of `_pool` pool
+        @param _pool Pool address
+    """
     assert msg.sender == self.ownership_admin, "Access denied"
     Curve(_pool).donate_admin_fees()  # dev: if implemented by the pool
