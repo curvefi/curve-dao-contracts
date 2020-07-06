@@ -129,10 +129,10 @@ def period_write() -> int128:
 @external
 def add_gauge(addr: address, gauge_type: int128, weight: uint256 = 0):
     """
-        @notice Add gauge `addr` of type `gauge_type` with weight `weight`
-        @param addr Gauge address
-        @param gauge_type Gauge type
-        @param weight Gauge weight
+    @notice Add gauge `addr` of type `gauge_type` with weight `weight`
+    @param addr Gauge address
+    @param gauge_type Gauge type
+    @param weight Gauge weight
     """
     assert msg.sender == self.admin
     assert (gauge_type >= 0) and (gauge_type < self.n_gauge_types)
@@ -268,9 +268,9 @@ def _change_type_weight(type_id: int128, weight: uint256):
 @external
 def add_type(_name: String[64], weight: uint256 = 0):
     """
-        @notice Add gauge type with name `_name` and weight `weight`
-        @param _name Name of gauge type
-        @param weight Weight of gauge type
+    @notice Add gauge type with name `_name` and weight `weight`
+    @param _name Name of gauge type
+    @param weight Weight of gauge type
     """
     assert msg.sender == self.admin
     type_id: int128 = self.n_gauge_types
@@ -283,9 +283,9 @@ def add_type(_name: String[64], weight: uint256 = 0):
 @external
 def change_type_weight(type_id: int128, weight: uint256):
     """
-        @notice Change gauge type `type_id` weight to `weight`
-        @param type_id Gauge type id
-        @param weight New Gauge weight
+    @notice Change gauge type `type_id` weight to `weight`
+    @param type_id Gauge type id
+    @param weight New Gauge weight
     """
     assert msg.sender == self.admin
     self._change_type_weight(type_id, weight)

@@ -93,8 +93,8 @@ def __init__(token_addr: address, _name: String[64], _symbol: String[32], _versi
 @external
 def transfer_ownership(addr: address):
     """
-        @notice Transfer ownership of VotingEscrow contract to `addr`
-        @param addr Address to have ownership transferred to
+    @notice Transfer ownership of VotingEscrow contract to `addr`
+    @param addr Address to have ownership transferred to
     """
     assert msg.sender == self.admin
     self.admin = addr
@@ -103,8 +103,8 @@ def transfer_ownership(addr: address):
 @external
 def add_to_whitelist(addr: address):
     """
-        @notice Add address to whitelist smart contract depositors `addr`
-        @param addr Address to be whitelisted
+    @notice Add address to whitelist smart contract depositors `addr`
+    @param addr Address to be whitelisted
     """
     assert msg.sender == self.admin
     self.contracts_whitelist[addr] = True
@@ -113,8 +113,8 @@ def add_to_whitelist(addr: address):
 @external
 def remove_from_whitelist(addr: address):
     """
-        @notice Remove a smart contract address from whitelist
-        @param addr Address to be removed from whitelist
+    @notice Remove a smart contract address from whitelist
+    @param addr Address to be removed from whitelist
     """
     assert msg.sender == self.admin
     self.contracts_whitelist[addr] = False
