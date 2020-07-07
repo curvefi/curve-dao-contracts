@@ -26,6 +26,11 @@ interface Curve:
 ownership_admin: public(address)
 parameter_admin: public(address)
 emergency_admin: public(address)
+
+future_ownership_admin: public(address)
+future_parameter_admin: public(address)
+future_emergency_admin: public(address)
+
 burners: public(HashMap[address, address])
 
 
@@ -37,7 +42,7 @@ def __init__():
 
 
 @external
-def set_admins(_o_admin: address, _p_admin: address, _e_admin: address):
+def commit_set_admins(_o_admin: address, _p_admin: address, _e_admin: address):
     """
     @notice Set ownership admin to `_o_admin`, parameter admin to `_p_admin` and emergency admin to `_e_admin`
     @param _o_admin Ownership admin
@@ -46,9 +51,18 @@ def set_admins(_o_admin: address, _p_admin: address, _e_admin: address):
     """
     assert msg.sender == self.ownership_admin, "Access denied"
 
-    self.ownership_admin = _o_admin
-    self.parameter_admin = _p_admin
-    self.emergency_admin = _e_admin
+    self.future_ownership_admin = _o_admin
+    self.future_parameter_admin = _p_admin
+    self.future_emergency_admin = _e_admin
+
+
+@external
+def apply_set_admins():
+    assert msg.sender == self.ownership_admin, "Access denied"
+
+    self.ownership_admin = self.future_ownership_admin
+    self.parameter_admin = self.future_parameter_admin
+    self.emergency_admin = self.future_emergency_admin
 
 
 @external

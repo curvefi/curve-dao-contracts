@@ -29,6 +29,8 @@ interface VotingEscrow:
 
 
 admin: public(address)  # Can and will be a smart contract
+future_admin: public(address)  # Can and will be a smart contract
+
 token: public(address)  # CRV token
 voting_escrow: public(address)  # Voting escrow
 
@@ -82,13 +84,19 @@ def __init__(_token: address, _voting_escrow: address):
 
 
 @external
-def transfer_ownership(addr: address):
+def commit_transfer_ownership(addr: address):
     """
     @notice Transfer ownership of GaugeController to `addr`
     @param addr Address to have ownership transferred to
     """
     assert msg.sender == self.admin
-    self.admin = addr
+    self.future_admin = addr
+
+
+@external
+def apply_transfer_ownership():
+    assert msg.sender == self.admin
+    self.admin = self.future_admin
 
 
 @external

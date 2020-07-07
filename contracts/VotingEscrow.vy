@@ -81,6 +81,7 @@ future_smart_wallet_checker: public(address)
 smart_wallet_checker: public(address)
 
 admin: public(address)  # Can and will be a smart contract
+future_admin: public(address)
 
 
 @external
@@ -102,13 +103,19 @@ def __init__(token_addr: address, _name: String[64], _symbol: String[32], _versi
 
 
 @external
-def transfer_ownership(addr: address):
+def commit_transfer_ownership(addr: address):
     """
     @notice Transfer ownership of VotingEscrow contract to `addr`
     @param addr Address to have ownership transferred to
     """
     assert msg.sender == self.admin
-    self.admin = addr
+    self.future_admin = addr
+
+
+@external
+def apply_transfer_ownership():
+    assert msg.sender == self.admin
+    self.admin = self.future_admin
 
 
 @external
