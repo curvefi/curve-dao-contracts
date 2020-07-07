@@ -342,7 +342,6 @@ def withdraw(_value: uint256 = 0):
     """
     Withdraw `value` if it's withdrawable
     """
-    self.assert_not_contract(msg.sender)
     _locked: LockedBalance = self.locked[msg.sender]
     assert block.timestamp >= _locked.end, "The lock didn't expire"
     value: uint256 = _value
