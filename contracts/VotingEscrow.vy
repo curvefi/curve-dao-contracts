@@ -33,6 +33,15 @@ interface ERC20:
     def transferFrom(spender: address, to: address, amount: uint256) -> bool: nonpayable
 
 
+# Interface for checking whether address belongs to a whitelisted
+# type of a smart wallet.
+# When new types are added - the whole contract is changed
+# The check() method is modifying to be able to use caching
+# for individual wallet addresses
+interface SmartWalletChecker:
+    def check(addr: address) -> bool: nonpayable
+
+
 event Deposit:
     provider: indexed(address)
     value: uint256
@@ -66,10 +75,12 @@ symbol: public(String[32])
 version: public(String[32])
 decimals: public(uint256)
 
-# Whitelisted (smart contract) wallets which are allowed to deposit
+# Checker for whitelisted (smart contract) wallets which are allowed to deposit
 # The goal is to prevent tokenizing the escrow
-contracts_whitelist: public(HashMap[address, bool])  # When sets?
-admin: address  # Can and will be a smart contract
+future_smart_wallet_checker: public(address)
+smart_wallet_checker: public(address)
+
+admin: public(address)  # Can and will be a smart contract
 
 
 @external
@@ -101,29 +112,30 @@ def transfer_ownership(addr: address):
 
 
 @external
-def add_to_whitelist(addr: address):
+def commit_smart_wallet_cheker(addr: address):
     """
-    @notice Add address to whitelist smart contract depositors `addr`
-    @param addr Address to be whitelisted
+    @notice Set an external contract to check whether a smart contract is
+            non-transferrable
+    @param addr Smart contract address for the checker
     """
     assert msg.sender == self.admin
-    self.contracts_whitelist[addr] = True
+    self.future_smart_wallet_checker = addr
 
 
 @external
-def remove_from_whitelist(addr: address):
-    """
-    @notice Remove a smart contract address from whitelist
-    @param addr Address to be removed from whitelist
-    """
+def apply_smart_wallet_cheker():
     assert msg.sender == self.admin
-    self.contracts_whitelist[addr] = False
+    self.smart_wallet_checker = self.future_smart_wallet_checker
 
 
 @internal
 def assert_not_contract(addr: address):
     if addr != tx.origin:
-        assert self.contracts_whitelist[addr], "Smart contract depositors not allowed"
+        checker: address = self.smart_wallet_checker
+        if checker != ZERO_ADDRESS:
+            if SmartWalletChecker(checker).check(addr):
+                return
+        raise "Smart contract depositors not allowed"
 
 
 @external
