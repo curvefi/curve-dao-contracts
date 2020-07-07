@@ -338,20 +338,17 @@ def deposit(_value: uint256, _unlock_time: uint256 = 0):
 
 @external
 @nonreentrant('lock')
-def withdraw(_value: uint256 = 0):
+def withdraw():
     """
-    Withdraw `value` if it's withdrawable
+    Withdraw all withdrawable
     """
     _locked: LockedBalance = self.locked[msg.sender]
     assert block.timestamp >= _locked.end, "The lock didn't expire"
-    value: uint256 = _value
-    if value == 0:
-        value = convert(_locked.amount, uint256)
+    value: uint256 = convert(_locked.amount, uint256)
 
     old_locked: LockedBalance = _locked
     _locked.end = 0
-    _locked.amount -= convert(value, int128)
-    assert _locked.amount >= 0, "Withdrawing more than you have"
+    _locked.amount = 0
     self.locked[msg.sender] = _locked
     self.supply -= value
 

@@ -1,5 +1,3 @@
-import brownie
-
 from tests.conftest import approx
 
 H = 3600
@@ -134,7 +132,7 @@ def test_voting_powers(web3, rpc, accounts, block_timestamp,
     rpc.sleep(H)
     rpc.mine()
 
-    voting_escrow.withdraw(amount // 2, {'from': bob})
+    voting_escrow.withdraw({'from': bob})
     t0 = block_timestamp()
     stages['bob_withdraw_1'] = (web3.eth.blockNumber, block_timestamp())
     w_total = voting_escrow.totalSupply()
@@ -165,7 +163,7 @@ def test_voting_powers(web3, rpc, accounts, block_timestamp,
     rpc.sleep(H)
     rpc.mine()
 
-    voting_escrow.withdraw(amount - amount // 2, {'from': bob})
+    voting_escrow.withdraw({'from': bob})
     stages['bob_withdraw_2'] = (web3.eth.blockNumber, block_timestamp())
 
     assert voting_escrow.totalSupply() == 0

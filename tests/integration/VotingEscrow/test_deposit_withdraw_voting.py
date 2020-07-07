@@ -102,29 +102,19 @@ class StateMachine:
             self.voting_escrow.deposit(st_value, {'from': st_account})
             self.voting_balances[st_account]['value'] += st_value
 
-    def rule_withdraw(self, st_account, st_value):
+    def rule_withdraw(self, st_account):
         """
         Withdraw tokens from the voting escrow.
         """
         if self.voting_balances[st_account]['unlock_time'] > rpc.time():
             # fail path - before unlock time
             with brownie.reverts("The lock didn't expire"):
-                self.voting_escrow.withdraw(st_value, {'from': st_account})
-
-        elif self.voting_balances[st_account]['value'] < st_value:
-            # fail path - withdraw amount exceeds locked amount
-            with brownie.reverts("Withdrawing more than you have"):
-                self.voting_escrow.withdraw(st_value, {'from': st_account})
-
-        elif st_value == 0:
-            # success path - zero amount equals full amount
-            self.voting_escrow.withdraw(st_value, {'from': st_account})
-            self.voting_balances[st_account] = {'value': 0, 'unlock_time': 0}
+                self.voting_escrow.withdraw({'from': st_account})
 
         else:
             # success path - specific amount
-            self.voting_escrow.withdraw(st_value, {'from': st_account})
-            self.voting_balances[st_account]['value'] -= st_value
+            self.voting_escrow.withdraw({'from': st_account})
+            self.voting_balances[st_account]['value'] = 0
 
     def rule_advance_time(self, st_sleep_duration):
         """
