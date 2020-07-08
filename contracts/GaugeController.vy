@@ -46,11 +46,10 @@ event NewGaugeWeight:
     weight: uint256
     total_weight: uint256
 
-# XXX TODO get rid of gauge_id everywhere in favor of address
 event VoteForGauge:
     time: uint256
     user: address
-    gauge_id: int128
+    gauge_addr: address
     weight: int128
 
 
@@ -76,7 +75,7 @@ gauge_type_names: public(HashMap[int128, String[64]])
 period: public(int128)
 period_timestamp: public(HashMap[int128, uint256])
 
-gauges: public(HashMap[int128, address])
+gauges: public(HashMap[int128, address])  # XXX do we need?
 
 # we increment values by 1 prior to storing them here so we can rely on a value
 # of zero as meaning the gauge has not been set
@@ -93,13 +92,13 @@ gauge_last: HashMap[address, int128]  # Last period for gauge update gauge_addr 
 
 last_epoch_time: public(uint256)
 
-vote_points: public(HashMap[int128, Point])  # gauge_id -> Point
-vote_enacted_at: public(HashMap[int128, uint256])  # gauge_id -> timestamp
-vote_slope_changes: public(HashMap[int128, HashMap[uint256, int128]])  # gauge_id -> time -> slope
-vote_bias_changes: public(HashMap[int128, HashMap[uint256, int128]])  # gauge_id -> time -> bias
-vote_user_slopes: public(HashMap[address, HashMap[int128, VotedSlope]])  # user -> gauge_id -> VotedSlope
+vote_points: public(HashMap[address, Point])  # gauge_addr -> Point
+vote_enacted_at: public(HashMap[address, uint256])  # gauge_addr -> timestamp
+vote_slope_changes: public(HashMap[address, HashMap[uint256, int128]])  # gauge_addr -> time -> slope
+vote_bias_changes: public(HashMap[address, HashMap[uint256, int128]])  # gauge_addr -> time -> bias
+vote_user_slopes: public(HashMap[address, HashMap[address, VotedSlope]])  # user -> gauge_addr -> VotedSlope
 vote_user_power: public(HashMap[address, int128])  # Total vote power used by user
-last_user_vote: public(HashMap[address, uint256[10000000000000000]])  # Last user vote's timestamp for each gauge id
+last_user_vote: public(HashMap[address, HashMap[address, uint256]])  # Last user vote's timestamp for each gauge address
 
 
 @external
@@ -389,11 +388,11 @@ def change_gauge_weight(addr: address, weight: uint256):
 
 
 @internal
-def _enact_vote(_gauge_id: int128):
-    ts: uint256 = self.vote_enacted_at[_gauge_id]
+def _enact_vote(_gauge_addr: address):
+    ts: uint256 = self.vote_enacted_at[_gauge_addr]
     if (ts + WEEK) / WEEK * WEEK <= block.timestamp:
         # Update vote_point
-        vote_point: Point = self.vote_points[_gauge_id]
+        vote_point: Point = self.vote_points[_gauge_addr]
         if vote_point.ts == 0:
             vote_point.ts = block.timestamp
         for i in range(500):
@@ -402,8 +401,8 @@ def _enact_vote(_gauge_id: int128):
             if next_ts > block.timestamp:
                 next_ts = block.timestamp
             else:
-                vote_point.bias += self.vote_bias_changes[_gauge_id][next_ts]
-                dslope = self.vote_slope_changes[_gauge_id][next_ts]
+                vote_point.bias += self.vote_bias_changes[_gauge_addr][next_ts]
+                dslope = self.vote_slope_changes[_gauge_addr][next_ts]
             vote_point.bias -= vote_point.slope * convert(next_ts - vote_point.ts, int128)
             if vote_point.bias < 0:
                 vote_point.bias = 0
@@ -411,21 +410,21 @@ def _enact_vote(_gauge_id: int128):
             vote_point.ts = next_ts
             if next_ts == block.timestamp:
                 break
-        self.vote_points[_gauge_id] = vote_point
-        self.vote_enacted_at[_gauge_id] = block.timestamp
-        self._change_gauge_weight(self.gauges[_gauge_id], convert(vote_point.bias, uint256))
+        self.vote_points[_gauge_addr] = vote_point
+        self.vote_enacted_at[_gauge_addr] = block.timestamp
+        self._change_gauge_weight(self.gauges[_gauge_addr], convert(vote_point.bias, uint256))
 
 
 @external
-def enact_vote(_gauge_id: int128):
-    self._enact_vote(_gauge_id)
+def enact_vote(_gauge_addr: address):
+    self._enact_vote(_gauge_addr)
 
 
 @external
-def vote_for_gauge_weights(_gauge_id: int128, _user_weight: int128):
+def vote_for_gauge_weights(_gauge_addr: address, _user_weight: int128):
     """
     @notice Allocate voting power for changing pool weights
-    @param _gauge_id Gauge which `msg.sender` votes for
+    @param _gauge_addr Gauge which `msg.sender` votes for
     @param _user_weight Weight for a gauge in bps (units of 0.01%). Minimal is 0.01%. Ignored if 0
     """
     escrow: address = self.voting_escrow
@@ -434,12 +433,12 @@ def vote_for_gauge_weights(_gauge_id: int128, _user_weight: int128):
     _n_gauges: int128 = self.n_gauges
     next_time: uint256 = (block.timestamp + WEEK) / WEEK * WEEK
     assert lock_end > next_time, "Your token lock expires too soon"
-    assert (_gauge_id < _n_gauges) and (_gauge_id >= 0)  # dev: wrong gauge id
+    assert self.gauge_types_[_gauge_addr] > 0, "Gauge not added"
     assert (_user_weight >= 0) and (_user_weight <= 10000), "You used all your voting power"
-    assert block.timestamp >= self.last_user_vote[msg.sender][_gauge_id] + WEIGHT_VOTE_DELAY, "Cannot vote so often"
+    assert block.timestamp >= self.last_user_vote[msg.sender][_gauge_addr] + WEIGHT_VOTE_DELAY, "Cannot vote so often"
 
     # Prepare slopes and biases in memory
-    old_slope: VotedSlope = self.vote_user_slopes[msg.sender][_gauge_id]
+    old_slope: VotedSlope = self.vote_user_slopes[msg.sender][_gauge_addr]
     old_dt: int128 = 0
     if old_slope.end > next_time:
         old_dt = convert(old_slope.end - next_time, int128)
@@ -458,27 +457,27 @@ def vote_for_gauge_weights(_gauge_id: int128, _user_weight: int128):
     self.vote_user_power[msg.sender] = power_used
     assert (power_used >= 0) and (power_used <= 10000), 'Used too much power'
 
-    self._enact_vote(_gauge_id)
+    self._enact_vote(_gauge_addr)
 
     ## Remove old and schedule new slope changes
     # Remove slope changes for old slopes
     # XXX schedule recording of initial slope for next_time XXX
-    self.vote_bias_changes[_gauge_id][next_time] += new_bias - old_bias
+    self.vote_bias_changes[_gauge_addr][next_time] += new_bias - old_bias
     if old_slope.end > next_time:
-        self.vote_slope_changes[_gauge_id][next_time] += (new_slope.slope - old_slope.slope)
+        self.vote_slope_changes[_gauge_addr][next_time] += (new_slope.slope - old_slope.slope)
     else:
-        self.vote_slope_changes[_gauge_id][next_time] += new_slope.slope
+        self.vote_slope_changes[_gauge_addr][next_time] += new_slope.slope
     if old_slope.end > block.timestamp:
         # Cancel old slope changes if they still didn't happen
-        self.vote_slope_changes[_gauge_id][old_slope.end] += old_slope.slope
+        self.vote_slope_changes[_gauge_addr][old_slope.end] += old_slope.slope
     # Add slope changes for new slopes
-    self.vote_slope_changes[_gauge_id][new_slope.end] -= new_slope.slope
-    self.vote_user_slopes[msg.sender][_gauge_id] = new_slope
+    self.vote_slope_changes[_gauge_addr][new_slope.end] -= new_slope.slope
+    self.vote_user_slopes[msg.sender][_gauge_addr] = new_slope
 
     # Record last action time
-    self.last_user_vote[msg.sender][_gauge_id] = block.timestamp
+    self.last_user_vote[msg.sender][_gauge_addr] = block.timestamp
 
-    log VoteForGauge(block.timestamp, msg.sender, _gauge_id, _user_weight)
+    log VoteForGauge(block.timestamp, msg.sender, _gauge_addr, _user_weight)
 
 
 @external
