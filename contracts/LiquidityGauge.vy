@@ -31,6 +31,13 @@ event Withdraw:
     provider: indexed(address)
     value: uint256
 
+event UpdateLiquidityLimit:
+    user: address
+    original_balance: uint256
+    original_supply: uint256
+    working_balance: uint256
+    working_supply: uint256
+
 
 TOKENLESS_PRODUCTION: constant(uint256) = 40
 
@@ -96,7 +103,10 @@ def _update_liquidity_limit(addr: address, l: uint256, L: uint256):
     lim = min(l, lim)
     old_bal: uint256 = self.working_balances[addr]
     self.working_balances[addr] = lim
-    self.working_supply = self.working_supply + lim - old_bal
+    _working_supply: uint256 = self.working_supply + lim - old_bal
+    self.working_supply = _working_supply
+
+    log UpdateLiquidityLimit(addr, l, L, lim, _working_supply)
 
 
 @internal

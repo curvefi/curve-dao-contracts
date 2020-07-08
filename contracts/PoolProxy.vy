@@ -23,6 +23,20 @@ interface Curve:
     def donate_admin_fees(): nonpayable
 
 
+event CommitAdmins:
+    ownership_admin: address
+    parameter_admin: address
+    emergency_admin: address
+
+event ApplyAdmins:
+    ownership_admin: address
+    parameter_admin: address
+    emergency_admin: address
+
+event AddBurner:
+    burner: address
+
+
 ownership_admin: public(address)
 parameter_admin: public(address)
 emergency_admin: public(address)
@@ -55,14 +69,21 @@ def commit_set_admins(_o_admin: address, _p_admin: address, _e_admin: address):
     self.future_parameter_admin = _p_admin
     self.future_emergency_admin = _e_admin
 
+    log CommitAdmins(_o_admin, _p_admin, _e_admin)
+
 
 @external
 def apply_set_admins():
     assert msg.sender == self.ownership_admin, "Access denied"
 
-    self.ownership_admin = self.future_ownership_admin
-    self.parameter_admin = self.future_parameter_admin
-    self.emergency_admin = self.future_emergency_admin
+    _o_admin: address = self.future_ownership_admin
+    _p_admin: address = self.future_parameter_admin
+    _e_admin: address = self.future_emergency_admin
+    self.ownership_admin = _o_admin
+    self.parameter_admin = _p_admin
+    self.emergency_admin = _e_admin
+
+    log ApplyAdmins(_o_admin, _p_admin, _e_admin)
 
 
 @external
@@ -84,6 +105,8 @@ def set_burner(_token: address, _burner: address):
             ERC20(_token).approve(_burner, MAX_UINT256)
 
     self.burners[_token] = _burner
+
+    log AddBurner(_burner)
 
 
 @external

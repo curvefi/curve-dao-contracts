@@ -17,6 +17,17 @@ event Approval:
     _spender: indexed(address)
     _value: uint256
 
+event UpdateMiningParameters:
+    time: uint256
+    rate: uint256
+    supply: uint256
+
+event SetMinter:
+    minter: address
+
+event SetAdmin:
+    admin: address
+
 
 name: public(String[64])
 symbol: public(String[32])
@@ -70,9 +81,16 @@ def _update_mining_parameters():
     self.mining_epoch += 1
 
     _rate: uint256 = self.rate
-    self.rate = _rate * RATE_DENOMINATOR / RATE_REDUCTION_COEFFICIENT
 
-    self.start_epoch_supply += _rate * RATE_REDUCTION_TIME
+    _start_epoch_supply: uint256 = self.start_epoch_supply
+    _start_epoch_supply += _rate * RATE_REDUCTION_TIME
+    self.start_epoch_supply = _start_epoch_supply
+
+    _rate = _rate * RATE_DENOMINATOR / RATE_REDUCTION_COEFFICIENT
+    self.rate = _rate
+
+
+    log UpdateMiningParameters(block.timestamp, _rate, _start_epoch_supply)
 
 
 @external
@@ -153,12 +171,14 @@ def set_minter(_minter: address):
     assert msg.sender == self.admin  # dev: admin only
     assert self.minter == ZERO_ADDRESS  # dev: can set the minter only once, at creation
     self.minter = _minter
+    log SetMinter(_minter)
 
 
 @external
 def set_admin(_admin: address):
     assert msg.sender == self.admin  # dev: admin only
     self.admin = _admin
+    log SetAdmin(_admin)
 
 
 @external

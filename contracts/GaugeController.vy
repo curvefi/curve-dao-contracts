@@ -28,6 +28,32 @@ interface VotingEscrow:
     def locked__end(addr: address) -> uint256: view
 
 
+event CommitOwnership:
+    admin: address
+
+event ApplyOwnership:
+    admin: address
+
+event NewTypeWeight:
+    type_id: int128
+    time: uint256
+    weight: uint256
+    total_weight: uint256
+
+event NewGaugeWeight:
+    gauge_address: address
+    time: uint256
+    weight: uint256
+    total_weight: uint256
+
+# XXX TODO get rid of gauge_id everywhere in favor of address
+event VoteForGauge:
+    time: uint256
+    user: address
+    gauge_id: int128
+    weight: int128
+
+
 MULTIPLIER: constant(uint256) = 10 ** 18
 
 admin: public(address)  # Can and will be a smart contract
@@ -93,12 +119,15 @@ def commit_transfer_ownership(addr: address):
     """
     assert msg.sender == self.admin
     self.future_admin = addr
+    log CommitOwnership(addr)
 
 
 @external
 def apply_transfer_ownership():
     assert msg.sender == self.admin
-    self.admin = self.future_admin
+    _admin: address = self.future_admin
+    self.admin = _admin
+    log ApplyOwnership(_admin)
 
 
 @external
@@ -256,7 +285,7 @@ def _change_type_weight(type_id: int128, weight: uint256):
     self.type_last[type_id] = p
     old_weight: uint256 = self.type_weights[type_id][l]
     old_sum: uint256 = self.weight_sums_per_type[type_id][l]
-    old_total_weight: uint256 = self.total_weight[p-1]
+    _total_weight: uint256 = self.total_weight[p-1]
 
     if l > 0:
         # Fill historic type weights and sums
@@ -268,11 +297,14 @@ def _change_type_weight(type_id: int128, weight: uint256):
             self.type_weights[type_id][_p] = old_weight
             self.weight_sums_per_type[type_id][_p] = old_sum
 
-    self.total_weight[p] = old_total_weight + old_sum * weight - old_sum * old_weight
+    _total_weight = _total_weight + old_sum * weight - old_sum * old_weight
+    self.total_weight[p] = _total_weight
     self.type_weights[type_id][p] = weight
     self.weight_sums_per_type[type_id][p] = old_sum
 
     self.period_timestamp[p] = block.timestamp
+
+    log NewTypeWeight(type_id, block.timestamp, weight, _total_weight)
 
 
 @external
@@ -317,7 +349,7 @@ def _change_gauge_weight(addr: address, weight: uint256):
     old_gauge_weight: uint256 = self.gauge_weights[addr][gl]
     type_weight: uint256 = self.type_weights[gauge_type][tl]
     old_sum: uint256 = self.weight_sums_per_type[gauge_type][tl]
-    old_total: uint256 = self.total_weight[p-1]
+    _total_weight: uint256 = self.total_weight[p-1]
 
     if tl > 0:
         _p: int128 = tl
@@ -342,9 +374,12 @@ def _change_gauge_weight(addr: address, weight: uint256):
     new_sum: uint256 = old_sum + weight - old_gauge_weight
     self.gauge_weights[addr][p] = weight
     self.weight_sums_per_type[gauge_type][p] = new_sum
-    self.total_weight[p] = old_total + new_sum * type_weight - old_sum * type_weight
+    _total_weight = _total_weight + new_sum * type_weight - old_sum * type_weight
+    self.total_weight[p] = _total_weight
 
     self.period_timestamp[p] = block.timestamp
+
+    log NewGaugeWeight(addr, block.timestamp, weight, _total_weight)
 
 
 @external
@@ -442,6 +477,8 @@ def vote_for_gauge_weights(_gauge_id: int128, _user_weight: int128):
 
     # Record last action time
     self.last_user_vote[msg.sender][_gauge_id] = block.timestamp
+
+    log VoteForGauge(block.timestamp, msg.sender, _gauge_id, _user_weight)
 
 
 @external
