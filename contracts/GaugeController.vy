@@ -28,6 +28,8 @@ interface VotingEscrow:
     def locked__end(addr: address) -> uint256: view
 
 
+MULTIPLIER: constant(uint256) = 10 ** 18
+
 admin: public(address)  # Can and will be a smart contract
 future_admin: public(address)  # Can and will be a smart contract
 
@@ -192,7 +194,7 @@ def gauge_relative_weight(addr: address, _period: int128=-1) -> uint256:
         gauge_type: int128 = self.gauge_types_[addr] - 1
         tl: int128 = self.type_last[gauge_type]
         gl: int128 = self.gauge_last[addr]
-        return 10 ** 18 * self.type_weights[gauge_type][tl] * self.gauge_weights[addr][gl] / _total_weight
+        return MULTIPLIER * self.type_weights[gauge_type][tl] * self.gauge_weights[addr][gl] / _total_weight
     else:
         return 0
 
@@ -236,7 +238,7 @@ def gauge_relative_weight_write(addr: address, _period: int128=-1) -> uint256:
                 if gl == p:
                     break
             self.gauge_last[addr] = p
-        return 10 ** 18 * self.type_weights[gauge_type][tl] * self.gauge_weights[addr][gl] / _total_weight
+        return MULTIPLIER * self.type_weights[gauge_type][tl] * self.gauge_weights[addr][gl] / _total_weight
     else:
         return 0
 

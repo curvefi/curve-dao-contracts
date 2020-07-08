@@ -54,6 +54,7 @@ event Withdraw:
 
 WEEK: constant(uint256) = 604800  # 7 * 86400 seconds - all future times are rounded by week
 MAXTIME: constant(uint256) = 126144000  # 4 * 365 * 86400 - 4 years
+MULTIPLIER: constant(uint256) = 10 ** 18
 
 token: public(address)
 supply: public(uint256)
@@ -200,7 +201,7 @@ def _checkpoint(addr: address, old_locked: LockedBalance, new_locked: LockedBala
     initial_last_point: Point = last_point
     block_slope: uint256 = 0  # dblock/dt
     if block.timestamp > last_point.ts:
-        block_slope = 10 ** 18 * (block.number - last_point.blk) / (block.timestamp - last_point.ts)
+        block_slope = MULTIPLIER * (block.number - last_point.blk) / (block.timestamp - last_point.ts)
     # If last point is already recorded in this block, slope=0
     # But that's ok b/c we know the block in such case
 
@@ -223,7 +224,7 @@ def _checkpoint(addr: address, old_locked: LockedBalance, new_locked: LockedBala
             last_point.slope = 0
         last_checkpoint = t_i
         last_point.ts = t_i
-        last_point.blk = initial_last_point.blk + block_slope * (t_i - initial_last_point.ts) / 10 ** 18
+        last_point.blk = initial_last_point.blk + block_slope * (t_i - initial_last_point.ts) / MULTIPLIER
         _epoch += 1
         if t_i == block.timestamp:
             last_point.blk = block.number
