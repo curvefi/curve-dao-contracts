@@ -40,6 +40,7 @@ event UpdateLiquidityLimit:
 
 
 TOKENLESS_PRODUCTION: constant(uint256) = 40
+BOOST_WARMUP: constant(uint256) = 2 * 7 * 86400
 
 minter: public(address)
 crv_token: public(address)
@@ -97,7 +98,7 @@ def _update_liquidity_limit(addr: address, l: uint256, L: uint256):
     voting_total: uint256 = ERC20(_voting_escrow).totalSupply()
 
     lim: uint256 = l * TOKENLESS_PRODUCTION / 100
-    if voting_total > 0:
+    if (voting_total > 0) and (block.timestamp > self.period_checkpoints[0] + BOOST_WARMUP):
         lim += L * voting_balance / voting_total * (100 - TOKENLESS_PRODUCTION) / 100
 
     lim = min(l, lim)

@@ -6,6 +6,7 @@ WEEK = 7 * 86400
 
 def test_kick(rpc, accounts, liquidity_gauge, voting_escrow, token, mock_lp_token):
     alice, bob = accounts[:2]
+    rpc.sleep(2 * WEEK + 5)
 
     token.approve(voting_escrow, MAX_UINT256, {'from': alice})
     voting_escrow.deposit(10 ** 20, rpc.time() + 4 * WEEK, {'from': alice})

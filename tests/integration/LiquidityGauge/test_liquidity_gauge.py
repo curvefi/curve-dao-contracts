@@ -108,6 +108,7 @@ def test_mining_with_votelock(
         accounts, rpc, block_timestamp, history,
         mock_lp_token, token, liquidity_gauge, gauge_controller, voting_escrow):
     alice, bob = accounts[:2]
+    rpc.sleep(2 * WEEK + 5)
 
     # Wire up Gauge to the controller to have proper rates and stuff
     gauge_controller.add_type(b'Liquidity', {'from': alice})
