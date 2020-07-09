@@ -6,6 +6,9 @@ interface Gauge:
 interface MERC20:
     def mint(_to: address, _value: uint256) -> bool: nonpayable
 
+interface GaugeController:
+    def gauge_types(addr: address) -> int128: view
+
 
 token: public(address)
 controller: public(address)
@@ -26,7 +29,7 @@ def mint(gauge_addr: address):
     """
     Mint everything which belongs to msg.sender and send to them
     """
-    assert gauge_addr != ZERO_ADDRESS
+    assert GaugeController(self.controller).gauge_types(gauge_addr) >= 0  # dev: gauge is not added
 
     Gauge(gauge_addr).user_checkpoint(msg.sender)
     total_mint: uint256 = Gauge(gauge_addr).integrate_fraction(msg.sender)
