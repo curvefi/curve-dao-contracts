@@ -75,7 +75,8 @@ gauge_type_names: public(HashMap[int128, String[64]])
 period: public(int128)
 period_timestamp: public(HashMap[int128, uint256])
 
-gauges: public(HashMap[int128, address])  # XXX do we need?
+# Needed for enumeration
+gauges: public(HashMap[int128, address])
 
 # we increment values by 1 prior to storing them here so we can rely on a value
 # of zero as meaning the gauge has not been set

@@ -37,7 +37,7 @@ def test_mint(accounts, rpc, three_gauges, minter, token):
     three_gauges[0].deposit(1e18, {'from': accounts[1]})
 
     rpc.sleep(MONTH)
-    minter.mint(0, {'from': accounts[1]})
+    minter.mint(three_gauges[0], {'from': accounts[1]})
     expected = three_gauges[0].integrate_fraction(accounts[1])
 
     assert token.balanceOf(accounts[1]) == expected
@@ -48,7 +48,7 @@ def test_mint_immediate(accounts, rpc, three_gauges, minter, token):
     three_gauges[0].deposit(1e18, {'from': accounts[1]})
     rpc.sleep(1)
 
-    minter.mint(0, {'from': accounts[1]})
+    minter.mint(three_gauges[0], {'from': accounts[1]})
     balance = token.balanceOf(accounts[1])
 
     assert balance > 0
@@ -59,11 +59,11 @@ def test_mint_multiple_same_gauge(accounts, rpc, three_gauges, minter, token):
     three_gauges[0].deposit(1e18, {'from': accounts[1]})
 
     rpc.sleep(MONTH)
-    minter.mint(0, {'from': accounts[1]})
+    minter.mint(three_gauges[0], {'from': accounts[1]})
     balance = token.balanceOf(accounts[1])
 
     rpc.sleep(MONTH)
-    minter.mint(0, {'from': accounts[1]})
+    minter.mint(three_gauges[0], {'from': accounts[1]})
     expected = three_gauges[0].integrate_fraction(accounts[1])
     final_balance = token.balanceOf(accounts[1])
 
@@ -79,7 +79,7 @@ def test_mint_multiple_gauges(accounts, rpc, three_gauges, minter, token):
     rpc.sleep(MONTH)
 
     for i in range(3):
-        minter.mint(i, {'from': accounts[1]})
+        minter.mint(three_gauges[i], {'from': accounts[1]})
 
     total_minted = 0
     for i in range(3):
@@ -96,7 +96,7 @@ def test_mint_after_withdraw(accounts, rpc, three_gauges, minter, token):
 
     rpc.sleep(10)
     three_gauges[0].withdraw(1e18, {'from': accounts[1]})
-    minter.mint(0, {'from': accounts[1]})
+    minter.mint(three_gauges[0], {'from': accounts[1]})
 
     assert token.balanceOf(accounts[1]) > 0
 
@@ -106,17 +106,17 @@ def test_mint_multiple_after_withdraw(accounts, rpc, three_gauges, minter, token
 
     rpc.sleep(10)
     three_gauges[0].withdraw(1e18, {'from': accounts[1]})
-    minter.mint(0, {'from': accounts[1]})
+    minter.mint(three_gauges[0], {'from': accounts[1]})
     balance = token.balanceOf(accounts[1])
 
     rpc.sleep(10)
-    minter.mint(0, {'from': accounts[1]})
+    minter.mint(three_gauges[0], {'from': accounts[1]})
 
     assert token.balanceOf(accounts[1]) == balance
 
 
 def test_no_deposit(accounts, rpc, three_gauges, minter, token):
-    minter.mint(0, {'from': accounts[1]})
+    minter.mint(three_gauges[0], {'from': accounts[1]})
 
     assert token.balanceOf(accounts[1]) == 0
     assert minter.minted(accounts[1], three_gauges[0]) == 0
@@ -126,7 +126,7 @@ def test_mint_wrong_gauge(accounts, rpc, three_gauges, minter, token):
     three_gauges[0].deposit(1e18, {'from': accounts[1]})
 
     rpc.sleep(MONTH)
-    minter.mint(1, {'from': accounts[1]})
+    minter.mint(three_gauges[1], {'from': accounts[1]})
 
     assert token.balanceOf(accounts[1]) == 0
     assert minter.minted(accounts[1], three_gauges[0]) == 0

@@ -39,7 +39,7 @@ def test_duration(accounts, rpc, liquidity_gauge, minter, token, st_duration):
         rpc.sleep(st_duration[i])
         tx = liquidity_gauge.withdraw(10**18, {'from': accts[i]})
         durations.append(tx.timestamp - deposit_time[i])
-        minter.mint(0, {'from': accts[i]})
+        minter.mint(liquidity_gauge, {'from': accts[i]})
         balances.append(token.balanceOf(accts[i]))
 
     total_minted = sum(balances)
@@ -68,7 +68,7 @@ def test_amounts(accounts, rpc, liquidity_gauge, minter, token, st_amounts):
         liquidity_gauge.withdraw(st_amounts[i], {'from': accts[i]})
 
     for i in range(3):
-        minter.mint(0, {'from': accts[i]})
+        minter.mint(liquidity_gauge, {'from': accts[i]})
         balances.append(token.balanceOf(accts[i]))
 
     total_deposited = sum(st_amounts)

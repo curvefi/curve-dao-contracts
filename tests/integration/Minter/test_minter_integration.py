@@ -62,18 +62,18 @@ def test_mint(accounts, rpc, mock_lp_token, gauge_controller, three_gauges, mint
         assert mock_lp_token.balanceOf(user) == amount
 
     # Claim for Bob now
-    minter.mint(1, {'from': bob})
+    minter.mint(three_gauges[1], {'from': bob})
     bob_tokens = token.balanceOf(bob)
 
     rpc.sleep(dt)
     rpc.mine()
 
-    minter.mint(1, {'from': bob})  # This won't give anything
+    minter.mint(three_gauges[1], {'from': bob})  # This won't give anything
     assert bob_tokens == token.balanceOf(bob)
 
-    minter.mint(2, {'from': charlie})
+    minter.mint(three_gauges[2], {'from': charlie})
     charlie_tokens = token.balanceOf(charlie)
-    minter.mint(1, {'from': dan})
+    minter.mint(three_gauges[1], {'from': dan})
     dan_tokens = token.balanceOf(dan)
 
     S = bob_tokens + charlie_tokens + dan_tokens

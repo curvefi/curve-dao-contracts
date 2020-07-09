@@ -58,7 +58,7 @@ def test_gauge_weight_vote(
         votes[-1].append(10000 - sum(votes[-1]))  # XXX what if votes are not used up to 100%?
         # Now votes are [[vote_gauge_0, vote_gauge_1, vote_gauge_2], ...]
         for x in range(3):
-            gauge_controller.vote_for_gauge_weights(x, votes[-1][x], {'from': acct})
+            gauge_controller.vote_for_gauge_weights(three_gauges[x], votes[-1][x], {'from': acct})
 
     # Vote power assertions - everyone used all voting power
     for acct in accounts[:3]:
@@ -83,7 +83,7 @@ def test_gauge_weight_vote(
     # advance clock a month at a time and compare theoretical weight to actual weights
     while history[-1].timestamp < timestamp + 1.5 * max_duration:
         for i in range(3):  # XXX what happens if not enacted? 0 or old?
-            gauge_controller.enact_vote(i, {'from': accounts[4]})
+            gauge_controller.enact_vote(three_gauges[i], {'from': accounts[4]})
 
         relative_time = (history[-1].timestamp // WEEK * WEEK - timestamp) / max_duration
         weights = [gauge_controller.gauge_relative_weight(three_gauges[i]) / 1e18 for i in range(3)]
