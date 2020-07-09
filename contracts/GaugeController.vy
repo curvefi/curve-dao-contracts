@@ -462,7 +462,7 @@ def vote_for_gauge_weights(_gauge_addr: address, _user_weight: int128):
 
     ## Remove old and schedule new slope changes
     # Remove slope changes for old slopes
-    # XXX schedule recording of initial slope for next_time XXX
+    # Schedule recording of initial slope for next_time
     self.vote_bias_changes[_gauge_addr][next_time] += new_bias - old_bias
     if old_slope.end > next_time:
         self.vote_slope_changes[_gauge_addr][next_time] += (new_slope.slope - old_slope.slope)
