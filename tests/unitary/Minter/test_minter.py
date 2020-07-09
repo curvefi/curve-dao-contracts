@@ -1,4 +1,4 @@
-
+import brownie
 import pytest
 import itertools
 
@@ -131,3 +131,8 @@ def test_mint_wrong_gauge(accounts, rpc, three_gauges, minter, token):
     assert token.balanceOf(accounts[1]) == 0
     assert minter.minted(accounts[1], three_gauges[0]) == 0
     assert minter.minted(accounts[1], three_gauges[1]) == 0
+
+
+def test_mint_not_a_gauge(accounts, minter):
+    with brownie.reverts('dev: gauge is not added'):
+        minter.mint(accounts[1], {'from': accounts[0]})
