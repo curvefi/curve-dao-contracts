@@ -412,7 +412,7 @@ def _enact_vote(_gauge_addr: address):
                 break
         self.vote_points[_gauge_addr] = vote_point
         self.vote_enacted_at[_gauge_addr] = block.timestamp
-        self._change_gauge_weight(self.gauges[_gauge_addr], convert(vote_point.bias, uint256))
+        self._change_gauge_weight(_gauge_addr, convert(vote_point.bias, uint256))
 
 
 @external
