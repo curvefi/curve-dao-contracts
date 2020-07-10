@@ -11,7 +11,7 @@ def gauge_vote_setup(accounts, rpc, gauge_controller, three_gauges, voting_escro
     gauge_controller.add_gauge(three_gauges[1], 1, {'from': accounts[0]})
 
     token.approve(voting_escrow, 10 ** 24, {'from': accounts[0]})
-    voting_escrow.deposit(10 ** 24, rpc.time() + YEAR, {'from': accounts[0]})
+    voting_escrow.create_lock(10 ** 24, rpc.time() + YEAR, {'from': accounts[0]})
 
 
 def test_vote(accounts, gauge_controller, three_gauges):

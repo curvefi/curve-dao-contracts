@@ -9,7 +9,7 @@ def test_kick(rpc, accounts, liquidity_gauge, voting_escrow, token, mock_lp_toke
     rpc.sleep(2 * WEEK + 5)
 
     token.approve(voting_escrow, MAX_UINT256, {'from': alice})
-    voting_escrow.deposit(10 ** 20, rpc.time() + 4 * WEEK, {'from': alice})
+    voting_escrow.create_lock(10 ** 20, rpc.time() + 4 * WEEK, {'from': alice})
 
     mock_lp_token.approve(liquidity_gauge.address, MAX_UINT256, {'from': alice})
     liquidity_gauge.deposit(10 ** 21, {'from': alice})

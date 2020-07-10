@@ -49,7 +49,7 @@ def test_gauge_weight_vote(
     # Deposit for voting
     timestamp = history[-1].timestamp
     for i, acct in enumerate(accounts[:3]):
-        voting_escrow.deposit(st_deposits[i], timestamp + (st_length[i] * WEEK), {'from': acct})
+        voting_escrow.create_lock(st_deposits[i], timestamp + (st_length[i] * WEEK), {'from': acct})
 
     # Place votes
     votes = []

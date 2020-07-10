@@ -33,74 +33,71 @@ class StateMachine:
         self.token_balances = {i: 10**40 for i in self.accounts}
         self.voting_balances = {i: {'value': 0, 'unlock_time': 0} for i in self.accounts}
 
-    def rule_new_deposit(self, st_account, st_value, st_lock_duration):
-        """
-        Make a deposit into the voting escrow, with a given lock time.
-        """
+    def rule_create_lock(self, st_account, st_value, st_lock_duration):
         unlock_time = (rpc.time() + st_lock_duration * WEEK) // WEEK * WEEK
 
-        if 0 < self.voting_balances[st_account]['unlock_time'] < rpc.time():
-            # fail path - tokens are deposited, current lock has expired
+        if st_value == 0:
+            with brownie.reverts("dev: need non-zero value"):
+                self.voting_escrow.create_lock(st_value, unlock_time, {'from': st_account})
+
+        elif self.voting_balances[st_account]['value'] > 0:
             with brownie.reverts("Withdraw old tokens first"):
-                self.voting_escrow.deposit(st_value, unlock_time, {'from': st_account})
+                self.voting_escrow.create_lock(st_value, unlock_time, {'from': st_account})
 
-        elif self.voting_balances[st_account]['unlock_time'] > unlock_time:
-            # fail path - tokens are deposited, current lock is >= new lock
-            with brownie.reverts("Cannot decrease the lock duration"):
-                self.voting_escrow.deposit(st_value, unlock_time, {'from': st_account})
-
-        elif st_value == 0 and not (unlock_time > self.voting_balances[st_account]['unlock_time']):
-            # fail path - tokens deposited, not advancing lock time or adding balance
-            with brownie.reverts():
-                self.voting_escrow.deposit(st_value, unlock_time, {'from': st_account})
-
-        elif self.voting_balances[st_account]['value'] == 0 and unlock_time < rpc.time():
-            # fail path - no deposit, unlock time is < current time
+        elif unlock_time <= rpc.time():
             with brownie.reverts("Can only lock until time in the future"):
-                self.voting_escrow.deposit(st_value, unlock_time, {'from': st_account})
+                self.voting_escrow.create_lock(st_value, unlock_time, {'from': st_account})
 
         elif unlock_time > rpc.time() + 86400 * 365 * 4:
-            # fail path - no deposit, unlock time > four years later
             with brownie.reverts("Voting lock can be 4 years max"):
-                self.voting_escrow.deposit(st_value, unlock_time, {'from': st_account})
-
-        elif self.voting_balances[st_account]['value'] == 0 and st_value > 0:
-            # success path - no tokens currently deposited
-            tx = self.voting_escrow.deposit(st_value, unlock_time, {'from': st_account})
-            self.voting_balances[st_account] = {
-                'value': st_value,
-                'unlock_time': tx.events['Deposit']['locktime'],
-            }
-
-        elif self.voting_balances[st_account]['unlock_time'] < unlock_time and st_value > 0:
-            # success path - tokens are deposited, current lock is < new lock
-            tx = self.voting_escrow.deposit(st_value, unlock_time, {'from': st_account})
-            self.voting_balances[st_account]['value'] += st_value
-            self.voting_balances[st_account]['unlock_time'] = tx.events['Deposit']['locktime']
-
-    def rule_increase_deposit(self, st_account, st_value):
-        """
-        Make a deposit into the voting escrow, without specifying a lock time.
-        """
-        if self.voting_balances[st_account]['value'] == 0:
-            # fail path - no tokens currently deposited
-            with brownie.reverts("No existing lock found"):
-                self.voting_escrow.deposit(st_value, {'from': st_account})
-
-        elif self.voting_balances[st_account]['unlock_time'] < rpc.time():
-            # fail path - tokens are deposited, current lock has expired
-            with brownie.reverts("Cannot add to expired lock. Withdraw"):
-                self.voting_escrow.deposit(st_value, {'from': st_account})
-
-        elif st_value == 0:
-            # fail path - tokens are deposited, value is zero
-            with brownie.reverts():
-                self.voting_escrow.deposit(st_value, {'from': st_account})
+                self.voting_escrow.create_lock(st_value, unlock_time, {'from': st_account})
 
         else:
-            # success path - tokens are deposited, lock has not expired
-            self.voting_escrow.deposit(st_value, {'from': st_account})
+            tx = self.voting_escrow.create_lock(st_value, unlock_time, {'from': st_account})
+            self.voting_balances[st_account] = {
+                    'value': st_value,
+                    'unlock_time': tx.events['Deposit']['locktime']
+            }
+
+    def rule_increase_amount(self, st_account, st_value):
+        if st_value == 0:
+            with brownie.reverts("dev: need non-zero value"):
+                self.voting_escrow.increase_amount(st_value, {'from': st_account})
+
+        elif self.voting_balances[st_account]['value'] == 0:
+            with brownie.reverts("No existing lock found"):
+                self.voting_escrow.increase_amount(st_value, {'from': st_account})
+
+        elif self.voting_balances[st_account]['unlock_time'] <= rpc.time():
+            with brownie.reverts("Cannot add to expired lock. Withdraw"):
+                self.voting_escrow.increase_amount(st_value, {'from': st_account})
+
+        else:
+            self.voting_escrow.increase_amount(st_value, {'from': st_account})
             self.voting_balances[st_account]['value'] += st_value
+
+    def rule_increase_unlock_time(self, st_account, st_lock_duration):
+        unlock_time = (rpc.time() + st_lock_duration * WEEK) // WEEK * WEEK
+
+        if self.voting_balances[st_account]['unlock_time'] <= rpc.time():
+            with brownie.reverts("Lock expired"):
+                self.voting_escrow.increase_unlock_time(unlock_time, {'from': st_account})
+
+        elif self.voting_balances[st_account]['value'] == 0:
+            with brownie.reverts("Nothing is locked"):
+                self.voting_escrow.increase_unlock_time(unlock_time, {'from': st_account})
+
+        elif unlock_time <= self.voting_balances[st_account]['unlock_time']:
+            with brownie.reverts("Can only increase lock duration"):
+                self.voting_escrow.increase_unlock_time(unlock_time, {'from': st_account})
+
+        elif unlock_time > rpc.time() + 86400 * 365 * 4:
+            with brownie.reverts("Voting lock can be 4 years max"):
+                self.voting_escrow.increase_unlock_time(unlock_time, {'from': st_account})
+
+        else:
+            tx = self.voting_escrow.increase_unlock_time(unlock_time, {'from': st_account})
+            self.voting_balances[st_account]['unlock_time'] = tx.events['Deposit']['locktime']
 
     def rule_withdraw(self, st_account):
         """

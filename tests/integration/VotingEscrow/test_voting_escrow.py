@@ -56,7 +56,7 @@ def test_voting_powers(web3, rpc, accounts, block_timestamp,
 
     stages['before_deposits'] = (web3.eth.blockNumber, block_timestamp())
 
-    voting_escrow.deposit(amount, block_timestamp() + WEEK, {'from': alice})
+    voting_escrow.create_lock(amount, block_timestamp() + WEEK, {'from': alice})
     stages['alice_deposit'] = (web3.eth.blockNumber, block_timestamp())
 
     rpc.sleep(H)
@@ -95,14 +95,14 @@ def test_voting_powers(web3, rpc, accounts, block_timestamp,
     rpc.sleep((block_timestamp() // WEEK + 1) * WEEK - block_timestamp())
     rpc.mine()
 
-    voting_escrow.deposit(amount, block_timestamp() + 2 * WEEK, {'from': alice})
+    voting_escrow.create_lock(amount, block_timestamp() + 2 * WEEK, {'from': alice})
     stages['alice_deposit_2'] = (web3.eth.blockNumber, block_timestamp())
 
     assert approx(voting_escrow.totalSupply(), amount // MAXTIME * 2 * WEEK, TOL)
     assert approx(voting_escrow.balanceOf(alice), amount // MAXTIME * 2 * WEEK, TOL)
     assert voting_escrow.balanceOf(bob) == 0
 
-    voting_escrow.deposit(amount, block_timestamp() + WEEK, {'from': bob})
+    voting_escrow.create_lock(amount, block_timestamp() + WEEK, {'from': bob})
     stages['bob_deposit_2'] = (web3.eth.blockNumber, block_timestamp())
 
     assert approx(voting_escrow.totalSupply(), amount // MAXTIME * 3 * WEEK, TOL)

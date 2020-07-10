@@ -125,7 +125,7 @@ def test_mining_with_votelock(
 
     # Alice deposits to escrow. She now has a BOOST
     t = block_timestamp()
-    voting_escrow.deposit(10 ** 20, t + 2 * WEEK, {'from': alice})
+    voting_escrow.create_lock(10 ** 20, t + 2 * WEEK, {'from': alice})
 
     # Alice and Bob deposit some liquidity
     liquidity_gauge.deposit(10 ** 21, {'from': alice})
@@ -175,8 +175,8 @@ def test_mining_with_votelock(
     # Both Alice and Bob votelock
     while True:
         t = block_timestamp()
-        voting_escrow.deposit(10 ** 20, t + 2 * WEEK, {'from': alice})
-        voting_escrow.deposit(10 ** 20, t + 2 * WEEK, {'from': bob})
+        voting_escrow.create_lock(10 ** 20, t + 2 * WEEK, {'from': alice})
+        voting_escrow.create_lock(10 ** 20, t + 2 * WEEK, {'from': bob})
         if history[-1].timestamp != history[-2].timestamp:
             rpc.undo(2)
         else:

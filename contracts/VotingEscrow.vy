@@ -273,28 +273,8 @@ def _checkpoint(addr: address, old_locked: LockedBalance, new_locked: LockedBala
 
 
 @internal
-def _deposit_for(_addr: address, _value: uint256, _unlock_time: uint256):
-    unlock_time: uint256 = (_unlock_time / WEEK) * WEEK  # Locktime is rounded down to weeks
-    _locked: LockedBalance = self.locked[_addr]  # How much is locked previously and for how long
-
-    if unlock_time == 0:
-        # Checks needed if we are not extending the lock
-        # It means that a workable lock should already exist
-        assert _locked.amount > 0, "No existing lock found"
-        assert _locked.end > block.timestamp, "Cannot add to expired lock. Withdraw"
-        assert _value != 0  # Why add zero to existing lock
-
-    else:
-        # Lock is extended, or a new one is created, with deposit added or not
-        if _locked.end <= block.timestamp:
-            assert _locked.amount == 0, "Withdraw old tokens first"
-        assert unlock_time >= _locked.end, "Cannot decrease the lock duration"
-        assert unlock_time > block.timestamp, "Can only lock until time in the future"
-        assert unlock_time <= block.timestamp + MAXTIME, "Voting lock can be 4 years max"
-        if (_locked.end <= block.timestamp) or (unlock_time == _locked.end):
-            # If lock is not extended, we must be adding more to it
-            assert _value != 0
-        assert unlock_time <= block.timestamp + MAXTIME, "Voting lock can be 4 years max"
+def _deposit_for(_addr: address, _value: uint256, unlock_time: uint256, locked_balance: LockedBalance):
+    _locked: LockedBalance = locked_balance
 
     self.supply += _value
     old_locked: LockedBalance = _locked
@@ -322,19 +302,64 @@ def deposit_for(_addr: address, _value: uint256):
     """
     Anyone can deposit for someone else, but cannot extend their locktime
     """
-    assert self.user_point_epoch[_addr] != 0, "First tx should be done by user"
-    self._deposit_for(_addr, _value, 0)
+    _locked: LockedBalance = self.locked[_addr]
+
+    assert _value > 0  # dev: need non-zero value
+    assert _locked.amount > 0, "No existing lock found"
+    assert _locked.end > block.timestamp, "Cannot add to expired lock. Withdraw"
+
+    self._deposit_for(_addr, _value, 0, self.locked[_addr])
 
 
 @external
 @nonreentrant('lock')
-def deposit(_value: uint256, _unlock_time: uint256 = 0):
+def create_lock(_value: uint256, _unlock_time: uint256):
     """
-    Deposit `value` or extend locktime
-    If previous lock is expired but hasn't been taken - use that
+    Deposit `value` until `_unlock_time`
     """
     self.assert_not_contract(msg.sender)
-    self._deposit_for(msg.sender, _value, _unlock_time)
+    unlock_time: uint256 = (_unlock_time / WEEK) * WEEK  # Locktime is rounded down to weeks
+    _locked: LockedBalance = self.locked[msg.sender]
+
+    assert _value > 0  # dev: need non-zero value
+    assert _locked.amount == 0, "Withdraw old tokens first"
+    assert unlock_time > block.timestamp, "Can only lock until time in the future"
+    assert unlock_time <= block.timestamp + MAXTIME, "Voting lock can be 4 years max"
+
+    self._deposit_for(msg.sender, _value, unlock_time, _locked)
+
+
+@external
+@nonreentrant('lock')
+def increase_amount(_value: uint256):
+    """
+    Deposit `_value` more if the lock already exists
+    """
+    self.assert_not_contract(msg.sender)
+    _locked: LockedBalance = self.locked[msg.sender]
+
+    assert _value > 0  # dev: need non-zero value
+    assert _locked.amount > 0, "No existing lock found"
+    assert _locked.end > block.timestamp, "Cannot add to expired lock. Withdraw"
+
+    self._deposit_for(msg.sender, _value, 0, _locked)
+
+
+@external
+@nonreentrant('lock')
+def increase_unlock_time(_unlock_time: uint256):
+    """
+    Increase the time deposit is locked for up to `_unlock_time`
+    """
+    self.assert_not_contract(msg.sender)
+    _locked: LockedBalance = self.locked[msg.sender]
+
+    assert _locked.end > block.timestamp, "Lock expired"
+    assert _locked.amount > 0, "Nothing is locked"
+    assert _unlock_time > _locked.end, "Can only increase lock duration"
+    assert _unlock_time <= block.timestamp + MAXTIME, "Voting lock can be 4 years max"
+
+    self._deposit_for(msg.sender, 0, _unlock_time, _locked)
 
 
 @external
