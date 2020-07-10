@@ -233,10 +233,7 @@ def transferFrom(_from : address, _to : address, _value : uint256) -> bool:
     #       so the following subtraction would revert on insufficient balance
     self.balanceOf[_from] -= _value
     self.balanceOf[_to] += _value
-    if msg.sender != self.minter:  # minter is allowed to transfer anything
-        # NOTE: vyper does not allow underflows
-        # so the following subtraction would revert on insufficient allowance
-        self.allowances[_from][msg.sender] -= _value
+    self.allowances[_from][msg.sender] -= _value
     log Transfer(_from, _to, _value)
     return True
 
