@@ -1,7 +1,7 @@
 from brownie.test import strategy, given
 
 from tests.conftest import approx
-from tests.conftest import YEAR, YEAR_1_SUPPLY
+from tests.conftest import YEAR, YEAR_1_SUPPLY, INITIAL_SUPPLY
 
 
 @given(time=strategy("decimal", min_value=1, max_value=7))
@@ -16,11 +16,11 @@ def test_mintable_in_timeframe(accounts, token, block_timestamp, theoretical_sup
     t1 = block_timestamp()
     available_supply = token.available_supply()
     mintable = token.mintable_in_timeframe(t0, t1)
-    assert (available_supply - (10 ** 9 * 10 ** 18)) >= mintable  # Should only round down, not up
+    assert (available_supply - (INITIAL_SUPPLY * 10 ** 18)) >= mintable  # Should only round down, not up
     if t1 == t0:
         assert mintable == 0
     else:
-        assert (available_supply - (10 ** 9 * 10 ** 18)) / mintable - 1 < 1e-7
+        assert (available_supply - (INITIAL_SUPPLY * 10 ** 18)) / mintable - 1 < 1e-7
 
     assert approx(theoretical_supply(), available_supply, 1e-16)
 
@@ -41,7 +41,7 @@ def test_random_range_multiple_epochs(token, block_timestamp, rpc, accounts, sta
     end = duration + start
     start_epoch = (start - creation_time) // YEAR
     end_epoch = (end - creation_time) // YEAR
-    rate = int(YEAR_1_SUPPLY // YEAR / (2 ** 0.5) ** start_epoch)
+    rate = int(YEAR_1_SUPPLY // YEAR / (2 ** 0.25) ** start_epoch)
 
     for i in range(end_epoch):
         rpc.sleep(YEAR)

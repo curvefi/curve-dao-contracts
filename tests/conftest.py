@@ -2,7 +2,9 @@ import pytest
 
 
 YEAR = 365 * 86400
-YEAR_1_SUPPLY = 594661989 * 10 ** 18 // YEAR * YEAR
+INITIAL_RATE = 279636603
+YEAR_1_SUPPLY = INITIAL_RATE * 10 ** 18 // YEAR * YEAR
+INITIAL_SUPPLY = 1_272_727_273
 
 
 def approx(a, b, precision=1e-10):
@@ -29,8 +31,8 @@ def block_timestamp(web3):
 def theoretical_supply(rpc, token, block_timestamp):
     def _fn():
         epoch = token.mining_epoch()
-        q = 1 / 2 ** .5
-        S = 10 ** 9 * 10 ** 18
+        q = 1 / 2 ** .25
+        S = INITIAL_SUPPLY * 10 ** 18
         if epoch > 0:
             S += int(YEAR_1_SUPPLY * (1 - q ** epoch) / (1 - q))
         S += int(YEAR_1_SUPPLY // YEAR * q ** epoch) * (block_timestamp() - token.start_epoch_time())
@@ -43,7 +45,7 @@ def theoretical_supply(rpc, token, block_timestamp):
 
 @pytest.fixture(scope="module")
 def token(ERC20CRV, accounts):
-    yield ERC20CRV.deploy("Curve DAO Token", "CRV", 18, 10 ** 9, {'from': accounts[0]})
+    yield ERC20CRV.deploy("Curve DAO Token", "CRV", 18, {'from': accounts[0]})
 
 
 @pytest.fixture(scope="module")

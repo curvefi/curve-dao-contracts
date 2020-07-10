@@ -44,9 +44,11 @@ admin: public(address)
 YEAR: constant(uint256) = 86400 * 365
 
 # Supply parameters
-INITIAL_RATE: constant(uint256) = 594661989 * 10 ** 18 / YEAR  # leading to 33% premine
+# Premine: 42% (vested shareholders (31%) + vested employees (3%) + vested users (3%) + burnable reserve(5%))
+INITIAL_SUPPLY: constant(uint256) = 1_272_727_273
+INITIAL_RATE: constant(uint256) = 279636603 * 10 ** 18 / YEAR  # leading to 42% premine
 RATE_REDUCTION_TIME: constant(uint256) = YEAR
-RATE_REDUCTION_COEFFICIENT: constant(uint256) = 1414213562373095168  # sqrt(2) * 1e18
+RATE_REDUCTION_COEFFICIENT: constant(uint256) = 1189207115002721024  # 2 ** (1/4) * 1e18
 RATE_DENOMINATOR: constant(uint256) = 10 ** 18
 
 # Supply variables
@@ -58,8 +60,8 @@ start_epoch_supply: uint256
 
 
 @external
-def __init__(_name: String[64], _symbol: String[32], _decimals: uint256, _supply: uint256):
-    init_supply: uint256 = _supply * 10 ** _decimals
+def __init__(_name: String[64], _symbol: String[32], _decimals: uint256):
+    init_supply: uint256 = INITIAL_SUPPLY * 10 ** _decimals
     self.name = _name
     self.symbol = _symbol
     self.decimals = _decimals
