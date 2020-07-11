@@ -38,3 +38,6 @@ def mint(gauge_addr: address):
     if to_mint != 0:
         MERC20(self.token).mint(msg.sender, to_mint)
         self.minted[msg.sender][gauge_addr] = total_mint
+
+
+# XXX change controller

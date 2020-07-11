@@ -224,7 +224,7 @@ def gauge_relative_weight(addr: address, _period: int128=-1) -> uint256:
         gauge_type: int128 = self.gauge_types_[addr] - 1
         tl: int128 = self.type_last[gauge_type]
         gl: int128 = self.gauge_last[addr]
-        return MULTIPLIER * self.type_weights[gauge_type][tl] * self.gauge_weights[addr][gl] / _total_weight
+        return MULTIPLIER * self.type_weights[gauge_type][min(tl, p)] * self.gauge_weights[addr][min(gl, p)] / _total_weight
     else:
         return 0
 
