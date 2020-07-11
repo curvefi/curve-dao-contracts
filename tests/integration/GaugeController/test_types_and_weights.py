@@ -71,7 +71,7 @@ class StateMachine:
         for idx in range(len(self.type_weights)):
             gauge_weight_sum = self._gauge_weight(idx)
 
-            assert self.controller.get_weights_sum_per_type(idx) == gauge_weight_sum
+            assert self.controller.weight_sums_per_type(idx) == gauge_weight_sum
 
     def invariant_total_type_weight(self):
         """
