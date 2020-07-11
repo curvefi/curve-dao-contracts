@@ -83,7 +83,7 @@ def main():
 
     lp_token = deploy_erc20s_and_pool(deployer)
 
-    token = repeat(ERC20CRV.deploy, "Curve DAO Token", "CRV", 18, 10 ** 9, {'from': deployer, 'required_confs': CONFS})
+    token = repeat(ERC20CRV.deploy, "Curve DAO Token", "CRV", 18, {'from': deployer, 'required_confs': CONFS})
     save_abi(token, 'token_crv')
 
     escrow = repeat(VotingEscrow.deploy, token, "Vote-escrowed CRV", "veCRV", "veCRV_0.99", {'from': deployer, 'required_confs': CONFS})
