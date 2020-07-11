@@ -76,7 +76,7 @@ period: public(int128)
 period_timestamp: public(HashMap[int128, uint256])
 
 # Needed for enumeration
-gauges: public(HashMap[int128, address])
+gauges: public(address[1000000000])
 
 # we increment values by 1 prior to storing them here so we can rely on a value
 # of zero as meaning the gauge has not been set
