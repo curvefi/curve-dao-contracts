@@ -108,7 +108,9 @@ def main():
     repeat(gauge_controller.change_type_weight, 0, 10 ** 18, {'from': deployer, 'required_confs': CONFS})
     repeat(gauge_controller.add_gauge, liquidity_gauge, 0, 10 ** 18, {'from': deployer, 'required_confs': CONFS})
 
-    repeat(gauge_controller.transfer_ownership, ARAGON_AGENT, {'from': deployer, 'required_confs': CONFS})
-    repeat(escrow.transfer_ownership, ARAGON_AGENT, {'from': deployer, 'required_confs': CONFS})
+    repeat(gauge_controller.commit_transfer_ownership, ARAGON_AGENT, {'from': deployer, 'required_confs': CONFS})
+    repeat(gauge_controller.apply_transfer_ownership, {'from': deployer, 'required_confs': CONFS})
+    repeat(escrow.commit_transfer_ownership, ARAGON_AGENT, {'from': deployer, 'required_confs': CONFS})
+    repeat(escrow.apply_transfer_ownership, {'from': deployer, 'required_confs': CONFS})
 
     repeat(PoolProxy.deploy, {'from': deployer, 'required_confs': CONFS})
