@@ -83,11 +83,10 @@ gauges: public(HashMap[int128, address])
 gauge_types_: HashMap[address, int128]
 
 gauge_weights: HashMap[address, HashMap[int128, uint256]]  # address -> period -> weight
-type_weights: HashMap[int128, HashMap[int128, uint256]]  # type_id -> period -> weight
+type_weights: public(uint256[1000000000])  # type_id -> weight
 weight_sums_per_type: public(uint256[1000000000])  # type_id -> weight
 total_weight: HashMap[int128, uint256]  # period -> total_weight
 
-type_last: HashMap[int128, int128]  # Last period for type update type_id -> period
 gauge_last: HashMap[address, int128]  # Last period for gauge update gauge_addr -> period
 # Total is always at the last updated state
 
@@ -189,21 +188,9 @@ def add_gauge(addr: address, gauge_type: int128, weight: uint256 = 0):
         p, epoch_changed = self.change_epoch(p)
         p += 1
         self.period = p
-        l: int128 = self.type_last[gauge_type]
-        self.type_last[gauge_type] = p
         self.gauge_last[addr] = p
         old_sum: uint256 = self.weight_sums_per_type[gauge_type]
-        _type_weight: uint256 = self.type_weights[gauge_type][l]
-        if l > 0:
-            # Fill historic type weights and sums
-            _p: int128 = l
-            # Cycle from the last type update till now
-            for i in range(500):  # If higher (unlikely) - 0 weights
-                _p += 1
-                if _p == p:
-                    break
-                self.type_weights[gauge_type][_p] = _type_weight
-        self.type_weights[gauge_type][p] = _type_weight
+        _type_weight: uint256 = self.type_weights[gauge_type]
         self.gauge_weights[addr][p] = weight
         self.weight_sums_per_type[gauge_type] = weight + old_sum
         if epoch_changed:
@@ -221,9 +208,8 @@ def gauge_relative_weight(addr: address, _period: int128=-1) -> uint256:
     _total_weight: uint256 = self.total_weight[p]
     if _total_weight > 0:
         gauge_type: int128 = self.gauge_types_[addr] - 1
-        tl: int128 = self.type_last[gauge_type]
         gl: int128 = self.gauge_last[addr]
-        return MULTIPLIER * self.type_weights[gauge_type][tl] * self.gauge_weights[addr][gl] / _total_weight
+        return MULTIPLIER * self.type_weights[gauge_type] * self.gauge_weights[addr][gl] / _total_weight
     else:
         return 0
 
@@ -248,16 +234,7 @@ def gauge_relative_weight_write(addr: address, _period: int128=-1) -> uint256:
     _total_weight: uint256 = self.total_weight[p]
     if _total_weight > 0:
         gauge_type: int128 = self.gauge_types_[addr] - 1
-        tl: int128 = self.type_last[gauge_type]
         gl: int128 = self.gauge_last[addr]
-        if p > tl and tl > 0:
-            _type_weight: uint256 = self.type_weights[gauge_type][tl]
-            for i in range(500):
-                tl += 1
-                self.type_weights[gauge_type][tl] = _type_weight
-                if tl == p:
-                    break
-            self.type_last[gauge_type] = p
         if p > gl and gl > 0:
             old_gauge_weight: uint256 = self.gauge_weights[addr][gl]
             for i in range(500):
@@ -266,7 +243,7 @@ def gauge_relative_weight_write(addr: address, _period: int128=-1) -> uint256:
                 if gl == p:
                     break
             self.gauge_last[addr] = p
-        return MULTIPLIER * self.type_weights[gauge_type][tl] * self.gauge_weights[addr][gl] / _total_weight
+        return MULTIPLIER * self.type_weights[gauge_type] * self.gauge_weights[addr][gl] / _total_weight
     else:
         return 0
 
@@ -280,24 +257,13 @@ def _change_type_weight(type_id: int128, weight: uint256):
         self.total_weight[p] = self.total_weight[p-1]
     p += 1
     self.period = p
-    l: int128 = self.type_last[type_id]
-    self.type_last[type_id] = p
-    old_weight: uint256 = self.type_weights[type_id][l]
+    old_weight: uint256 = self.type_weights[type_id]
     old_sum: uint256 = self.weight_sums_per_type[type_id]
     _total_weight: uint256 = self.total_weight[p-1]
 
-    if l > 0:
-        # Fill historic type weights and sums
-        _p: int128 = l
-        for i in range(500):  # If higher (unlikely) - 0 weights
-            _p += 1
-            if _p == p:
-                break
-            self.type_weights[type_id][_p] = old_weight
-
     _total_weight = _total_weight + old_sum * weight - old_sum * old_weight
     self.total_weight[p] = _total_weight
-    self.type_weights[type_id][p] = weight
+    self.type_weights[type_id] = weight
 
     self.period_timestamp[p] = block.timestamp
 
@@ -332,7 +298,7 @@ def change_type_weight(type_id: int128, weight: uint256):
 
 @internal
 def _change_gauge_weight(addr: address, weight: uint256):
-    # Fill weight from gauge_last to now, type_sums from type_last till now, total
+    # Fill weight from gauge_last to now, total
     gauge_type: int128 = self.gauge_types_[addr] - 1
     p: int128 = self.period
     epoch_changed: bool = False
@@ -342,21 +308,10 @@ def _change_gauge_weight(addr: address, weight: uint256):
     p += 1
     self.period = p
     gl: int128 = self.gauge_last[addr]
-    tl: int128 = self.type_last[gauge_type]
     old_gauge_weight: uint256 = self.gauge_weights[addr][gl]
-    type_weight: uint256 = self.type_weights[gauge_type][tl]
+    type_weight: uint256 = self.type_weights[gauge_type]
     old_sum: uint256 = self.weight_sums_per_type[gauge_type]
     _total_weight: uint256 = self.total_weight[p-1]
-
-    if tl > 0:
-        _p: int128 = tl
-        for i in range(500):
-            _p += 1
-            if _p == p:
-                break
-            self.type_weights[gauge_type][_p] = type_weight
-    self.type_weights[gauge_type][p] = type_weight
-    self.type_last[gauge_type] = p
 
     if gl > 0:
         _p: int128 = gl
@@ -492,7 +447,7 @@ def get_gauge_weight(addr: address) -> uint256:
 @external
 @view
 def get_type_weight(type_id: int128) -> uint256:
-    return self.type_weights[type_id][self.type_last[type_id]]
+    return self.type_weights[type_id]
 
 
 @external
