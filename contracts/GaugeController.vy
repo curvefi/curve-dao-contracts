@@ -197,6 +197,7 @@ def add_gauge(addr: address, gauge_type: int128, weight: uint256 = 0):
         if l > 0:
             # Fill historic type weights and sums
             _p: int128 = l
+            # Cycle from the last type update till now
             for i in range(500):  # If higher (unlikely) - 0 weights
                 _p += 1
                 if _p == p:
@@ -233,6 +234,7 @@ def gauge_relative_weight_write(addr: address, _period: int128=-1) -> uint256:
     """
     Same as gauge_relative_weight(), but also fill all the unfilled values
     for type and gauge records
+    Everyone can call, however nothing is recorded if the values are filled already
     """
     p: int128 = _period
     if _period < 0:

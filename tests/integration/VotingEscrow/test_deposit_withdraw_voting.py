@@ -4,6 +4,7 @@ from brownie.test import strategy
 
 WEEK = 86400 * 7
 MAX_TIME = 86400 * 365 * 4
+GAS_LIMIT = 4_000_000
 
 
 class StateMachine:
@@ -38,22 +39,22 @@ class StateMachine:
 
         if st_value == 0:
             with brownie.reverts("dev: need non-zero value"):
-                self.voting_escrow.create_lock(st_value, unlock_time, {'from': st_account})
+                self.voting_escrow.create_lock(st_value, unlock_time, {'from': st_account, 'gas': GAS_LIMIT})
 
         elif self.voting_balances[st_account]['value'] > 0:
             with brownie.reverts("Withdraw old tokens first"):
-                self.voting_escrow.create_lock(st_value, unlock_time, {'from': st_account})
+                self.voting_escrow.create_lock(st_value, unlock_time, {'from': st_account, 'gas': GAS_LIMIT})
 
         elif unlock_time <= rpc.time():
             with brownie.reverts("Can only lock until time in the future"):
-                self.voting_escrow.create_lock(st_value, unlock_time, {'from': st_account})
+                self.voting_escrow.create_lock(st_value, unlock_time, {'from': st_account, 'gas': GAS_LIMIT})
 
         elif unlock_time > rpc.time() + 86400 * 365 * 4:
             with brownie.reverts("Voting lock can be 4 years max"):
-                self.voting_escrow.create_lock(st_value, unlock_time, {'from': st_account})
+                self.voting_escrow.create_lock(st_value, unlock_time, {'from': st_account, 'gas': GAS_LIMIT})
 
         else:
-            tx = self.voting_escrow.create_lock(st_value, unlock_time, {'from': st_account})
+            tx = self.voting_escrow.create_lock(st_value, unlock_time, {'from': st_account, 'gas': GAS_LIMIT})
             self.voting_balances[st_account] = {
                     'value': st_value,
                     'unlock_time': tx.events['Deposit']['locktime']
@@ -62,18 +63,18 @@ class StateMachine:
     def rule_increase_amount(self, st_account, st_value):
         if st_value == 0:
             with brownie.reverts("dev: need non-zero value"):
-                self.voting_escrow.increase_amount(st_value, {'from': st_account})
+                self.voting_escrow.increase_amount(st_value, {'from': st_account, 'gas': GAS_LIMIT})
 
         elif self.voting_balances[st_account]['value'] == 0:
             with brownie.reverts("No existing lock found"):
-                self.voting_escrow.increase_amount(st_value, {'from': st_account})
+                self.voting_escrow.increase_amount(st_value, {'from': st_account, 'gas': GAS_LIMIT})
 
         elif self.voting_balances[st_account]['unlock_time'] <= rpc.time():
             with brownie.reverts("Cannot add to expired lock. Withdraw"):
-                self.voting_escrow.increase_amount(st_value, {'from': st_account})
+                self.voting_escrow.increase_amount(st_value, {'from': st_account, 'gas': GAS_LIMIT})
 
         else:
-            self.voting_escrow.increase_amount(st_value, {'from': st_account})
+            self.voting_escrow.increase_amount(st_value, {'from': st_account, 'gas': GAS_LIMIT})
             self.voting_balances[st_account]['value'] += st_value
 
     def rule_increase_unlock_time(self, st_account, st_lock_duration):
@@ -81,22 +82,22 @@ class StateMachine:
 
         if self.voting_balances[st_account]['unlock_time'] <= rpc.time():
             with brownie.reverts("Lock expired"):
-                self.voting_escrow.increase_unlock_time(unlock_time, {'from': st_account})
+                self.voting_escrow.increase_unlock_time(unlock_time, {'from': st_account, 'gas': GAS_LIMIT})
 
         elif self.voting_balances[st_account]['value'] == 0:
             with brownie.reverts("Nothing is locked"):
-                self.voting_escrow.increase_unlock_time(unlock_time, {'from': st_account})
+                self.voting_escrow.increase_unlock_time(unlock_time, {'from': st_account, 'gas': GAS_LIMIT})
 
         elif unlock_time <= self.voting_balances[st_account]['unlock_time']:
             with brownie.reverts("Can only increase lock duration"):
-                self.voting_escrow.increase_unlock_time(unlock_time, {'from': st_account})
+                self.voting_escrow.increase_unlock_time(unlock_time, {'from': st_account, 'gas': GAS_LIMIT})
 
         elif unlock_time > rpc.time() + 86400 * 365 * 4:
             with brownie.reverts("Voting lock can be 4 years max"):
-                self.voting_escrow.increase_unlock_time(unlock_time, {'from': st_account})
+                self.voting_escrow.increase_unlock_time(unlock_time, {'from': st_account, 'gas': GAS_LIMIT})
 
         else:
-            tx = self.voting_escrow.increase_unlock_time(unlock_time, {'from': st_account})
+            tx = self.voting_escrow.increase_unlock_time(unlock_time, {'from': st_account, 'gas': GAS_LIMIT})
             self.voting_balances[st_account]['unlock_time'] = tx.events['Deposit']['locktime']
 
     def rule_withdraw(self, st_account):
@@ -106,11 +107,11 @@ class StateMachine:
         if self.voting_balances[st_account]['unlock_time'] > rpc.time():
             # fail path - before unlock time
             with brownie.reverts("The lock didn't expire"):
-                self.voting_escrow.withdraw({'from': st_account})
+                self.voting_escrow.withdraw({'from': st_account, 'gas': GAS_LIMIT})
 
         else:
             # success path - specific amount
-            self.voting_escrow.withdraw({'from': st_account})
+            self.voting_escrow.withdraw({'from': st_account, 'gas': GAS_LIMIT})
             self.voting_balances[st_account]['value'] = 0
 
     def rule_advance_time(self, st_sleep_duration):
