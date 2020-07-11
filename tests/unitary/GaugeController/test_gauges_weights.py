@@ -54,27 +54,27 @@ def test_gauge_types(accounts, gauge_controller, three_gauges):
 def test_gauge_weight(accounts, gauge_controller, gauge):
     gauge_controller.add_gauge(gauge, 0, 10**19, {'from': accounts[0]})
 
-    assert gauge_controller.get_gauge_weight.call(gauge) == 10**19
+    assert gauge_controller.gauge_weights.call(gauge) == 10**19
 
 
 def test_gauge_weight_as_zero(accounts, gauge_controller, gauge):
     gauge_controller.add_gauge(gauge, 0, {'from': accounts[0]})
 
-    assert gauge_controller.get_gauge_weight.call(gauge) == 0
+    assert gauge_controller.gauge_weights.call(gauge) == 0
 
 
 def test_set_gauge_weight(accounts, gauge_controller, gauge):
     gauge_controller.add_gauge(gauge, 0, {'from': accounts[0]})
     gauge_controller.change_gauge_weight(gauge, 10**21)
 
-    assert gauge_controller.get_gauge_weight.call(gauge) == 10**21
+    assert gauge_controller.gauge_weights.call(gauge) == 10**21
 
 
 def test_type_weight(accounts, gauge_controller):
     gauge_controller.add_type(b'Insurance', {'from': accounts[0]})
 
-    assert gauge_controller.get_type_weight.call(0) == TYPE_WEIGHTS[0]
-    assert gauge_controller.get_type_weight.call(1) == 0
+    assert gauge_controller.type_weights.call(0) == TYPE_WEIGHTS[0]
+    assert gauge_controller.type_weights.call(1) == 0
 
 
 def test_change_type_weight(accounts, gauge_controller):
@@ -83,8 +83,8 @@ def test_change_type_weight(accounts, gauge_controller):
     gauge_controller.change_type_weight(1, TYPE_WEIGHTS[1], {'from': accounts[0]})
     gauge_controller.change_type_weight(0, 31337, {'from': accounts[0]})
 
-    assert gauge_controller.get_type_weight.call(0) == 31337
-    assert gauge_controller.get_type_weight.call(1) == TYPE_WEIGHTS[1]
+    assert gauge_controller.type_weights.call(0) == 31337
+    assert gauge_controller.type_weights.call(1) == TYPE_WEIGHTS[1]
 
 
 def test_relative_weight_write(accounts, rpc, gauge_controller, three_gauges):
