@@ -114,6 +114,9 @@ class StateMachine:
             self.voting_escrow.withdraw({'from': st_account, 'gas': GAS_LIMIT})
             self.voting_balances[st_account]['value'] = 0
 
+    def rule_checkpoint(self, st_account):
+        self.voting_escrow.checkpoint({'from': st_account, 'gas': GAS_LIMIT})
+
     def rule_advance_time(self, st_sleep_duration):
         """
         Advance the clock.
