@@ -178,6 +178,7 @@ def _get_sum(gauge_type: int128) -> uint256:
 @internal
 def _get_total() -> uint256:
     t: uint256 = self.time_total
+    _n_gauge_types: int128 = self.n_gauge_types
     if t > 0:
         pt: uint256 = self.points_total[t]
         for i in range(500):
@@ -187,7 +188,7 @@ def _get_total() -> uint256:
             pt = 0
             # Scales as n_types * n_unckecked_weeks (hopefully 1 at most)
             for gauge_type in range(100):
-                if gauge_type >= n_gauge_types:
+                if gauge_type == _n_gauge_types:
                     break
                 type_sum: uint256 = self._get_sum(gauge_type)
                 type_weight: uint256 = self._get_type_weight(gauge_type)
