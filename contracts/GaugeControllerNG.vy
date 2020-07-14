@@ -44,7 +44,7 @@ event VoteForGauge:
     time: uint256
     user: address
     gauge_addr: address
-    weight: int128
+    weight: uint256
 
 
 MULTIPLIER: constant(uint256) = 10 ** 18
@@ -81,7 +81,7 @@ vote_user_power: public(HashMap[address, uint256])  # Total vote power used by u
 last_user_vote: public(HashMap[address, HashMap[address, uint256]])  # Last user vote's timestamp for each gauge address
 
 points_weight: HashMap[address, HashMap[uint256, Point]]
-changes_weight: HashMap[address, HashMap[uint256, Point]]
+changes_weight: HashMap[address, HashMap[uint256, uint256]]
 time_weight: HashMap[address, uint256]
 
 points_sum: HashMap[int128, HashMap[uint256, Point]]
@@ -92,7 +92,7 @@ points_total: HashMap[uint256, uint256]
 time_total: uint256
 
 points_type_weight: HashMap[int128, HashMap[uint256, uint256]]
-time_type_weight: uint256
+time_type_weight: HashMap[int128, uint256]
 
 
 @external
@@ -135,28 +135,29 @@ def gauge_types(_addr: address) -> int128:
 def _get_type_weight(gauge_type: int128) -> uint256:
     # Filling all the type weights by week
     # and returning the NEAREST FUTURE value
-    t: uint256 = self.time_type_weight
+    t: uint256 = self.time_type_weight[gauge_type]
     if t > 0:
         w: uint256 = self.points_type_weight[gauge_type][t]
         for i in range(500):
             if t > block.timestamp:
-                return w
+                break
             t += WEEK
             self.points_type_weight[gauge_type][t] = w
             if t > block.timestamp:
-                self.time_type_weight = t
+                self.time_type_weight[gauge_type] = t
+        return w
     else:
         return 0
 
 
 @internal
-def _get_sum(gauge_type: address) -> uint256:
+def _get_sum(gauge_type: int128) -> uint256:
     t: uint256 = self.time_sum[gauge_type]
     if t > 0:
-        pt: Point256 = self.points_sum[gauge_type][t]
+        pt: Point = self.points_sum[gauge_type][t]
         for i in range(500):
             if t > block.timestamp:
-                return pt.bias
+                break
             t += WEEK
             d_bias: uint256 = pt.slope * WEEK
             if pt.bias > d_bias:
@@ -169,6 +170,7 @@ def _get_sum(gauge_type: address) -> uint256:
             self.points_sum[gauge_type][t] = pt
             if t > block.timestamp:
                 self.time_sum[gauge_type] = t
+        return pt.bias
     else:
         return 0
 
@@ -182,7 +184,6 @@ def _get_total() -> uint256:
             if t > block.timestamp:
                 return pt
             t += WEEK
-
             pt = 0
             # Scales as n_types * n_unckecked_weeks (hopefully 1 at most)
             for gauge_type in range(100):
@@ -195,7 +196,7 @@ def _get_total() -> uint256:
 
             if t > block.timestamp:
                 self.time_total = t
-
+        return pt
     else:
         return 0
 
@@ -204,10 +205,10 @@ def _get_total() -> uint256:
 def _get_weight(gauge_addr: address) -> uint256:
     t: uint256 = self.time_weight[gauge_addr]
     if t > 0:
-        pt: Point256 = self.points_weight[gauge_addr][t]
+        pt: Point = self.points_weight[gauge_addr][t]
         for i in range(500):
             if t > block.timestamp:
-                return pt.bias
+                break
             t += WEEK
             d_bias: uint256 = pt.slope * WEEK
             if pt.bias > d_bias:
@@ -220,6 +221,7 @@ def _get_weight(gauge_addr: address) -> uint256:
             self.points_weight[gauge_addr][t] = pt
             if t > block.timestamp:
                 self.time_weight[gauge_addr] = t
+        return pt.bias
     else:
         return 0
 
@@ -275,12 +277,12 @@ def gauge_relative_weight(addr: address, time: uint256 = 0) -> uint256:
         t = block.timestamp / WEEK * WEEK
     else:
         t = time / WEEK * WEEK
-    _total_weight: uint256 = self.points_total[t].bias
+    _total_weight: uint256 = self.points_total[t]
 
     if _total_weight > 0:
         gauge_type: int128 = self.gauge_types_[addr] - 1
         _type_weight: uint256 = self.points_type_weight[gauge_type][t]
-        _gauge_weight: uint256 = self.points_weight[addr][t]
+        _gauge_weight: uint256 = self.points_weight[addr][t].bias
         return MULTIPLIER * _type_weight * _gauge_weight / _total_weight
 
     else:
@@ -294,10 +296,11 @@ def _change_type_weight(type_id: int128, weight: uint256):
     _total_weight: uint256 = self._get_total()
     next_time: uint256 = (block.timestamp + WEEK) / WEEK * WEEK
 
-    self.points_total[next_time] = _total_weight + old_sum * weight - old_sum * old_weight
+    _total_weight = _total_weight + old_sum * weight - old_sum * old_weight
+    self.points_total[next_time] = _total_weight
     self.points_type_weight[type_id][next_time] = weight
 
-    log NewTypeWeight(type_id, next_time, weight)
+    log NewTypeWeight(type_id, next_time, weight, _total_weight)
 
 
 @external
@@ -340,7 +343,7 @@ def _change_gauge_weight(addr: address, weight: uint256):
 
     self.points_weight[addr][next_time].bias = weight
     new_sum: uint256 = old_sum + weight - old_gauge_weight
-    self.points_sum[addr][next_time].bias = new_sum
+    self.points_sum[gauge_type][next_time].bias = new_sum
 
     _total_weight = _total_weight + new_sum * type_weight - old_sum * type_weight
     self.points_total[next_time] = _total_weight
@@ -368,10 +371,11 @@ def vote_for_gauge_weights(_gauge_addr: address, _user_weight: uint256):
     _n_gauges: int128 = self.n_gauges
     next_time: uint256 = (block.timestamp + WEEK) / WEEK * WEEK
     assert lock_end > next_time, "Your token lock expires too soon"
-    assert self.gauge_types_[_gauge_addr] > 0, "Gauge not added"
     assert (_user_weight >= 0) and (_user_weight <= 10000), "You used all your voting power"
     assert block.timestamp >= self.last_user_vote[msg.sender][_gauge_addr] + WEIGHT_VOTE_DELAY, "Cannot vote so often"
 
+    gauge_type: int128 = self.gauge_types_[_gauge_addr] - 1
+    assert gauge_type >= 0, "Gauge not added"
     # Prepare slopes and biases in memory
     old_slope: VotedSlope = self.vote_user_slopes[msg.sender][_gauge_addr]
     old_dt: uint256 = 0
@@ -397,24 +401,24 @@ def vote_for_gauge_weights(_gauge_addr: address, _user_weight: uint256):
     # Schedule recording of initial slope for next_time
     old_weight_bias: uint256 = self._get_weight(_gauge_addr)
     old_weight_slope: uint256 = self.points_weight[_gauge_addr][next_time].slope
-    old_sum_bias: uint256 = self._get_sum(_gauge_addr)
-    old_sum_slope: uint256 = self.points_sum[_gauge_addr][next_time].slope
+    old_sum_bias: uint256 = self._get_sum(gauge_type)
+    old_sum_slope: uint256 = self.points_sum[gauge_type][next_time].slope
 
     self.points_weight[_gauge_addr][next_time].bias = max(old_weight_bias + new_bias, old_bias) - old_bias
-    self.points_sum[_gauge_addr][next_time].bias = max(old_sum_bias + new_bias, old_bias) - old_bias
+    self.points_sum[gauge_type][next_time].bias = max(old_sum_bias + new_bias, old_bias) - old_bias
     if old_slope.end > next_time:
         self.points_weight[_gauge_addr][next_time].slope = max(old_weight_slope + new_slope.slope, old_slope.slope) - old_slope.slope
-        self.points_sum[_gauge_addr][next_time].slope = max(old_sum_slope + new_slope.slope, old_slope.slope) - old_slope.slope
+        self.points_sum[gauge_type][next_time].slope = max(old_sum_slope + new_slope.slope, old_slope.slope) - old_slope.slope
     else:
         self.points_weight[_gauge_addr][next_time].slope += new_slope.slope
-        self.points_sum[_gauge_addr][next_time].slope += new_slope.slope
+        self.points_sum[gauge_type][next_time].slope += new_slope.slope
     if old_slope.end > block.timestamp:
         # Cancel old slope changes if they still didn't happen
-        self.changes_weight[_gauge_addr][old_slope.end].slope -= old_slope.slope
-        self.changes_sum[_gauge_addr][old_slope.end].slope -= old_slope.slope
+        self.changes_weight[_gauge_addr][old_slope.end] -= old_slope.slope
+        self.changes_sum[gauge_type][old_slope.end] -= old_slope.slope
     # Add slope changes for new slopes
     self.changes_weight[_gauge_addr][new_slope.end] += new_slope.slope
-    self.changes_sum[_gauge_addr][new_slope.end] += new_slope.slope
+    self.changes_sum[gauge_type][new_slope.end] += new_slope.slope
 
     self._get_total()
 
@@ -435,22 +439,22 @@ def last_change() -> uint256:
 @external
 @view
 def get_gauge_weight(addr: address) -> uint256:
-    return self.gauge_weights[addr][self.gauge_last[addr]]
+    return self.points_weight[addr][self.time_weight[addr]].bias
 
 
 @external
 @view
 def get_type_weight(type_id: int128) -> uint256:
-    return self.type_weights[type_id][self.type_last[type_id]]
+    return self.points_type_weight[type_id][self.time_type_weight[type_id]]
 
 
 @external
 @view
 def get_total_weight() -> uint256:
-    return self.total_weight[self.period]
+    return self.points_total[self.time_total]
 
 
 @external
 @view
 def get_weights_sum_per_type(type_id: int128) -> uint256:
-    return self.weight_sums_per_type[type_id][self.type_last[type_id]]
+    return self.points_sum[type_id][self.time_sum[type_id]].bias
