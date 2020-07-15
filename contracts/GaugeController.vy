@@ -74,17 +74,17 @@ last_user_vote: public(HashMap[address, HashMap[address, uint256]])  # Last user
 
 points_weight: public(HashMap[address, HashMap[uint256, Point]])
 changes_weight: HashMap[address, HashMap[uint256, uint256]]
-time_weight: HashMap[address, uint256]
+time_weight: public(HashMap[address, uint256])
 
 points_sum: HashMap[int128, HashMap[uint256, Point]]
 changes_sum: HashMap[int128, HashMap[uint256, uint256]]
-time_sum: HashMap[int128, uint256]
+time_sum: public(HashMap[int128, uint256])
 
 points_total: public(HashMap[uint256, uint256])
 time_total: public(uint256)
 
 points_type_weight: HashMap[int128, HashMap[uint256, uint256]]
-time_type_weight: HashMap[int128, uint256]
+time_type_weight: public(HashMap[int128, uint256])
 
 
 @external
@@ -244,7 +244,9 @@ def add_gauge(addr: address, gauge_type: int128, weight: uint256 = 0):
         _old_total: uint256 = self._get_total()
 
         self.points_sum[gauge_type][next_time].bias = weight + _old_sum
+        self.time_sum[gauge_type] = next_time
         self.points_total[next_time] = _old_total + _type_weight * weight
+        self.time_total = next_time
 
         self.points_weight[addr][next_time].bias = weight
         self.time_weight[addr] = next_time

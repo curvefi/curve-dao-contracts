@@ -94,11 +94,14 @@ def test_relative_weight_write(accounts, rpc, gauge_controller, three_gauges):
     gauge_controller.add_gauge(three_gauges[1], 0, GAUGE_WEIGHTS[1], {'from': accounts[0]})
     gauge_controller.add_gauge(three_gauges[2], 1, GAUGE_WEIGHTS[2], {'from': accounts[0]})
 
+    total_weight = TYPE_WEIGHTS[0] * GAUGE_WEIGHTS[0] + \
+        TYPE_WEIGHTS[0] * GAUGE_WEIGHTS[1] + TYPE_WEIGHTS[1] * GAUGE_WEIGHTS[2]
+
     rpc.sleep(int(1.1 * YEAR))
 
     # Fill weights and check that nothing has changed
     t = rpc.time()
-    for gauge, w in zip(three_gauges, GAUGE_WEIGHTS):
-        weight = gauge_controller.gauge_relative_weight_write(gauge, t).value
-        assert weight == w
-        assert gauge_controller.gauge_relative_weight(gauge, t) == weight
+    for gauge, w, gauge_type in zip(three_gauges, GAUGE_WEIGHTS, [0, 0, 1]):
+        gauge_controller.gauge_relative_weight_write(gauge, t)
+        relative_weight = gauge_controller.gauge_relative_weight(gauge, t)
+        assert relative_weight == 10 ** 18 * w * TYPE_WEIGHTS[gauge_type] / total_weight
