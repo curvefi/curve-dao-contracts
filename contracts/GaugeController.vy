@@ -72,7 +72,7 @@ vote_user_slopes: public(HashMap[address, HashMap[address, VotedSlope]])  # user
 vote_user_power: public(HashMap[address, uint256])  # Total vote power used by user
 last_user_vote: public(HashMap[address, HashMap[address, uint256]])  # Last user vote's timestamp for each gauge address
 
-points_weight: HashMap[address, HashMap[uint256, Point]]
+points_weight: public(HashMap[address, HashMap[uint256, Point]])
 changes_weight: HashMap[address, HashMap[uint256, uint256]]
 time_weight: HashMap[address, uint256]
 
@@ -80,7 +80,7 @@ points_sum: HashMap[int128, HashMap[uint256, Point]]
 changes_sum: HashMap[int128, HashMap[uint256, uint256]]
 time_sum: HashMap[int128, uint256]
 
-points_total: HashMap[uint256, uint256]
+points_total: public(HashMap[uint256, uint256])
 time_total: public(uint256)
 
 points_type_weight: HashMap[int128, HashMap[uint256, uint256]]
@@ -257,14 +257,9 @@ def checkpoint():
     self._get_total()
 
 
-@external
-def gauge_relative_weight(addr: address, time: uint256 = 0) -> uint256:
-    """
-    Same as gauge_relative_weight(), but also fill all the unfilled values
-    for type and gauge records
-    Everyone can call, however nothing is recorded if the values are filled already
-    """
-    self._get_total()
+@internal
+@view
+def _gauge_relative_weight(addr: address, time: uint256) -> uint256:
     t: uint256 = 0
     if time == 0:
         t = block.timestamp / WEEK * WEEK
@@ -282,6 +277,29 @@ def gauge_relative_weight(addr: address, time: uint256 = 0) -> uint256:
         return 0
 
 
+@external
+def gauge_relative_weight_write(addr: address, time: uint256 = 0) -> uint256:
+    """
+    Same as gauge_relative_weight(), but also fill all the unfilled values
+    for type and gauge records
+    Everyone can call, however nothing is recorded if the values are filled already
+    """
+    self._get_weight(addr)
+    self._get_total()  # Also calculates get_sum
+    return self._gauge_relative_weight(addr, time)
+
+
+@external
+@view
+def gauge_relative_weight(addr: address, time: uint256 = 0) -> uint256:
+    """
+    Same as gauge_relative_weight(), but also fill all the unfilled values
+    for type and gauge records
+    Everyone can call, however nothing is recorded if the values are filled already
+    """
+    return self._gauge_relative_weight(addr, time)
+
+
 @internal
 def _change_type_weight(type_id: int128, weight: uint256):
     old_weight: uint256 = self._get_type_weight(type_id)
@@ -292,6 +310,8 @@ def _change_type_weight(type_id: int128, weight: uint256):
     _total_weight = _total_weight + old_sum * weight - old_sum * old_weight
     self.points_total[next_time] = _total_weight
     self.points_type_weight[type_id][next_time] = weight
+    self.time_total = next_time
+    self.time_type_weight[type_id] = next_time
 
     log NewTypeWeight(type_id, next_time, weight, _total_weight)
 
@@ -326,7 +346,6 @@ def change_type_weight(type_id: int128, weight: uint256):
 def _change_gauge_weight(addr: address, weight: uint256):
     # Change gauge weight
     # Only needed when testing in reality
-    # XXX
     gauge_type: int128 = self.gauge_types_[addr] - 1
     old_gauge_weight: uint256 = self._get_weight(addr)
     type_weight: uint256 = self._get_type_weight(gauge_type)
@@ -335,18 +354,21 @@ def _change_gauge_weight(addr: address, weight: uint256):
     next_time: uint256 = (block.timestamp + WEEK) / WEEK * WEEK
 
     self.points_weight[addr][next_time].bias = weight
+    self.time_weight[addr] = next_time
+
     new_sum: uint256 = old_sum + weight - old_gauge_weight
     self.points_sum[gauge_type][next_time].bias = new_sum
+    self.time_sum[gauge_type] = next_time
 
     _total_weight = _total_weight + new_sum * type_weight - old_sum * type_weight
     self.points_total[next_time] = _total_weight
+    self.time_total = next_time
 
     log NewGaugeWeight(addr, block.timestamp, weight, _total_weight)
 
 
 @external
 def change_gauge_weight(addr: address, weight: uint256):
-    # XXX
     assert msg.sender == self.admin
     self._change_gauge_weight(addr, weight)
 

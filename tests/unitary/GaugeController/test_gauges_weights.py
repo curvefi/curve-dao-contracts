@@ -63,18 +63,19 @@ def test_gauge_weight_as_zero(accounts, gauge_controller, gauge):
     assert gauge_controller.get_gauge_weight.call(gauge) == 0
 
 
-def test_set_gauge_weight(accounts, gauge_controller, gauge):
+def test_set_gauge_weight(rpc, accounts, gauge_controller, gauge):
     gauge_controller.add_gauge(gauge, 0, {'from': accounts[0]})
     gauge_controller.change_gauge_weight(gauge, 10**21)
+    rpc.sleep(WEEK)
 
-    assert gauge_controller.get_gauge_weight.call(gauge) == 10**21
+    assert gauge_controller.get_gauge_weight(gauge) == 10**21
 
 
 def test_type_weight(accounts, gauge_controller):
     gauge_controller.add_type(b'Insurance', {'from': accounts[0]})
 
-    assert gauge_controller.get_type_weight.call(0) == TYPE_WEIGHTS[0]
-    assert gauge_controller.get_type_weight.call(1) == 0
+    assert gauge_controller.get_type_weight(0) == TYPE_WEIGHTS[0]
+    assert gauge_controller.get_type_weight(1) == 0
 
 
 def test_change_type_weight(accounts, gauge_controller):
@@ -83,8 +84,8 @@ def test_change_type_weight(accounts, gauge_controller):
     gauge_controller.change_type_weight(1, TYPE_WEIGHTS[1], {'from': accounts[0]})
     gauge_controller.change_type_weight(0, 31337, {'from': accounts[0]})
 
-    assert gauge_controller.get_type_weight.call(0) == 31337
-    assert gauge_controller.get_type_weight.call(1) == TYPE_WEIGHTS[1]
+    assert gauge_controller.get_type_weight(0) == 31337
+    assert gauge_controller.get_type_weight(1) == TYPE_WEIGHTS[1]
 
 
 def test_relative_weight_write(accounts, rpc, gauge_controller, three_gauges):
@@ -94,11 +95,10 @@ def test_relative_weight_write(accounts, rpc, gauge_controller, three_gauges):
     gauge_controller.add_gauge(three_gauges[2], 1, GAUGE_WEIGHTS[2], {'from': accounts[0]})
 
     rpc.sleep(int(1.1 * YEAR))
-    gauge_controller.period_write({'from': accounts[0]})
 
     # Fill weights and check that nothing has changed
-    period = gauge_controller.period()
-    for gauge in three_gauges:
-        weight = gauge_controller.gauge_relative_weight(gauge, period)
-        gauge_controller.gauge_relative_weight_write(gauge, period, {'from': accounts[0]})
-        assert gauge_controller.gauge_relative_weight(gauge, period) == weight
+    t = rpc.time()
+    for gauge, w in zip(three_gauges, GAUGE_WEIGHTS):
+        weight = gauge_controller.gauge_relative_weight_write(gauge, t).value
+        assert weight == w
+        assert gauge_controller.gauge_relative_weight(gauge, t) == weight
