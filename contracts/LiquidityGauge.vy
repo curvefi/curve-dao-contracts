@@ -11,9 +11,9 @@ interface Controller:
     def period() -> int128: view
     def period_write() -> int128: nonpayable
     def period_timestamp(p: int128) -> uint256: view
-    def gauge_relative_weight(addr: address, _period: int128) -> uint256: view
-    def gauge_relative_weight_write(addr: address) -> uint256: nonpayable
+    def gauge_relative_weight(addr: address, time: uint256) -> uint256: view
     def voting_escrow() -> address: view
+    def checkpoint(): nonpayable
 
 interface Minter:
     def token() -> address: view
@@ -84,7 +84,7 @@ def __init__(lp_addr: address, _minter: address):
     controller_addr: address = Minter(_minter).controller()
     self.controller = controller_addr
     self.voting_escrow = Controller(controller_addr).voting_escrow()
-    self.period_timestamp[period] = block.timestamp
+    self.period_timestamp[0] = block.timestamp
     self.inflation_rate = CRV20(crv_addr).rate()
 
 
@@ -111,10 +111,9 @@ def _update_liquidity_limit(addr: address, l: uint256, L: uint256):
 @internal
 def _checkpoint(addr: address):
     _token: address = self.crv_token
-    # _controller: address = self.controller
+    _controller: address = self.controller
     _period: int128 = self.period
     _period_time: uint256 = self.period_timestamp[_period]
-    last_weight: uint256 = Controller(_controller).gauge_relative_weight_write(self)  # XXX?
     _integrate_inv_supply: uint256 = self.integrate_inv_supply[_period]
     rate: uint256 = self.inflation_rate
     new_rate: uint256 = rate
@@ -122,6 +121,7 @@ def _checkpoint(addr: address):
     if new_epoch >= _period_time:
         new_rate = CRV20(_token).rate()
         self.inflation_rate = new_rate
+    Controller(_controller).checkpoint()
 
     _working_balance: uint256 = self.working_balances[addr]
     _working_supply: uint256 = self.working_supply
@@ -248,6 +248,12 @@ def withdraw(_value: uint256):
     assert ERC20(self.lp_token).transfer(msg.sender, _value)
 
     log Withdraw(msg.sender, _value)
+
+
+@external
+@view
+def integrate_checkpoint() -> uint256:
+    return self.period_timestamp[self.period]
 
 
 # XXX make it so that if checkpoint is failing, can do a safe withdraw to escape
