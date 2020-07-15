@@ -61,14 +61,6 @@ n_gauge_types: public(int128)
 n_gauges: public(int128)
 gauge_type_names: public(HashMap[int128, String[64]])
 
-# Every time a weight or epoch changes, period increases
-# The idea is: relative weights are guaranteed to not change within the period
-# Period 0 is reserved for "not started" (b/c default value in maps)
-# Period is guaranteed to not have a change of epoch (e.g. mining rate) in the
-# middle of it
-period: public(int128)
-period_timestamp: public(HashMap[int128, uint256])
-
 # Needed for enumeration
 gauges: public(HashMap[int128, address])
 
@@ -89,7 +81,7 @@ changes_sum: HashMap[int128, HashMap[uint256, uint256]]
 time_sum: HashMap[int128, uint256]
 
 points_total: HashMap[uint256, uint256]
-time_total: uint256
+time_total: public(uint256)
 
 points_type_weight: HashMap[int128, HashMap[uint256, uint256]]
 time_type_weight: HashMap[int128, uint256]
@@ -183,7 +175,7 @@ def _get_total() -> uint256:
         pt: uint256 = self.points_total[t]
         for i in range(500):
             if t > block.timestamp:
-                return pt
+                break
             t += WEEK
             pt = 0
             # Scales as n_types * n_unckecked_weeks (hopefully 1 at most)
@@ -429,12 +421,6 @@ def vote_for_gauge_weights(_gauge_addr: address, _user_weight: uint256):
     self.last_user_vote[msg.sender][_gauge_addr] = block.timestamp
 
     log VoteForGauge(block.timestamp, msg.sender, _gauge_addr, _user_weight)
-
-
-@external
-@view
-def last_change() -> uint256:
-    return self.period_timestamp[self.period]
 
 
 @external
