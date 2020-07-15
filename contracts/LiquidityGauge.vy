@@ -178,7 +178,6 @@ def _checkpoint(addr: address):
             prev_period_inv_supply: uint256 = 0
             if user_period >= 0:
                 prev_period_inv_supply = self.integrate_inv_supply[user_period]
-                # What if it stays 0? XXX
             dI: uint256 = _period_inv_supply - prev_period_inv_supply
             _period_inv_supply = prev_period_inv_supply
             if user_period >= 0:
