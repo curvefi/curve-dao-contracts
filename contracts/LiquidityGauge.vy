@@ -7,6 +7,7 @@ interface CRV20:
     def rate() -> uint256: view
 
 interface Controller:
+    # XXX change
     def period() -> int128: view
     def period_write() -> int128: nonpayable
     def period_timestamp(p: int128) -> uint256: view
@@ -41,6 +42,7 @@ event UpdateLiquidityLimit:
 
 TOKENLESS_PRODUCTION: constant(uint256) = 40
 BOOST_WARMUP: constant(uint256) = 2 * 7 * 86400
+WEEK: constant(uint256) = 604800
 
 minter: public(address)
 crv_token: public(address)
@@ -55,12 +57,11 @@ working_supply: public(uint256)
 
 # The goal is to be able to calculate ∫(rate * balance / totalSupply dt) from 0 till checkpoint
 # All values are kept in units of being multiplied by 1e18
-period_checkpoints: uint256[100000000000000000000000000000]
-last_period: int128
+period: public(int128)
+period_timestamp: public(uint256[100000000000000000000000000000])
 
 # 1e18 * ∫(rate(t) / totalSupply(t) dt) from 0 till checkpoint
 integrate_inv_supply: public(uint256[100000000000000000000000000000])  # bump epoch when rate() changes
-integrate_checkpoint: public(uint256)
 
 # 1e18 * ∫(rate(t) / totalSupply(t) dt) from (last_action) till checkpoint
 integrate_inv_supply_of: public(HashMap[address, uint256])
@@ -82,11 +83,8 @@ def __init__(lp_addr: address, _minter: address):
     self.crv_token = crv_addr
     controller_addr: address = Minter(_minter).controller()
     self.controller = controller_addr
-    self.integrate_checkpoint = block.timestamp
-    period: int128 = Controller(controller_addr).period()
     self.voting_escrow = Controller(controller_addr).voting_escrow()
-    self.last_period = period
-    self.period_checkpoints[period] = Controller(controller_addr).period_timestamp(period)
+    self.period_timestamp[period] = block.timestamp
     self.inflation_rate = CRV20(crv_addr).rate()
 
 
@@ -98,7 +96,7 @@ def _update_liquidity_limit(addr: address, l: uint256, L: uint256):
     voting_total: uint256 = ERC20(_voting_escrow).totalSupply()
 
     lim: uint256 = l * TOKENLESS_PRODUCTION / 100
-    if (voting_total > 0) and (block.timestamp > self.period_checkpoints[0] + BOOST_WARMUP):
+    if (voting_total > 0) and (block.timestamp > self.period_timestamp[0] + BOOST_WARMUP):
         lim += L * voting_balance / voting_total * (100 - TOKENLESS_PRODUCTION) / 100
 
     lim = min(l, lim)
@@ -112,78 +110,64 @@ def _update_liquidity_limit(addr: address, l: uint256, L: uint256):
 
 @internal
 def _checkpoint(addr: address):
-    _integrate_checkpoint: uint256 = self.integrate_checkpoint
-
     _token: address = self.crv_token
-    _controller: address = self.controller
-    old_period: int128 = self.last_period
-    old_period_time: uint256 = Controller(_controller).period_timestamp(old_period)
-    new_epoch: uint256 = CRV20(_token).start_epoch_time_write()
-    last_weight: uint256 = Controller(_controller).gauge_relative_weight_write(self)  # Normalized to 1e18
-    new_period: int128 = Controller(_controller).period()
-    _integrate_inv_supply: uint256 = self.integrate_inv_supply[old_period]
+    # _controller: address = self.controller
+    _period: int128 = self.period
+    _period_time: uint256 = self.period_timestamp[_period]
+    last_weight: uint256 = Controller(_controller).gauge_relative_weight_write(self)  # XXX?
+    _integrate_inv_supply: uint256 = self.integrate_inv_supply[_period]
     rate: uint256 = self.inflation_rate
+    new_rate: uint256 = rate
+    new_epoch: uint256 = CRV20(_token).start_epoch_time_write()
+    if new_epoch >= _period_time:
+        new_rate = CRV20(_token).rate()
+        self.inflation_rate = new_rate
 
     _working_balance: uint256 = self.working_balances[addr]
     _working_supply: uint256 = self.working_supply
 
-    dt: uint256 = 0
-    w: uint256 = last_weight
     # Update integral of 1/supply
-    if new_period > old_period:
-        # Handle going across periods where weights or rates change
-        # No less than one checkpoint is expected in 1 year
-        p: int128 = old_period
-        for i in range(500):
-            w = Controller(_controller).gauge_relative_weight(self, p)
-            p += 1
-            new_period_time: uint256 = Controller(_controller).period_timestamp(p)
-            if _integrate_checkpoint >= new_period_time:
-                # This would never happen, but if we don't do this, it'd suck if it does
-                dt = 0
-            elif _integrate_checkpoint >= old_period_time:
-                dt = new_period_time - _integrate_checkpoint
-            else:
-                dt = new_period_time - old_period_time
-            if _working_supply > 0:
-                _integrate_inv_supply += rate * w * dt / _working_supply
-            self.integrate_inv_supply[p] = _integrate_inv_supply
-            if new_period_time == new_epoch:
-                rate = CRV20(_token).rate()
-                self.inflation_rate = rate
-            old_period_time = new_period_time
-            self.period_checkpoints[p] = new_period_time
-            if p == new_period:
-                # old_period_time contains the lastest period time here
-                dt = block.timestamp - new_period_time
-                break
-        self.last_period = new_period
-    else:
-        dt = block.timestamp - _integrate_checkpoint
-    if _working_supply > 0:
-        # No need to integrate if _working_supply == 0
-        # because no one staked then anyway
-        # If _working_supply == 1, we can have 1e32 dollars
-        # - should be all right even if we go full Zimbabwe
-        _integrate_inv_supply += rate * last_weight * dt / _working_supply
+    if block.timestamp > _period_time:
+        prev_week_time: uint256 = _period_time
+        week_time: uint256 = min((_period_time + WEEK) / WEEK * WEEK, block.timestamp)
 
-        # On precisions of the calculation
-        # rate ~= 10e18
-        # last_weight > 0.01 * 1e18 = 1e16 (if pool weight is 1%)
-        # _working_supply ~= TVL * 1e18 ~= 1e26 ($100M for example)
-        # The largest loss is at dt = 1
-        # Loss is 1e-9 - acceptable
+        for i in range(500):
+            dt: uint256 = week_time - prev_week_time
+            w: uint256 = Controller(_controller).gauge_relative_weight(self, prev_week_time / WEEK * WEEK)
+
+            if _working_supply > 0:
+                if new_epoch >= prev_week_time and new_epoch < week_time:
+                    _integrate_inv_supply += rate * w * (new_epoch - prev_week_time) / _working_supply
+                    rate = new_rate
+                    _integrate_inv_supply += rate * w * (week_time - new_epoch) / _working_supply
+                else:
+                    _integrate_inv_supply += rate * w * dt / _working_supply
+                # On precisions of the calculation
+                # rate ~= 10e18
+                # last_weight > 0.01 * 1e18 = 1e16 (if pool weight is 1%)
+                # _working_supply ~= TVL * 1e18 ~= 1e26 ($100M for example)
+                # The largest loss is at dt = 1
+                # Loss is 1e-9 - acceptable
+
+            if week_time == block.timestamp:
+                break
+            prev_week_time = week_time
+            week_time = min(week_time + WEEK, block.timestamp)
+
+    _period += 1
+    self.period = _period
+    self.period_timestamp[_period] = block.timestamp
+    self.integrate_inv_supply[_period] = _integrate_inv_supply
 
     # Update user-specific integrals
-    user_period: int128 = new_period
-    user_period_time: uint256 = old_period_time
+    user_period: int128 = _period  # Iteration starts from this
+    user_period_time: uint256 = block.timestamp
     _user_checkpoint: uint256 = self.integrate_checkpoint_of[addr]
     _period_inv_supply: uint256 = _integrate_inv_supply
     _integrate_inv_supply_of: uint256 = self.integrate_inv_supply_of[addr]
     _integrate_fraction: uint256 = self.integrate_fraction[addr]
-    # Cycle is going backwards in time
+    # Cycle is going backwards in time over periods
     for i in range(500):
-        # Going no more than 500 periods (usually much less)
         if user_period < 0 or _user_checkpoint >= user_period_time:
             # Last cycle => we are in the period of the user checkpoint
             dI: uint256 = _period_inv_supply - _integrate_inv_supply_of
@@ -194,17 +178,16 @@ def _checkpoint(addr: address):
             prev_period_inv_supply: uint256 = 0
             if user_period >= 0:
                 prev_period_inv_supply = self.integrate_inv_supply[user_period]
+                # What if it stays 0? XXX
             dI: uint256 = _period_inv_supply - prev_period_inv_supply
             _period_inv_supply = prev_period_inv_supply
             if user_period >= 0:
-                user_period_time = self.period_checkpoints[user_period]
+                user_period_time = self.period_timestamp[user_period]
             _integrate_fraction += _working_balance * dI / 10 ** 18
 
-    self.integrate_inv_supply[new_period] = _integrate_inv_supply
     self.integrate_inv_supply_of[addr] = _integrate_inv_supply
     self.integrate_fraction[addr] = _integrate_fraction
     self.integrate_checkpoint_of[addr] = block.timestamp
-    self.integrate_checkpoint = block.timestamp
 
 
 @external
