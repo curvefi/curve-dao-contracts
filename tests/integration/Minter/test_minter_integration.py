@@ -33,7 +33,7 @@ def test_mint(accounts, rpc, mock_lp_token, gauge_controller, three_gauges, mint
     for user in accounts[1:4]:
         mock_lp_token.transfer(user, amount, {'from': admin})
 
-    rpc.sleep(7 * 86400)  # For weights to ativate
+    rpc.sleep(7 * 86400)  # For weights to activate
 
     # Bob and Charlie deposit to gauges with different weights
     mock_lp_token.approve(three_gauges[1], amount, {'from': bob})
@@ -84,6 +84,6 @@ def test_mint(accounts, rpc, mock_lp_token, gauge_controller, three_gauges, mint
 
     # Bob and Charlie were there for full time, gauges 1 and 2
     # Dan was in gauge 1 for half the time
-    assert approx(bob_tokens / S, 0.75 * ww[1] / Sw, 1e-6)
-    assert approx(charlie_tokens / S, ww[2] / Sw, 1e-6)
-    assert approx(dan_tokens / S, 0.25 * ww[1] / Sw, 1e-6)
+    assert approx(bob_tokens / S, 0.75 * ww[1] / Sw, 2e-6)
+    assert approx(charlie_tokens / S, ww[2] / Sw, 2e-6)
+    assert approx(dan_tokens / S, 0.25 * ww[1] / Sw, 2e-6)
