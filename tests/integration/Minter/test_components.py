@@ -27,6 +27,7 @@ def minter_setup(accounts, mock_lp_token, token, minter, gauge_controller, liqui
 @given(st_duration=strategy("uint[3]", min_value=WEEK, max_value=MONTH, unique=True))
 def test_duration(accounts, rpc, liquidity_gauge, minter, token, st_duration):
     accts = accounts[1:]
+    rpc.sleep(7 * 86400)
 
     deposit_time = []
     for i in range(3):
