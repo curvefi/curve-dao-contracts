@@ -33,6 +33,8 @@ def test_mint(accounts, rpc, mock_lp_token, gauge_controller, three_gauges, mint
     for user in accounts[1:4]:
         mock_lp_token.transfer(user, amount, {'from': admin})
 
+    rpc.sleep(7 * 86400)  # For weights to ativate
+
     # Bob and Charlie deposit to gauges with different weights
     mock_lp_token.approve(three_gauges[1], amount, {'from': bob})
     three_gauges[1].deposit(amount, {'from': bob})
