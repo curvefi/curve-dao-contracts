@@ -46,6 +46,11 @@ event VoteForGauge:
     gauge_addr: address
     weight: uint256
 
+event NewGauge:
+    addr: address
+    gauge_type: int128
+    weight: uint256
+
 
 MULTIPLIER: constant(uint256) = 10 ** 18
 
@@ -251,7 +256,7 @@ def add_gauge(addr: address, gauge_type: int128, weight: uint256 = 0):
         self.points_weight[addr][next_time].bias = weight
         self.time_weight[addr] = next_time
 
-    # XXX log
+    log NewGauge(addr, gauge_type, weight)
 
 
 @external
