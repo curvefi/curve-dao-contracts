@@ -259,6 +259,12 @@ def checkpoint():
     self._get_total()
 
 
+@external
+def checkpoint_gauge(addr: address):
+    self._get_weight(addr)
+    self._get_total()
+
+
 @internal
 @view
 def _gauge_relative_weight(addr: address, time: uint256) -> uint256:

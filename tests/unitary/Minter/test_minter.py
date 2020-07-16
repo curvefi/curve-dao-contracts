@@ -8,6 +8,7 @@ GAUGE_WEIGHTS = [1e19, 1e18, 5e17]
 GAUGE_TYPES = [0, 0, 1]
 
 MONTH = 86400 * 30
+WEEK = 7 * 86400
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -46,7 +47,8 @@ def test_mint(accounts, rpc, three_gauges, minter, token):
 
 def test_mint_immediate(accounts, rpc, three_gauges, minter, token):
     three_gauges[0].deposit(1e18, {'from': accounts[1]})
-    rpc.sleep(1)
+    t0 = rpc.time()
+    rpc.sleep((t0 + WEEK) // WEEK * WEEK - t0 + 1)  # 1 second more than enacting the weights
 
     minter.mint(three_gauges[0], {'from': accounts[1]})
     balance = token.balanceOf(accounts[1])
@@ -94,7 +96,7 @@ def test_mint_multiple_gauges(accounts, rpc, three_gauges, minter, token):
 def test_mint_after_withdraw(accounts, rpc, three_gauges, minter, token):
     three_gauges[0].deposit(1e18, {'from': accounts[1]})
 
-    rpc.sleep(10)
+    rpc.sleep(2 * WEEK)
     three_gauges[0].withdraw(1e18, {'from': accounts[1]})
     minter.mint(three_gauges[0], {'from': accounts[1]})
 

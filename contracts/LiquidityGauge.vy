@@ -7,13 +7,13 @@ interface CRV20:
     def rate() -> uint256: view
 
 interface Controller:
-    # XXX change
     def period() -> int128: view
     def period_write() -> int128: nonpayable
     def period_timestamp(p: int128) -> uint256: view
     def gauge_relative_weight(addr: address, time: uint256) -> uint256: view
     def voting_escrow() -> address: view
     def checkpoint(): nonpayable
+    def checkpoint_gauge(addr: address): nonpayable
 
 interface Minter:
     def token() -> address: view
@@ -121,7 +121,7 @@ def _checkpoint(addr: address):
     if new_epoch >= _period_time:
         new_rate = CRV20(_token).rate()
         self.inflation_rate = new_rate
-    Controller(_controller).checkpoint()
+    Controller(_controller).checkpoint_gauge(self)
 
     _working_balance: uint256 = self.working_balances[addr]
     _working_supply: uint256 = self.working_supply
