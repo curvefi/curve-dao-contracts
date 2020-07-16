@@ -46,8 +46,13 @@ def test_gauge_weight_vote(
         (vote for gauge 0, vote for gauge 1) for each account, in units of 10%
     """
 
+    # Init 10 s before the week change
+    t0 = rpc.time()
+    t1 = (t0 + 2 * WEEK) // WEEK * WEEK - 10
+    rpc.sleep(t1 - t0)
+
     # Deposit for voting
-    timestamp = history[-1].timestamp
+    timestamp = t1
     for i, acct in enumerate(accounts[:3]):
         voting_escrow.create_lock(st_deposits[i], timestamp + (st_length[i] * WEEK), {'from': acct})
 
@@ -82,8 +87,8 @@ def test_gauge_weight_vote(
 
     # advance clock a month at a time and compare theoretical weight to actual weights
     while history[-1].timestamp < timestamp + 1.5 * max_duration:
-        for i in range(3):  # XXX what happens if not enacted? 0 or old?
-            gauge_controller.enact_vote(three_gauges[i], {'from': accounts[4]})
+        for i in range(3):
+            gauge_controller.checkpoint_gauge(three_gauges[i], {'from': accounts[4]})
 
         relative_time = (history[-1].timestamp // WEEK * WEEK - timestamp) / max_duration
         weights = [gauge_controller.gauge_relative_weight(three_gauges[i]) / 1e18 for i in range(3)]
