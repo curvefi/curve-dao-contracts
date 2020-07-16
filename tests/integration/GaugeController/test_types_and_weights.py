@@ -1,5 +1,7 @@
 from brownie.test import strategy
 
+WEEK = 7 * 86400
+
 
 class StateMachine:
     """
@@ -19,9 +21,10 @@ class StateMachine:
     st_gauge_weight = strategy("uint", min_value=10 ** 17, max_value=10 ** 19)
     st_type_weight = strategy("uint", min_value=10 ** 17, max_value=10 ** 19)
 
-    def __init__(self, LiquidityGauge, accounts, gauge_controller, mock_lp_token, minter):
+    def __init__(self, LiquidityGauge, rpc, accounts, gauge_controller, mock_lp_token, minter):
         self.LiquidityGauge = LiquidityGauge
         self.accounts = accounts
+        self.rpc = rpc
 
         self.lp_token = mock_lp_token
         self.minter = minter
@@ -87,15 +90,18 @@ class StateMachine:
         """
         Validate the relative gauge weights.
         """
+        self.rpc.sleep(WEEK)
+
         total_weight = sum(
             self._gauge_weight(idx) * weight for idx, weight in enumerate(self.type_weights)
         )
 
         for gauge, weight, idx in [(i["contract"], i["weight"], i["type"]) for i in self.gauges]:
+            self.controller.checkpoint_gauge(gauge)
             expected = 10 ** 18 * self.type_weights[idx] * weight // total_weight
 
             assert self.controller.gauge_relative_weight(gauge) == expected
 
 
-def test_gauge(state_machine, LiquidityGauge, accounts, gauge_controller, mock_lp_token, minter):
-    state_machine(StateMachine, LiquidityGauge, accounts, gauge_controller, mock_lp_token, minter)
+def test_gauge(state_machine, LiquidityGauge, rpc, accounts, gauge_controller, mock_lp_token, minter):
+    state_machine(StateMachine, LiquidityGauge, rpc, accounts, gauge_controller, mock_lp_token, minter)
