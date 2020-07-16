@@ -67,7 +67,7 @@ n_gauges: public(int128)
 gauge_type_names: public(HashMap[int128, String[64]])
 
 # Needed for enumeration
-gauges: public(HashMap[int128, address])
+gauges: public(address[1000000000])
 
 # we increment values by 1 prior to storing them here so we can rely on a value
 # of zero as meaning the gauge has not been set
@@ -77,19 +77,25 @@ vote_user_slopes: public(HashMap[address, HashMap[address, VotedSlope]])  # user
 vote_user_power: public(HashMap[address, uint256])  # Total vote power used by user
 last_user_vote: public(HashMap[address, HashMap[address, uint256]])  # Last user vote's timestamp for each gauge address
 
-points_weight: public(HashMap[address, HashMap[uint256, Point]])
-changes_weight: HashMap[address, HashMap[uint256, uint256]]
-time_weight: public(HashMap[address, uint256])
+# Past and scheduled points for gauge weight, sum of weights per type, total weight
+# Point is for bias+slope
+# changes_* are for changes in slope
+# time_* are for the last change timestamp
+# timestamps are rounded to whole weeks
 
-points_sum: HashMap[int128, HashMap[uint256, Point]]
-changes_sum: HashMap[int128, HashMap[uint256, uint256]]
-time_sum: public(HashMap[int128, uint256])
+points_weight: public(HashMap[address, HashMap[uint256, Point]])  # gauge_addr -> time -> Point
+changes_weight: HashMap[address, HashMap[uint256, uint256]]  # gauge_addr -> time -> slope
+time_weight: public(HashMap[address, uint256])  # gauge_addr -> last scheduled time (next week)
 
-points_total: public(HashMap[uint256, uint256])
-time_total: public(uint256)
+points_sum: HashMap[int128, HashMap[uint256, Point]]  # type_id -> time -> Point
+changes_sum: HashMap[int128, HashMap[uint256, uint256]]  # type_id -> time -> slope
+time_sum: public(uint256[1000000000])  # type_id -> last scheduled time (next week)
 
-points_type_weight: HashMap[int128, HashMap[uint256, uint256]]
-time_type_weight: public(HashMap[int128, uint256])
+points_total: public(HashMap[uint256, uint256])  # time -> total weight
+time_total: public(uint256)  # last scheduled time
+
+points_type_weight: HashMap[int128, HashMap[uint256, uint256]]  # type_id -> time -> type weight
+time_type_weight: public(uint256[1000000000])  # type_id -> last scheduled time (next week)
 
 
 @external
