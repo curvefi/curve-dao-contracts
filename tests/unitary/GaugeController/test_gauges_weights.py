@@ -63,10 +63,10 @@ def test_gauge_weight_as_zero(accounts, gauge_controller, gauge):
     assert gauge_controller.get_gauge_weight.call(gauge) == 0
 
 
-def test_set_gauge_weight(rpc, accounts, gauge_controller, gauge):
+def test_set_gauge_weight(chain, accounts, gauge_controller, gauge):
     gauge_controller.add_gauge(gauge, 0, {'from': accounts[0]})
     gauge_controller.change_gauge_weight(gauge, 10**21)
-    rpc.sleep(WEEK)
+    chain.sleep(WEEK)
 
     assert gauge_controller.get_gauge_weight(gauge) == 10**21
 
@@ -88,7 +88,7 @@ def test_change_type_weight(accounts, gauge_controller):
     assert gauge_controller.get_type_weight(1) == TYPE_WEIGHTS[1]
 
 
-def test_relative_weight_write(accounts, rpc, gauge_controller, three_gauges):
+def test_relative_weight_write(accounts, chain, gauge_controller, three_gauges):
     gauge_controller.add_type(b'Insurance', TYPE_WEIGHTS[1], {'from': accounts[0]})
     gauge_controller.add_gauge(three_gauges[0], 0, GAUGE_WEIGHTS[0], {'from': accounts[0]})
     gauge_controller.add_gauge(three_gauges[1], 0, GAUGE_WEIGHTS[1], {'from': accounts[0]})
@@ -97,10 +97,10 @@ def test_relative_weight_write(accounts, rpc, gauge_controller, three_gauges):
     total_weight = TYPE_WEIGHTS[0] * GAUGE_WEIGHTS[0] + \
         TYPE_WEIGHTS[0] * GAUGE_WEIGHTS[1] + TYPE_WEIGHTS[1] * GAUGE_WEIGHTS[2]
 
-    rpc.sleep(int(1.1 * YEAR))
+    chain.sleep(int(1.1 * YEAR))
 
     # Fill weights and check that nothing has changed
-    t = rpc.time()
+    t = chain.time()
     for gauge, w, gauge_type in zip(three_gauges, GAUGE_WEIGHTS, [0, 0, 1]):
         gauge_controller.gauge_relative_weight_write(gauge, t)
         relative_weight = gauge_controller.gauge_relative_weight(gauge, t)

@@ -1,5 +1,5 @@
 import brownie
-from brownie import rpc
+from brownie import chain
 from brownie.test import strategy
 
 
@@ -64,7 +64,7 @@ class StateMachine:
         """
         Advance the clock.
         """
-        rpc.sleep(st_time)
+        chain.sleep(st_time)
 
     def rule_checkpoint(self, st_account):
         """

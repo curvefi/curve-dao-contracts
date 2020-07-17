@@ -1,5 +1,5 @@
 import brownie
-from brownie import history, rpc
+from brownie import history, chain
 from brownie.test import strategy
 
 WEEK = 86400 * 7
@@ -35,7 +35,7 @@ class StateMachine:
         self.voting_balances = {i: {'value': 0, 'unlock_time': 0} for i in self.accounts}
 
     def rule_create_lock(self, st_account, st_value, st_lock_duration):
-        unlock_time = (rpc.time() + st_lock_duration * WEEK) // WEEK * WEEK
+        unlock_time = (chain.time() + st_lock_duration * WEEK) // WEEK * WEEK
 
         if st_value == 0:
             with brownie.reverts("dev: need non-zero value"):
@@ -45,11 +45,11 @@ class StateMachine:
             with brownie.reverts("Withdraw old tokens first"):
                 self.voting_escrow.create_lock(st_value, unlock_time, {'from': st_account, 'gas': GAS_LIMIT})
 
-        elif unlock_time <= rpc.time():
+        elif unlock_time <= chain.time():
             with brownie.reverts("Can only lock until time in the future"):
                 self.voting_escrow.create_lock(st_value, unlock_time, {'from': st_account, 'gas': GAS_LIMIT})
 
-        elif unlock_time > rpc.time() + 86400 * 365 * 4:
+        elif unlock_time > chain.time() + 86400 * 365 * 4:
             with brownie.reverts("Voting lock can be 4 years max"):
                 self.voting_escrow.create_lock(st_value, unlock_time, {'from': st_account, 'gas': GAS_LIMIT})
 
@@ -69,7 +69,7 @@ class StateMachine:
             with brownie.reverts("No existing lock found"):
                 self.voting_escrow.increase_amount(st_value, {'from': st_account, 'gas': GAS_LIMIT})
 
-        elif self.voting_balances[st_account]['unlock_time'] <= rpc.time():
+        elif self.voting_balances[st_account]['unlock_time'] <= chain.time():
             with brownie.reverts("Cannot add to expired lock. Withdraw"):
                 self.voting_escrow.increase_amount(st_value, {'from': st_account, 'gas': GAS_LIMIT})
 
@@ -78,9 +78,9 @@ class StateMachine:
             self.voting_balances[st_account]['value'] += st_value
 
     def rule_increase_unlock_time(self, st_account, st_lock_duration):
-        unlock_time = (rpc.time() + st_lock_duration * WEEK) // WEEK * WEEK
+        unlock_time = (chain.time() + st_lock_duration * WEEK) // WEEK * WEEK
 
-        if self.voting_balances[st_account]['unlock_time'] <= rpc.time():
+        if self.voting_balances[st_account]['unlock_time'] <= chain.time():
             with brownie.reverts("Lock expired"):
                 self.voting_escrow.increase_unlock_time(unlock_time, {'from': st_account, 'gas': GAS_LIMIT})
 
@@ -92,7 +92,7 @@ class StateMachine:
             with brownie.reverts("Can only increase lock duration"):
                 self.voting_escrow.increase_unlock_time(unlock_time, {'from': st_account, 'gas': GAS_LIMIT})
 
-        elif unlock_time > rpc.time() + 86400 * 365 * 4:
+        elif unlock_time > chain.time() + 86400 * 365 * 4:
             with brownie.reverts("Voting lock can be 4 years max"):
                 self.voting_escrow.increase_unlock_time(unlock_time, {'from': st_account, 'gas': GAS_LIMIT})
 
@@ -104,7 +104,7 @@ class StateMachine:
         """
         Withdraw tokens from the voting escrow.
         """
-        if self.voting_balances[st_account]['unlock_time'] > rpc.time():
+        if self.voting_balances[st_account]['unlock_time'] > chain.time():
             # fail path - before unlock time
             with brownie.reverts("The lock didn't expire"):
                 self.voting_escrow.withdraw({'from': st_account, 'gas': GAS_LIMIT})
@@ -121,7 +121,7 @@ class StateMachine:
         """
         Advance the clock.
         """
-        rpc.sleep(st_sleep_duration * WEEK)
+        chain.sleep(st_sleep_duration * WEEK)
 
         # check the balance as a transaction, to ensure a block is mined after time travel
         self.token.balanceOf.transact(self.accounts[0], {'from': self.accounts[0]})
@@ -138,7 +138,7 @@ class StateMachine:
         Verify the sum of all escrow balances is equal to the escrow totalSupply.
         """
         total_supply = 0
-        timestamp = history[-1].timestamp
+        timestamp = chain[-1].timestamp
 
         for acct in self.accounts:
             data = self.voting_balances[acct]

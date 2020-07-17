@@ -1,6 +1,7 @@
 import brownie
 import pytest
 
+
 @pytest.fixture(scope="module", autouse=True)
 def deposit_setup(accounts, liquidity_gauge, mock_lp_token):
     mock_lp_token.approve(liquidity_gauge, 2 ** 256 - 1, {"from": accounts[0]})
@@ -54,11 +55,11 @@ def test_withdraw_zero(accounts, liquidity_gauge, mock_lp_token):
     assert liquidity_gauge.balanceOf(accounts[0]) == 100000
 
 
-def test_withdraw_new_epoch(accounts, rpc, liquidity_gauge, mock_lp_token):
+def test_withdraw_new_epoch(accounts, chain, liquidity_gauge, mock_lp_token):
     balance = mock_lp_token.balanceOf(accounts[0])
 
     liquidity_gauge.deposit(100000, {'from': accounts[0]})
-    rpc.sleep(86400 * 400)
+    chain.sleep(86400 * 400)
     liquidity_gauge.withdraw(100000, {'from': accounts[0]})
 
     assert mock_lp_token.balanceOf(liquidity_gauge) == 0

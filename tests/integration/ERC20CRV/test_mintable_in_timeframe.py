@@ -5,15 +5,15 @@ from tests.conftest import YEAR, YEAR_1_SUPPLY, INITIAL_SUPPLY
 
 
 @given(time=strategy("decimal", min_value=1, max_value=7))
-def test_mintable_in_timeframe(accounts, token, block_timestamp, theoretical_supply, time, rpc):
+def test_mintable_in_timeframe(accounts, token, theoretical_supply, time, chain):
     t0 = token.start_epoch_time()
-    rpc.sleep(int(10 ** time))
-    rpc.mine()
-    t1 = block_timestamp()
+    chain.sleep(int(10 ** time))
+    chain.mine()
+    t1 = chain[-1].timestamp
     if t1 - t0 >= YEAR:
         token.update_mining_parameters({'from': accounts[0]})
 
-    t1 = block_timestamp()
+    t1 = chain[-1].timestamp
     available_supply = token.available_supply()
     mintable = token.mintable_in_timeframe(t0, t1)
     assert (available_supply - (INITIAL_SUPPLY * 10 ** 18)) >= mintable  # Should only round down, not up
@@ -26,7 +26,7 @@ def test_mintable_in_timeframe(accounts, token, block_timestamp, theoretical_sup
 
 
 @given(time1=strategy('uint', max_value=YEAR), time2=strategy('uint', max_value=YEAR))
-def test_random_range_year_one(token, block_timestamp, rpc, accounts, time1, time2):
+def test_random_range_year_one(token, chain, accounts, time1, time2):
     creation_time = token.start_epoch_time()
     start, end = sorted((creation_time+time1, creation_time+time2))
     rate = YEAR_1_SUPPLY // YEAR
@@ -35,7 +35,7 @@ def test_random_range_year_one(token, block_timestamp, rpc, accounts, time1, tim
 
 
 @given(start=strategy('uint', max_value=YEAR*6), duration=strategy('uint', max_value=YEAR))
-def test_random_range_multiple_epochs(token, block_timestamp, rpc, accounts, start, duration):
+def test_random_range_multiple_epochs(token, chain, accounts, start, duration):
     creation_time = token.start_epoch_time()
     start += creation_time
     end = duration + start
@@ -44,8 +44,8 @@ def test_random_range_multiple_epochs(token, block_timestamp, rpc, accounts, sta
     rate = int(YEAR_1_SUPPLY // YEAR / (2 ** 0.25) ** start_epoch)
 
     for i in range(end_epoch):
-        rpc.sleep(YEAR)
-        rpc.mine()
+        chain.sleep(YEAR)
+        chain.mine()
         token.update_mining_parameters({'from': accounts[0]})
 
     if start_epoch == end_epoch:
@@ -55,12 +55,12 @@ def test_random_range_multiple_epochs(token, block_timestamp, rpc, accounts, sta
 
 
 @given(duration=strategy('uint', min_value=1, max_value=YEAR))
-def test_available_supply(rpc, web3, token, duration):
+def test_available_supply(chain, web3, token, duration):
     creation_time = token.start_epoch_time()
     initial_supply = token.totalSupply()
     rate = token.rate()
-    rpc.sleep(duration)
-    rpc.mine()
+    chain.sleep(duration)
+    chain.mine()
 
     expected = initial_supply + (web3.eth.getBlock('latest')['timestamp'] - creation_time) * rate
     assert token.available_supply() == expected

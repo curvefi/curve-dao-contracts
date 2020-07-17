@@ -2,7 +2,7 @@ import pytest
 
 from hypothesis import settings
 
-from brownie import history, rpc
+from brownie import history, chain
 from brownie.test import given, strategy
 
 WEEK = 86400 * 7
@@ -47,9 +47,9 @@ def test_gauge_weight_vote(
     """
 
     # Init 10 s before the week change
-    t0 = rpc.time()
+    t0 = chain.time()
     t1 = (t0 + 2 * WEEK) // WEEK * WEEK - 10
-    rpc.sleep(t1 - t0)
+    chain.sleep(t1 - t0)
 
     # Deposit for voting
     timestamp = t1
@@ -82,8 +82,8 @@ def test_gauge_weight_vote(
         bias, duration = slope_data[idx]
         return max(bias * (1 - relative_time * max_duration / duration), 0)
 
-    rpc.sleep(WEEK * 4)
-    rpc.mine()
+    chain.sleep(WEEK * 4)
+    chain.mine()
 
     # advance clock a month at a time and compare theoretical weight to actual weights
     while history[-1].timestamp < timestamp + 1.5 * max_duration:
@@ -108,5 +108,5 @@ def test_gauge_weight_vote(
             for i in range(3):
                 assert abs(weights[i] - theoretical_weights[i]) <= (history[-1].timestamp - timestamp) / WEEK + 1  # 1 s per week?
 
-        rpc.sleep(WEEK * 4)
-        rpc.mine()
+        chain.sleep(WEEK * 4)
+        chain.mine()

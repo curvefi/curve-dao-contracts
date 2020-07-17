@@ -9,7 +9,7 @@ def to_int(*args):
     return [int(a) for a in args]
 
 
-def test_mint(accounts, rpc, mock_lp_token, gauge_controller, three_gauges, minter, token):
+def test_mint(accounts, chain, mock_lp_token, gauge_controller, three_gauges, minter, token):
     admin, bob, charlie, dan = accounts[:4]
 
     token.set_minter(minter, {'from': admin})
@@ -33,7 +33,7 @@ def test_mint(accounts, rpc, mock_lp_token, gauge_controller, three_gauges, mint
     for user in accounts[1:4]:
         mock_lp_token.transfer(user, amount, {'from': admin})
 
-    rpc.sleep(7 * 86400)  # For weights to activate
+    chain.sleep(7 * 86400)  # For weights to activate
 
     # Bob and Charlie deposit to gauges with different weights
     mock_lp_token.approve(three_gauges[1], amount, {'from': bob})
@@ -42,14 +42,14 @@ def test_mint(accounts, rpc, mock_lp_token, gauge_controller, three_gauges, mint
     three_gauges[2].deposit(amount, {'from': charlie})
 
     dt = 30 * 86400
-    rpc.sleep(dt)
-    rpc.mine()
+    chain.sleep(dt)
+    chain.mine()
 
     mock_lp_token.approve(three_gauges[1], amount, {'from': dan})
     three_gauges[1].deposit(amount, {'from': dan})
 
-    rpc.sleep(dt)
-    rpc.mine()
+    chain.sleep(dt)
+    chain.mine()
 
     with brownie.reverts():
         # Cannot withdraw too much
@@ -67,8 +67,8 @@ def test_mint(accounts, rpc, mock_lp_token, gauge_controller, three_gauges, mint
     minter.mint(three_gauges[1], {'from': bob})
     bob_tokens = token.balanceOf(bob)
 
-    rpc.sleep(dt)
-    rpc.mine()
+    chain.sleep(dt)
+    chain.mine()
 
     minter.mint(three_gauges[1], {'from': bob})  # This won't give anything
     assert bob_tokens == token.balanceOf(bob)

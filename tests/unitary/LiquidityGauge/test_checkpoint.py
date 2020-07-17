@@ -7,9 +7,9 @@ def test_user_checkpoint(accounts, liquidity_gauge):
     liquidity_gauge.user_checkpoint(accounts[1], {'from': accounts[1]})
 
 
-def test_user_checkpoint_new_period(accounts, rpc, liquidity_gauge):
+def test_user_checkpoint_new_period(accounts, chain, liquidity_gauge):
     liquidity_gauge.user_checkpoint(accounts[1], {'from': accounts[1]})
-    rpc.sleep(int(YEAR * 1.1))
+    chain.sleep(int(YEAR * 1.1))
     liquidity_gauge.user_checkpoint(accounts[1], {'from': accounts[1]})
 
 

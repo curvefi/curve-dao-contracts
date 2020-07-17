@@ -25,21 +25,21 @@ def minter_setup(accounts, mock_lp_token, token, minter, gauge_controller, liqui
 
 
 @given(st_duration=strategy("uint[3]", min_value=WEEK, max_value=MONTH, unique=True))
-def test_duration(accounts, rpc, liquidity_gauge, minter, token, st_duration):
+def test_duration(accounts, chain, liquidity_gauge, minter, token, st_duration):
     accts = accounts[1:]
-    rpc.sleep(7 * 86400)
+    chain.sleep(7 * 86400)
 
     deposit_time = []
     for i in range(3):
-        tx = liquidity_gauge.deposit(10**18, {'from': accts[i]})
-        deposit_time.append(tx.timestamp)
+        liquidity_gauge.deposit(10**18, {'from': accts[i]})
+        deposit_time.append(chain[-1].timestamp)
 
     durations = []
     balances = []
     for i in range(3):
-        rpc.sleep(st_duration[i])
-        tx = liquidity_gauge.withdraw(10**18, {'from': accts[i]})
-        durations.append(tx.timestamp - deposit_time[i])
+        chain.sleep(st_duration[i])
+        liquidity_gauge.withdraw(10**18, {'from': accts[i]})
+        durations.append(chain[-1].timestamp - deposit_time[i])
         minter.mint(liquidity_gauge, {'from': accts[i]})
         balances.append(token.balanceOf(accts[i]))
 
@@ -55,15 +55,15 @@ def test_duration(accounts, rpc, liquidity_gauge, minter, token, st_duration):
 
 
 @given(st_amounts=strategy("uint[3]", min_value=10**17, max_value=10**18, unique=True))
-def test_amounts(accounts, rpc, liquidity_gauge, minter, token, st_amounts):
+def test_amounts(accounts, chain, liquidity_gauge, minter, token, st_amounts):
     accts = accounts[1:]
 
     deposit_time = []
     for i in range(3):
-        tx = liquidity_gauge.deposit(st_amounts[i], {'from': accts[i]})
-        deposit_time.append(tx.timestamp)
+        liquidity_gauge.deposit(st_amounts[i], {'from': accts[i]})
+        deposit_time.append(chain[-1].timestamp)
 
-    rpc.sleep(MONTH)
+    chain.sleep(MONTH)
     balances = []
     for i in range(3):
         liquidity_gauge.withdraw(st_amounts[i], {'from': accts[i]})
