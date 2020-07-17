@@ -88,7 +88,7 @@ def test_change_type_weight(accounts, gauge_controller):
     assert gauge_controller.get_type_weight(1) == TYPE_WEIGHTS[1]
 
 
-def test_relative_weight_write(accounts, chain, gauge_controller, three_gauges):
+def test_relative_weight_write(accounts, chain, gauge_controller, three_gauges, skip_coverage):
     gauge_controller.add_type(b'Insurance', TYPE_WEIGHTS[1], {'from': accounts[0]})
     gauge_controller.add_gauge(three_gauges[0], 0, GAUGE_WEIGHTS[0], {'from': accounts[0]})
     gauge_controller.add_gauge(three_gauges[1], 0, GAUGE_WEIGHTS[1], {'from': accounts[0]})
