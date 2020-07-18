@@ -77,8 +77,10 @@ def __init__(_name: String[64], _symbol: String[32], _decimals: uint256):
 
 @internal
 def _update_mining_parameters():
-    # Any mining call must also call this if it is required
-
+    """
+    @notice Update mining rate and supply at the start of the epoch
+            Any modifying mining call must also call this
+    """
     self.start_epoch_time += RATE_REDUCTION_TIME
     self.mining_epoch += 1
 
@@ -97,14 +99,22 @@ def _update_mining_parameters():
 
 @external
 def update_mining_parameters():
-    # Everyone can do this but only once per epoch
-    # Total supply becomes slightly larger if this function is called late
+    """
+    @notice Update mining rate and supply at the start of the epoch
+            Everyone can do this but only once per epoch
+            Total supply becomes slightly larger if this function is called late
+    """
     assert block.timestamp >= self.start_epoch_time + RATE_REDUCTION_TIME  # dev: too soon!
     self._update_mining_parameters()
 
 
 @external
 def start_epoch_time_write() -> uint256:
+    """
+    @notice Get timestamp of the mining epoch start
+            simultaneously updating mining parameters
+    @return Timestamp of the epoch
+    """
     _start_epoch_time: uint256 = self.start_epoch_time
     if block.timestamp >= _start_epoch_time + RATE_REDUCTION_TIME:
         self._update_mining_parameters()
@@ -122,6 +132,9 @@ def _available_supply() -> uint256:
 @external
 @view
 def available_supply() -> uint256:
+    """
+    @notice Current number of tokens in existence (claimed or unclaimed)
+    """
     return self._available_supply()
 
 
@@ -130,7 +143,10 @@ def available_supply() -> uint256:
 @view
 def mintable_in_timeframe(start: uint256, end: uint256) -> uint256:
     """
-    How much supply is mintable from start timestamp till end timestamp
+    @notice How much supply is mintable from start timestamp till end timestamp
+    @param start Start of the time interval (timestamp)
+    @param end End of the time interval (timestamp)
+    @return Tokens mintable from `start` till `end`
     """
     assert start <= end  # dev: start > end
     to_mint: uint256 = 0
@@ -170,6 +186,10 @@ def mintable_in_timeframe(start: uint256, end: uint256) -> uint256:
 
 @external
 def set_minter(_minter: address):
+    """
+    @notice Setting new minter. Works only once - when minter wasn't set
+    @param _minter Address of the minter
+    """
     assert msg.sender == self.admin  # dev: admin only
     assert self.minter == ZERO_ADDRESS  # dev: can set the minter only once, at creation
     self.minter = _minter
@@ -178,6 +198,10 @@ def set_minter(_minter: address):
 
 @external
 def set_admin(_admin: address):
+    """
+    @notice Set the new admin. After all is set up, admin only can change the token name
+    @param _admin New admin address
+    """
     assert msg.sender == self.admin  # dev: admin only
     self.admin = _admin
     log SetAdmin(_admin)
@@ -187,7 +211,7 @@ def set_admin(_admin: address):
 @view
 def totalSupply() -> uint256:
     """
-    @dev Total number of tokens in existence.
+    @notice Total number of tokens in existence.
     """
     return self.total_supply
 
@@ -196,7 +220,7 @@ def totalSupply() -> uint256:
 @view
 def allowance(_owner : address, _spender : address) -> uint256:
     """
-    @dev Function to check the amount of tokens that an owner allowed to a spender.
+    @notice Function to check the amount of tokens that an owner allowed to a spender.
     @param _owner The address which owns the funds.
     @param _spender The address which will spend the funds.
     @return An uint256 specifying the amount of tokens still available for the spender.
@@ -207,7 +231,7 @@ def allowance(_owner : address, _spender : address) -> uint256:
 @external
 def transfer(_to : address, _value : uint256) -> bool:
     """
-    @dev Transfer token for a specified address
+    @notice Transfer token for a specified address
     @param _to The address to transfer to.
     @param _value The amount to be transferred.
     """
@@ -223,7 +247,7 @@ def transfer(_to : address, _value : uint256) -> bool:
 @external
 def transferFrom(_from : address, _to : address, _value : uint256) -> bool:
     """
-     @dev Transfer tokens from one address to another.
+     @notice Transfer tokens from one address to another.
      @param _from address The address which you want to send tokens from
      @param _to address The address which you want to transfer to
      @param _value uint256 the amount of tokens to be transferred
@@ -241,7 +265,7 @@ def transferFrom(_from : address, _to : address, _value : uint256) -> bool:
 @external
 def approve(_spender : address, _value : uint256) -> bool:
     """
-    @dev Approve the passed address to spend the specified amount of tokens on behalf of msg.sender.
+    @notice Approve the passed address to spend the specified amount of tokens on behalf of msg.sender.
          Beware that changing an allowance with this method brings the risk that someone may use both the old
          and the new allowance by unfortunate transaction ordering. One possible solution to mitigate this
          race condition is to first reduce the spender's allowance to 0 and set the desired value afterwards:
@@ -258,7 +282,7 @@ def approve(_spender : address, _value : uint256) -> bool:
 @external
 def mint(_to: address, _value: uint256) -> bool:
     """
-    @dev Mint an amount of the token and assigns it to an account.
+    @notice Mint an amount of the token and assigns it to an account.
          This encapsulates the modification of balances such that the
          proper events are emitted.
     @param _to The account that will receive the created tokens.
@@ -283,7 +307,7 @@ def mint(_to: address, _value: uint256) -> bool:
 @external
 def burn(_value: uint256) -> bool:
     """
-    @dev Burn an amount of the token of msg.sender.
+    @notice Burn an amount of the token of msg.sender.
     @param _value The amount that will be burned.
     """
     self.balanceOf[msg.sender] -= _value
@@ -295,6 +319,11 @@ def burn(_value: uint256) -> bool:
 
 @external
 def set_name(_name: String[64], _symbol: String[32]):
+    """
+    @notice Change the token name (only admin can)
+    @param _name New token name
+    @param _symbol New token symbol
+    """
     assert msg.sender == self.admin, "Only admin is allowed to change name"
     self.name = _name
     self.symbol = _symbol
