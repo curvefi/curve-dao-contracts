@@ -23,7 +23,7 @@ def test_effect_on_following_period(accounts, chain, gauge_controller, three_gau
 
     chain.sleep(86400 * 7)
     gauge_controller.checkpoint_gauge(three_gauges[0], {'from': accounts[0]})
-    assert gauge_controller.gauge_relative_weight(three_gauges[0]) > 10**18
+    assert gauge_controller.gauge_relative_weight(three_gauges[0]) == 10**18  # 1.0 * 1e18
 
 
 def test_remove_vote_no_immediate_effect(accounts, chain, gauge_controller, three_gauges):
