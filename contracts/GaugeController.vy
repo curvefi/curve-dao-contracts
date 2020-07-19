@@ -87,14 +87,14 @@ points_weight: public(HashMap[address, HashMap[uint256, Point]])  # gauge_addr -
 changes_weight: HashMap[address, HashMap[uint256, uint256]]  # gauge_addr -> time -> slope
 time_weight: public(HashMap[address, uint256])  # gauge_addr -> last scheduled time (next week)
 
-points_sum: HashMap[int128, HashMap[uint256, Point]]  # type_id -> time -> Point
+points_sum: public(HashMap[int128, HashMap[uint256, Point]])  # type_id -> time -> Point
 changes_sum: HashMap[int128, HashMap[uint256, uint256]]  # type_id -> time -> slope
 time_sum: public(uint256[1000000000])  # type_id -> last scheduled time (next week)
 
 points_total: public(HashMap[uint256, uint256])  # time -> total weight
 time_total: public(uint256)  # last scheduled time
 
-points_type_weight: HashMap[int128, HashMap[uint256, uint256]]  # type_id -> time -> type weight
+points_type_weight: public(HashMap[int128, HashMap[uint256, uint256]])  # type_id -> time -> type weight
 time_type_weight: public(uint256[1000000000])  # type_id -> last scheduled time (next week)
 
 
@@ -140,6 +140,9 @@ def _get_type_weight(gauge_type: int128) -> uint256:
     # and returning the NEAREST FUTURE value
     t: uint256 = self.time_type_weight[gauge_type]
     if t > 0:
+        if t > block.timestamp:
+            # If we have already checkpointed - still need to change the value
+            t -= WEEK
         w: uint256 = self.points_type_weight[gauge_type][t]
         for i in range(500):
             if t > block.timestamp:
@@ -157,6 +160,9 @@ def _get_type_weight(gauge_type: int128) -> uint256:
 def _get_sum(gauge_type: int128) -> uint256:
     t: uint256 = self.time_sum[gauge_type]
     if t > 0:
+        if t > block.timestamp:
+            # If we have already checkpointed - still need to change the value
+            t -= WEEK
         pt: Point = self.points_sum[gauge_type][t]
         for i in range(500):
             if t > block.timestamp:
@@ -183,13 +189,16 @@ def _get_total() -> uint256:
     t: uint256 = self.time_total
     _n_gauge_types: int128 = self.n_gauge_types
     if t > 0:
+        if t > block.timestamp:
+            # If we have already checkpointed - still need to change the value
+            t -= WEEK
         pt: uint256 = self.points_total[t]
         for i in range(500):
             if t > block.timestamp:
                 break
             t += WEEK
             pt = 0
-            # Scales as n_types * n_unckecked_weeks (hopefully 1 at most)
+            # Scales as n_types * n_unchecked_weeks (hopefully 1 at most)
             for gauge_type in range(100):
                 if gauge_type == _n_gauge_types:
                     break
@@ -209,6 +218,9 @@ def _get_total() -> uint256:
 def _get_weight(gauge_addr: address) -> uint256:
     t: uint256 = self.time_weight[gauge_addr]
     if t > 0:
+        if t > block.timestamp:
+            # If we have already checkpointed - still need to change the value
+            t -= WEEK
         pt: Point = self.points_weight[gauge_addr][t]
         for i in range(500):
             if t > block.timestamp:
