@@ -41,6 +41,9 @@ def test_remove_vote_means_no_weight(accounts, chain, gauge_controller, three_ga
     gauge_controller.vote_for_gauge_weights(three_gauges[0], 10000, {'from': accounts[0]})
     chain.sleep(86400 * 10)
     gauge_controller.checkpoint_gauge(three_gauges[0], {'from': accounts[0]})
+
+    assert gauge_controller.gauge_relative_weight(three_gauges[0]) == 10 ** 18
+
     gauge_controller.vote_for_gauge_weights(three_gauges[0], 0, {'from': accounts[0]})
 
     chain.sleep(86400 * 7)
