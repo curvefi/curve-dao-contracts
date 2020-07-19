@@ -5,39 +5,39 @@ YEAR = 365 * 86400
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
 
-def test_available_supply(rpc, web3, token):
+def test_available_supply(chain, web3, token):
     creation_time = token.start_epoch_time()
     initial_supply = token.totalSupply()
     rate = token.rate()
-    rpc.sleep(WEEK)
-    rpc.mine()
+    chain.sleep(WEEK)
+    chain.mine()
 
-    expected = initial_supply + (web3.eth.getBlock('latest')['timestamp'] - creation_time) * rate
+    expected = initial_supply + (chain[-1].timestamp - creation_time) * rate
     assert token.available_supply() == expected
 
 
-def test_mint(accounts, rpc, token):
+def test_mint(accounts, chain, token):
     token.set_minter(accounts[0], {'from': accounts[0]})
     creation_time = token.start_epoch_time()
     initial_supply = token.totalSupply()
     rate = token.rate()
-    rpc.sleep(WEEK)
+    chain.sleep(WEEK)
 
-    amount = (rpc.time()-creation_time) * rate
+    amount = (chain.time()-creation_time) * rate
     token.mint(accounts[1], amount, {'from': accounts[0]})
 
     assert token.balanceOf(accounts[1]) == amount
     assert token.totalSupply() == initial_supply + amount
 
 
-def test_overmint(accounts, rpc, token):
+def test_overmint(accounts, chain, token):
     token.set_minter(accounts[0], {'from': accounts[0]})
     creation_time = token.start_epoch_time()
     rate = token.rate()
-    rpc.sleep(WEEK)
+    chain.sleep(WEEK)
 
     with brownie.reverts("dev: exceeds allowable mint amount"):
-        token.mint(accounts[1], (rpc.time()-creation_time+2) * rate, {'from': accounts[0]})
+        token.mint(accounts[1], (chain.time()-creation_time+2) * rate, {'from': accounts[0]})
 
 
 def test_minter_only(accounts, token):

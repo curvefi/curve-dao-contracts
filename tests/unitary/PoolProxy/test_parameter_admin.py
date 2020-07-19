@@ -61,18 +61,18 @@ def test_commit_new_fee_no_access(accounts, pool_proxy, pool, idx):
         pool_proxy.commit_new_fee(pool, 31337, 42, {'from': accounts[idx]})
 
 
-def test_ramp_A(accounts, rpc, pool_proxy, pool):
-    time = rpc.time() + 86400 * 2
+def test_ramp_A(accounts, chain, pool_proxy, pool):
+    time = chain.time() + 86400 * 2
     pool_proxy.ramp_A(pool, 1000, time, {'from': accounts[1]})
 
     assert pool.future_A() == 1000
     assert pool.future_A_time() == time
 
 
-def test_stop_ramp_A(accounts, rpc, pool_proxy, pool):
+def test_stop_ramp_A(accounts, chain, pool_proxy, pool):
     initial_A = pool.initial_A()
 
-    pool_proxy.ramp_A(pool, 1000, rpc.time() + 86400 * 2, {'from': accounts[1]})
+    pool_proxy.ramp_A(pool, 1000, chain.time() + 86400 * 2, {'from': accounts[1]})
     tx = pool_proxy.stop_ramp_A(pool, {'from': accounts[1]})
 
     assert pool.future_A() == initial_A
@@ -80,9 +80,9 @@ def test_stop_ramp_A(accounts, rpc, pool_proxy, pool):
 
 
 @pytest.mark.parametrize('idx', [0, 2, 3])
-def test_ramp_A_no_access(accounts, rpc, pool_proxy, pool, idx):
+def test_ramp_A_no_access(accounts, chain, pool_proxy, pool, idx):
     with brownie.reverts('Access denied'):
-        pool_proxy.ramp_A(pool, 1000, rpc.time() + 86400 * 2, {'from': accounts[idx]})
+        pool_proxy.ramp_A(pool, 1000, chain.time() + 86400 * 2, {'from': accounts[idx]})
 
 
 @pytest.mark.parametrize('idx', [0, 2, 3])
