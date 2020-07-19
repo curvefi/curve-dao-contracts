@@ -182,30 +182,34 @@ def _get_sum(gauge_type: int128) -> uint256:
 def _get_total() -> uint256:
     t: uint256 = self.time_total
     _n_gauge_types: int128 = self.n_gauge_types
-    if t > 0:
-        if t > block.timestamp:
-            # If we have already checkpointed - still need to change the value
-            t -= WEEK
-        pt: uint256 = self.points_total[t]
-        for i in range(500):
-            if t > block.timestamp:
-                break
-            t += WEEK
-            pt = 0
-            # Scales as n_types * n_unchecked_weeks (hopefully 1 at most)
-            for gauge_type in range(100):
-                if gauge_type == _n_gauge_types:
-                    break
-                type_sum: uint256 = self._get_sum(gauge_type)
-                type_weight: uint256 = self._get_type_weight(gauge_type)
-                pt += type_sum * type_weight
-            self.points_total[t] = pt
+    if t > block.timestamp:
+        # If we have already checkpointed - still need to change the value
+        t -= WEEK
+    pt: uint256 = self.points_total[t]
 
-            if t > block.timestamp:
-                self.time_total = t
-        return pt
-    else:
-        return 0
+    for gauge_type in range(100):
+        if gauge_type == _n_gauge_types:
+            break
+        self._get_sum(gauge_type)
+        self._get_type_weight(gauge_type)
+
+    for i in range(500):
+        if t > block.timestamp:
+            break
+        t += WEEK
+        pt = 0
+        # Scales as n_types * n_unchecked_weeks (hopefully 1 at most)
+        for gauge_type in range(100):
+            if gauge_type == _n_gauge_types:
+                break
+            type_sum: uint256 = self.points_sum[gauge_type][t].bias
+            type_weight: uint256 = self.points_type_weight[gauge_type][t]
+            pt += type_sum * type_weight
+        self.points_total[t] = pt
+
+        if t > block.timestamp:
+            self.time_total = t
+    return pt
 
 
 @internal
