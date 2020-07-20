@@ -90,6 +90,14 @@ def __init__(lp_addr: address, _minter: address):
 
 @internal
 def _update_liquidity_limit(addr: address, l: uint256, L: uint256):
+    """
+    @notice Calculate limits which depend on the amount of CRV token per-user.
+            Effectively it calculates working balances to apply amplification
+            of CRV production by CRV
+    @param addr User address
+    @param l User's amount of liquidity (LP tokens)
+    @param L Total amount of liquidity (LP tokens)
+    """
     # To be called after totalSupply is updated
     _voting_escrow: address = self.voting_escrow
     voting_balance: uint256 = ERC20(_voting_escrow).balanceOf(addr)
@@ -110,6 +118,10 @@ def _update_liquidity_limit(addr: address, l: uint256, L: uint256):
 
 @internal
 def _checkpoint(addr: address):
+    """
+    @notice Checkpoint for a user
+    @param addr User address
+    """
     _token: address = self.crv_token
     _controller: address = self.controller
     _period: int128 = self.period
@@ -191,10 +203,14 @@ def _checkpoint(addr: address):
 
 @external
 def user_checkpoint(addr: address) -> bool:
+    """
+    @notice Checkpoint for a user
+    @param addr User address
+    """
     assert (msg.sender == addr) or (msg.sender == self.minter)  # dev: unauthorized
     self._checkpoint(addr)
     self._update_liquidity_limit(addr, self.balanceOf[addr], self.totalSupply)
-    return True
+    return True  # XXX explain
 
 
 @external
@@ -253,9 +269,3 @@ def withdraw(_value: uint256):
 @view
 def integrate_checkpoint() -> uint256:
     return self.period_timestamp[self.period]
-
-
-# XXX make it so that if checkpoint is failing, can do a safe withdraw to escape
-# the broken contract
-# XXX safety switch by admin in the worst case, but better autocheck if
-# _checkpoint tries to revert
