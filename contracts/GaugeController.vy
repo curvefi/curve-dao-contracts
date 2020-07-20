@@ -119,6 +119,9 @@ def commit_transfer_ownership(addr: address):
 
 @external
 def apply_transfer_ownership():
+    """
+    @notice Apply pending ownership transfer
+    """
     assert msg.sender == self.admin
     _admin: address = self.future_admin
     self.admin = _admin
@@ -128,6 +131,11 @@ def apply_transfer_ownership():
 @external
 @view
 def gauge_types(_addr: address) -> int128:
+    """
+    @notice Gauge type for address
+    @param _addr Gauge address
+    @return Gauge type id
+    """
     gauge_type: int128 = self.gauge_types_[_addr]
     assert gauge_type != 0
 
@@ -136,8 +144,12 @@ def gauge_types(_addr: address) -> int128:
 
 @internal
 def _get_type_weight(gauge_type: int128) -> uint256:
-    # Filling all the type weights by week
-    # and returning the NEAREST FUTURE value
+    """
+    @notice Fill historic type weights week-over-week for missed checkins
+            and return the type weight for the future week
+    @param gauge_type Gauge type id
+    @return Type weight
+    """
     t: uint256 = self.time_type_weight[gauge_type]
     if t > 0:
         w: uint256 = self.points_type_weight[gauge_type][t]
@@ -155,6 +167,12 @@ def _get_type_weight(gauge_type: int128) -> uint256:
 
 @internal
 def _get_sum(gauge_type: int128) -> uint256:
+    """
+    @notice Fill sum of gauge weights for the same type week-over-week for
+            missed checkins and return the sum for the future week
+    @param gauge_type Gauge type id
+    @return Sum of weights
+    """
     t: uint256 = self.time_sum[gauge_type]
     if t > 0:
         pt: Point = self.points_sum[gauge_type][t]
@@ -180,6 +198,11 @@ def _get_sum(gauge_type: int128) -> uint256:
 
 @internal
 def _get_total() -> uint256:
+    """
+    @notice Fill historic total weights week-over-week for missed checkins
+            and return the total for the future week
+    @return Total weight
+    """
     t: uint256 = self.time_total
     _n_gauge_types: int128 = self.n_gauge_types
     if t > block.timestamp:
@@ -214,6 +237,12 @@ def _get_total() -> uint256:
 
 @internal
 def _get_weight(gauge_addr: address) -> uint256:
+    """
+    @notice Fill historic gauge weights week-over-week for missed checkins
+            and return the total for the future week
+    @param gauge_addr Address of the gauge
+    @return Gauge weight
+    """
     t: uint256 = self.time_weight[gauge_addr]
     if t > 0:
         pt: Point = self.points_weight[gauge_addr][t]
@@ -274,11 +303,18 @@ def add_gauge(addr: address, gauge_type: int128, weight: uint256 = 0):
 
 @external
 def checkpoint():
+    """
+    @notice Checkpoint to fill data common for all gauges
+    """
     self._get_total()
 
 
 @external
 def checkpoint_gauge(addr: address):
+    """
+    @notice Checkpoint to fill data for both a specific gauge and common for all gauges
+    @param addr Gauge address
+    """
     self._get_weight(addr)
     self._get_total()
 
@@ -286,6 +322,14 @@ def checkpoint_gauge(addr: address):
 @internal
 @view
 def _gauge_relative_weight(addr: address, time: uint256) -> uint256:
+    """
+    @notice Get Gauge relative weight (not more than 1.0) normalized to 1e18
+            (e.g. 1.0 == 1e18). Inflation which will be received by it is
+            inflation_rate * relative_weight / 1e18
+    @param addr Gauge address
+    @param time Relative weight at the specified timestamp in the past or present
+    @return Value of relative weight normalized to 1e18
+    """
     t: uint256 = 0
     if time == 0:
         t = block.timestamp / WEEK * WEEK
@@ -319,15 +363,23 @@ def gauge_relative_weight_write(addr: address, time: uint256 = 0) -> uint256:
 @view
 def gauge_relative_weight(addr: address, time: uint256 = 0) -> uint256:
     """
-    Same as gauge_relative_weight(), but also fill all the unfilled values
-    for type and gauge records
-    Everyone can call, however nothing is recorded if the values are filled already
+    @notice Get Gauge relative weight (not more than 1.0) normalized to 1e18
+            (e.g. 1.0 == 1e18). Inflation which will be received by it is
+            inflation_rate * relative_weight / 1e18
+    @param addr Gauge address
+    @param time Relative weight at the specified timestamp in the past or present
+    @return Value of relative weight normalized to 1e18
     """
     return self._gauge_relative_weight(addr, time)
 
 
 @internal
 def _change_type_weight(type_id: int128, weight: uint256):
+    """
+    @notice Change type weight
+    @param type_id Type id
+    @param weight New type weight
+    """
     old_weight: uint256 = self._get_type_weight(type_id)
     old_sum: uint256 = self._get_sum(type_id)
     _total_weight: uint256 = self._get_total()
@@ -474,22 +526,41 @@ def vote_for_gauge_weights(_gauge_addr: address, _user_weight: uint256):
 @external
 @view
 def get_gauge_weight(addr: address) -> uint256:
+    """
+    @notice Get current gauge weight
+    @param addr Gauge address
+    @return Gauge weight
+    """
     return self.points_weight[addr][self.time_weight[addr]].bias
 
 
 @external
 @view
 def get_type_weight(type_id: int128) -> uint256:
+    """
+    @notice Get current type weight
+    @param type_id Type id
+    @return Type weight
+    """
     return self.points_type_weight[type_id][self.time_type_weight[type_id]]
 
 
 @external
 @view
 def get_total_weight() -> uint256:
+    """
+    @notice Get current total (type-weighted) weight
+    @return Total weight
+    """
     return self.points_total[self.time_total]
 
 
 @external
 @view
 def get_weights_sum_per_type(type_id: int128) -> uint256:
+    """
+    @notice Get sum of gauge weights per type
+    @param type_id Type id
+    @return Sum of gauge weights
+    """
     return self.points_sum[type_id][self.time_sum[type_id]].bias
