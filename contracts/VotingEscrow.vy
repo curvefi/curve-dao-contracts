@@ -343,6 +343,9 @@ def _deposit_for(_addr: address, _value: uint256, unlock_time: uint256, locked_b
 
 @external
 def checkpoint():
+    """
+    @notice Record global data to checkpoint
+    """
     self._checkpoint(ZERO_ADDRESS, empty(LockedBalance), empty(LockedBalance))
 
 
