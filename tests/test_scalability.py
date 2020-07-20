@@ -1,8 +1,3 @@
-"""
-Stateful test to ensure that gas costs are not prohibitively high
-when using many liquidity gauges.
-"""
-
 import brownie
 from brownie import chain
 from brownie.test import strategy
@@ -14,16 +9,19 @@ USER_COUNT = 5
 
 class StateMachine:
     """
-    Validate gauge weights and gauge weight sum.
+    Long-running stateful test to validate that gas costs are not prohibitively high
+    when using many liquidity gauges.
 
     Strategies
     ----------
-    st_type : Decimal
-        Gauge type, multiplied by `len(self.gauges)` to choose a value
-    st_gauge_weight : int
-        Gauge weight
-    st_type_wiehgt : int
-        Type weight
+    st_account : address
+        Account to send transaction from
+    st_amount : int
+        Deposit amount
+    st_gauge : int
+        Index value used to choose a liquidity gauge contract
+    st_weight : int
+        Vote weight
     """
 
     st_account = strategy("address", length=USER_COUNT)
@@ -45,12 +43,15 @@ class StateMachine:
         self.balances = {i: [0]*GAUGE_COUNT for i in self.accounts}
 
     def rule_vote(self, st_account, st_gauge, st_weight):
+        # check that this account has not voted recently
         if chain.time() - self.last_voted[st_account][st_gauge] < 86400*10:
             with brownie.reverts("Cannot vote so often"):
                 self.controller.vote_for_gauge_weights(
                     self.gauges[st_gauge], st_weight, {'from': st_account}
                 )
             return
+
+        # check that this account has not used all it's voting power
         votes = self.vote_weights[st_account].copy()
         votes[st_gauge] = st_weight
         if sum(votes) > 10000:
@@ -59,6 +60,8 @@ class StateMachine:
                     self.gauges[st_gauge], st_weight, {'from': st_account}
                 )
             return
+
+        # place a vote and adjust vote weights
         self.controller.vote_for_gauge_weights(
             self.gauges[st_gauge], st_weight, {'from': st_account}
         )
@@ -66,23 +69,28 @@ class StateMachine:
         self.last_voted[st_account][st_gauge] = chain[-1].timestamp
 
     def rule_deposit(self, st_account, st_gauge, st_amount):
+        # `st_account` deposits `st_amount` into `gauges[st_gauge]`
         self.balances[st_account][st_gauge] += st_amount
         gauge = self.gauges[st_gauge]
         self.lp_token.approve(gauge, st_amount, {'from': st_account})
         gauge.deposit(st_amount, {'from': st_account})
 
     def rule_withdraw(self, st_account):
+        # `st_account` withdraws their full balance from a single gauge
+        # if no balance has been deposited, withdraw 0 tokens from `gauges[0]`
         idx = next((i for i in range(GAUGE_COUNT) if self.balances[st_account][i]), 0)
         gauge = self.gauges[idx]
         gauge.withdraw(self.balances[st_account][idx], {'from': st_account})
         self.balances[st_account][idx] = 0
 
     def rule_mint(self, st_account):
+        # `st_account` mints from a single gauge
         idx = next((i for i in range(GAUGE_COUNT) if self.balances[st_account][i]), 0)
         self.minter.mint(self.gauges[idx], {'from': st_account})
 
     def invariant_advance_time(self):
-        chain.sleep(86401)
+        # advance the clock by one week between each action
+        chain.sleep(86400 * 7)
 
 
 def test_scalability(
@@ -101,7 +109,7 @@ def test_scalability(
         mock_lp_token.transfer(accounts[i], 10**22, {'from': accounts[0]})
         token.transfer(accounts[i], 10**22, {'from': accounts[0]})
         token.approve(voting_escrow, 10**22, {'from': accounts[i]})
-        voting_escrow.create_lock(10**22, chain.time() + 86400 * 365, {'from': accounts[i]})
+        voting_escrow.create_lock(10**22, chain.time() + 86400 * 365 * 2, {'from': accounts[i]})
 
     for i in range(TYPE_COUNT):
         gauge_controller.add_type(i, 10**18, {'from': accounts[0]})
@@ -109,7 +117,7 @@ def test_scalability(
     gauges = []
     for i in range(GAUGE_COUNT):
         contract = LiquidityGauge.deploy(mock_lp_token, minter, {'from': accounts[0]})
-        gauge_controller.add_gauge(contract, i % TYPE_COUNT, 10**18, {'from': accounts[0]})
+        gauge_controller.add_gauge(contract, i % TYPE_COUNT, {'from': accounts[0]})
         gauges.append(contract)
 
     state_machine(
