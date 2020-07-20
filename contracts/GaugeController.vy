@@ -254,9 +254,9 @@ def add_gauge(addr: address, gauge_type: int128, weight: uint256 = 0):
     self.gauges[n] = addr
 
     self.gauge_types_[addr] = gauge_type + 1
+    next_time: uint256 = (block.timestamp + WEEK) / WEEK * WEEK
 
     if weight > 0:
-        next_time: uint256 = (block.timestamp + WEEK) / WEEK * WEEK
         _type_weight: uint256 = self._get_type_weight(gauge_type)
         _old_sum: uint256 = self._get_sum(gauge_type)
         _old_total: uint256 = self._get_total()
@@ -267,7 +267,10 @@ def add_gauge(addr: address, gauge_type: int128, weight: uint256 = 0):
         self.time_total = next_time
 
         self.points_weight[addr][next_time].bias = weight
-        self.time_weight[addr] = next_time
+
+    if self.time_sum[gauge_type] == 0:
+        self.time_sum[gauge_type] = next_time
+    self.time_weight[addr] = next_time
 
     log NewGauge(addr, gauge_type, weight)
 
