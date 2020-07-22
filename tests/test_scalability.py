@@ -1,101 +1,39 @@
-import brownie
+from collections import deque
+from enum import IntEnum
+
 from brownie import chain
-from brownie.test import strategy
+from brownie.test import given, strategy
+from hypothesis import settings
+import pytest
 
+# number of liquidity gauges
 GAUGE_COUNT = 100
-TYPE_COUNT = 3
-USER_COUNT = 5
+# number of gauge types (distributed evenly across the gauges)
+TYPE_COUNT = 5
+# number of rounds per test - every gauge will be interacted with once per round
+TEST_ROUNDS = 50
+# number of times the test is run
+TEST_RUNS = 1
 
 
-class StateMachine:
+class ActionEnum(IntEnum):
     """
-    Long-running stateful test to validate that gas costs are not prohibitively high
-    when using many liquidity gauges.
-
-    Strategies
-    ----------
-    st_account : address
-        Account to send transaction from
-    st_amount : int
-        Deposit amount
-    st_gauge : int
-        Index value used to choose a liquidity gauge contract
-    st_weight : int
-        Vote weight
+    Enum of possible gauge actions in a test round.
     """
+    vote = 0
+    deposit = 1
+    withdraw = 2
+    mint = 3
+    noop = 4
 
-    st_account = strategy("address", length=USER_COUNT)
-    st_amount = strategy("uint", min_value=10**17, max_value=10**19)
-    st_gauge = strategy("uint", max_value=GAUGE_COUNT-1)
-    st_weight = strategy("uint", max_value=10000)
-
-    def __init__(self, accounts, gauge_controller, gauges, mock_lp_token, minter):
-        self.gauges = gauges
-        self.accounts = accounts
-
-        self.lp_token = mock_lp_token
-        self.minter = minter
-        self.controller = gauge_controller
-
-    def setup(self):
-        self.last_voted = {i: [0]*GAUGE_COUNT for i in self.accounts}
-        self.vote_weights = {i: [0]*GAUGE_COUNT for i in self.accounts}
-        self.balances = {i: [0]*GAUGE_COUNT for i in self.accounts}
-
-    def rule_vote(self, st_account, st_gauge, st_weight):
-        # check that this account has not voted recently
-        if chain.time() - self.last_voted[st_account][st_gauge] < 86400*10:
-            with brownie.reverts("Cannot vote so often"):
-                self.controller.vote_for_gauge_weights(
-                    self.gauges[st_gauge], st_weight, {'from': st_account}
-                )
-            return
-
-        # check that this account has not used all it's voting power
-        votes = self.vote_weights[st_account].copy()
-        votes[st_gauge] = st_weight
-        if sum(votes) > 10000:
-            with brownie.reverts():
-                self.controller.vote_for_gauge_weights(
-                    self.gauges[st_gauge], st_weight, {'from': st_account}
-                )
-            return
-
-        # place a vote and adjust vote weights
-        self.controller.vote_for_gauge_weights(
-            self.gauges[st_gauge], st_weight, {'from': st_account}
-        )
-        self.vote_weights[st_account][st_gauge] = st_weight
-        self.last_voted[st_account][st_gauge] = chain[-1].timestamp
-
-    def rule_deposit(self, st_account, st_gauge, st_amount):
-        # `st_account` deposits `st_amount` into `gauges[st_gauge]`
-        self.balances[st_account][st_gauge] += st_amount
-        gauge = self.gauges[st_gauge]
-        self.lp_token.approve(gauge, st_amount, {'from': st_account})
-        gauge.deposit(st_amount, {'from': st_account})
-
-    def rule_withdraw(self, st_account):
-        # `st_account` withdraws their full balance from a single gauge
-        # if no balance has been deposited, withdraw 0 tokens from `gauges[0]`
-        idx = next((i for i in range(GAUGE_COUNT) if self.balances[st_account][i]), 0)
-        gauge = self.gauges[idx]
-        gauge.withdraw(self.balances[st_account][idx], {'from': st_account})
-        self.balances[st_account][idx] = 0
-
-    def rule_mint(self, st_account):
-        # `st_account` mints from a single gauge
-        idx = next((i for i in range(GAUGE_COUNT) if self.balances[st_account][i]), 0)
-        self.minter.mint(self.gauges[idx], {'from': st_account})
-
-    def invariant_advance_time(self):
-        # advance the clock by one week between each action
-        chain.sleep(86400 * 7)
+    @classmethod
+    def get_action(cls, value: int):
+        value = len(cls) * value // (GAUGE_COUNT+1)
+        return cls(value)
 
 
-def test_scalability(
-    state_machine,
-    LiquidityGauge,
+@pytest.fixture(scope="module", autouse=True)
+def setup(
     accounts,
     gauge_controller,
     mock_lp_token,
@@ -103,9 +41,10 @@ def test_scalability(
     token,
     voting_escrow
 ):
+    # general test setup
     token.set_minter(minter, {'from': accounts[0]})
 
-    for i in range(USER_COUNT):
+    for i in range(len(accounts)):
         mock_lp_token.transfer(accounts[i], 10**22, {'from': accounts[0]})
         token.transfer(accounts[i], 10**22, {'from': accounts[0]})
         token.approve(voting_escrow, 10**22, {'from': accounts[i]})
@@ -114,18 +53,63 @@ def test_scalability(
     for i in range(TYPE_COUNT):
         gauge_controller.add_type(i, 10**18, {'from': accounts[0]})
 
+
+@pytest.fixture(scope="module")
+def gauges(LiquidityGauge, accounts, gauge_controller, mock_lp_token, minter, setup):
+    # deploy `GAUGE_COUNT` liquidity gauges and return them as a list
     gauges = []
     for i in range(GAUGE_COUNT):
         contract = LiquidityGauge.deploy(mock_lp_token, minter, {'from': accounts[0]})
         gauge_controller.add_gauge(contract, i % TYPE_COUNT, {'from': accounts[0]})
         gauges.append(contract)
 
-    state_machine(
-        StateMachine,
-        accounts[:USER_COUNT],
-        gauge_controller,
-        gauges,
-        mock_lp_token,
-        minter,
-        settings={'max_examples': 50, 'stateful_step_count': 100}
-    )
+    yield gauges
+
+
+@given(st_actions=strategy(f'uint[{GAUGE_COUNT}]', max_value=GAUGE_COUNT, unique=True))
+@settings(max_examples=TEST_RUNS)
+def test_scalability(accounts, gauges, gauge_controller, mock_lp_token, minter, st_actions):
+
+    # handle actions is a deque, so we can rotate it to ensure each gauge has multiple actions
+    st_actions = deque(st_actions)
+
+    # convert accounts to a deque so we can rotate it to evenly spread actions across accounts
+    action_accounts = deque(accounts)
+
+    # for voting we use a seperate deque that only rotates once per test round
+    # this way accounts never vote too often
+    last_voted = deque(accounts)
+
+    balances = {i: [0]*len(accounts) for i in gauges}
+
+    for i in range(TEST_ROUNDS):
+        print(f"Round {i}")
+        # rotate voting account and actions
+        last_voted.rotate()
+        st_actions.rotate()
+
+        # sleep just over a day between each round
+        chain.sleep(86401)
+
+        for gauge, action in zip(gauges, st_actions):
+            action = ActionEnum.get_action(action)
+
+            action_accounts.rotate()
+            acct = action_accounts[0]
+            idx = list(accounts).index(acct)
+
+            if action == ActionEnum.vote:
+                gauge_controller.vote_for_gauge_weights(gauge, 100, {'from': last_voted[0]})
+
+            elif action == ActionEnum.deposit:
+                mock_lp_token.approve(gauge, 10**17, {'from': acct})
+                gauge.deposit(10**17, {'from': acct})
+                balances[gauge][idx] += 10**17
+
+            elif action == ActionEnum.withdraw:
+                amount = balances[gauge][idx]
+                gauge.withdraw(amount, {'from': acct})
+                balances[gauge][idx] = 0
+
+            elif action == ActionEnum.mint:
+                minter.mint(gauge, {'from': acct})
