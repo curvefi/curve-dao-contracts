@@ -15,7 +15,6 @@ POA = True
 
 # DEPLOYER = "0xFD3DeCC0cF498bb9f54786cb65800599De505706"
 DEPLOYER = "0x66aB6D9362d4F35596279692F0251Db635165871"
-TOKEN_MANAGER = "0x1e25cdE876A49ee0001D523E6B5680b4d18Cf7e6"
 ARAGON_AGENT = "0xa01556dB443292BD3754C1CCd0B9ecFE8CE9E356"
 
 DISTRIBUTION_AMOUNT = 10 ** 6 * 10 ** 18
@@ -89,7 +88,7 @@ def main():
     escrow = repeat(VotingEscrow.deploy, token, "Vote-escrowed CRV", "veCRV", "veCRV_0.99", {'from': deployer, 'required_confs': CONFS})
     save_abi(escrow, 'voting_escrow')
 
-    repeat(escrow.changeController, TOKEN_MANAGER, {'from': deployer, 'required_confs': CONFS})
+    repeat(escrow.changeController, ARAGON_AGENT, {'from': deployer, 'required_confs': CONFS})
 
     for account in DISTRIBUTION_ADDRESSES:
         repeat(token.transfer, account, DISTRIBUTION_AMOUNT, {'from': deployer, 'required_confs': CONFS})
