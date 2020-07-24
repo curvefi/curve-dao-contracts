@@ -30,8 +30,9 @@ a typical governance token.
 
 ![Voting weight of vote-locked tokens](votelock.pdf){width=280px}
 
-Locks can be created or extended in time or token amount with `deposit()`,
-and `withdraw()` can remove tokens from the escrow when the lock is expired.
+Locks can be created with `create_lock()`,  extended in time with `increase_unlock_time()`
+or token amount with `increase_amount()`, and `withdraw()` can remove tokens
+from the escrow when the lock is expired.
 
 ### Implementation details
 
@@ -53,131 +54,6 @@ Slopes and biases change both when a user deposits and locks governance tokens,
 and when the locktime expires. All the possible expiration times are rounded to
 whole weeks to make number of reads from blockchain proportional to number of
 missed weeks at most, not number of users (which can be potentially large).
-
-### Essential interfaces
-
-```python
-@external
-@view
-def get_last_user_slope(addr: address) -> int128:
-    """
-    @notice Get the recent recorded rate of voting power decrease
-    @param  addr  Address of the user wallet
-    @return Value of the slope
-    """
-
-@external
-@view
-def user_point_history__ts(_addr: address, _idx: uint256) -> uint256:
-    """
-    @notice Get the timestamp for the last recorded user's checkpoint
-    @param  _addr  User wallet address
-    @param  _idx   User epoch number
-    @return  Timestamp of the checkpoint
-    """
-
-@external
-@view
-def locked__end(_addr: address) -> uint256:
-    """
-    @notice Get timestamp when user's lock finishes
-    @param _addr User wallet
-    @return Timestamp of the lock end
-    """
-
-@external
-def checkpoint():
-    """
-    @notice Record global data to checkpoint
-    """
-
-@external
-def deposit_for(_addr: address, _value: uint256):
-    """
-    @notice Deposit tokens for someone else and add to the lock
-            Anyone (even a smart contract) can deposit for someone else,
-            but cannot extend their locktime and cannot do it for a brand
-            new user
-    @param _addr User's wallet address
-    @param _value Amount to add to user's lock
-    """
-
-@external
-def create_lock(_value: uint256, _unlock_time: uint256):
-    """
-    @notice Deposit tokens for the sender
-    @param _value Amount deposited
-    @param _unlock_time Timestamp when the tokens will unlock. Rounded down
-                        to whole weeks
-    """
-
-@external
-def increase_amount(_value: uint256):
-    """
-    @notice Deposit more tokens for the sender while keeping the unlock time unchanged
-    @param _value Amount of tokens to deposit and add to the lock
-    """
-
-@external
-def increase_unlock_time(_unlock_time: uint256):
-    """
-    @notice Prolong the lock for the sender
-    @param _unlock_time New timestamp for unlocking
-    """
-
-@external
-def withdraw():
-    """
-    @notice Withdraw all tokens if the lock has expired
-    """
-
-@external
-@view
-def balanceOf(addr: address) -> uint256:
-    """
-    @notice Standard ERC20-compatible balanceOf which actually measures voting power
-    @param addr User's wallet address
-    @return User's voting power
-    """
-
-@external
-@view
-def balanceOfAt(addr: address, _block: uint256) -> uint256:
-    """
-    @notice Minime-compatible function to measure voting power at certain block in the past
-    @param addr User's wallet address
-    @param _block Block to calculate the voting power at
-    @return Voting power
-    """
-
-@internal
-@view
-def supply_at(point: Point, t: uint256) -> uint256:
-    """
-    @notice Calculate total voting power at some point in the past
-    @param point The point (bias/slope) to start search from
-    @param t Time to calculate the total voting power at
-    @return Total voting power at that time
-    """
-
-@external
-@view
-def totalSupply() -> uint256:
-    """
-    @notice Calculate current total voting power
-    @return Total voting power
-    """
-
-@external
-@view
-def totalSupplyAt(_block: uint256) -> uint256:
-    """
-    @notice Calculate total voting power at some point in the past
-    @param _block Block to calculate the total voting power at
-    @return Total voting power at that block
-    """
-```
-
 
 ## Inflation schedule. ERC20CRV
 
@@ -258,7 +134,7 @@ In order to incentivize users to participate in governance, and additionally
 create stickiness for liquidity, we implement the following mechanism.
 User's balance counted in the _LiquidityGauge_ gets boosted by users locking
 CRV tokens in _VotingEscrow_, depending on their vote weight $w_i$:
-$$b_u^* = \min\left( 0.2\,b_u + 0.8\,S\frac{w_i}{W},\, b_u \right).$$
+$$b_u^* = \min\left( 0.4\,b_u + 0.6\,S\frac{w_i}{W},\, b_u \right).$$
 The value of $w_i$ is taken at the time user performs any action (deposit,
 withdrawal, withdrawal of minted CRV tokens) and is applied until the next
 action this user performs.
@@ -266,7 +142,7 @@ action this user performs.
 If no users vote-lock any CRV (or simply don't have any), the inflation will
 simply be distributed proportionally to the liquidity $b_u$ each one of them
 provided. However, if a user stakes much enough CRV, he is able to boost his
-stream of CRV by up to factor of 5 (reducing it slightly for all users who are
+stream of CRV by up to factor of 2.5 (reducing it slightly for all users who are
 not doing that).
 
 ## Weight voting for gauges
@@ -276,6 +152,10 @@ vote-locked tokens towards one or other Gauge (pool). That pool will be getting
 a fraction of CRV tokens minted proportional to how much vote-locked tokens are
 allocated to it. Eeach user with tokens in VotingEscrow can change his/her
 preference at any time.
+
+When a user applies a new weight vote, it gets applied only in the beginning of
+the next whole week (this is done for scalability reasons). The weight vote for
+the same gauge can be changed not more often than once in 10 days.
 
 ### GaugeController implementation details
 
@@ -288,7 +168,9 @@ and slopes for those points in `vote_bias_changes` and `vote_slope_changes`,
 with those changes happening every round week, as well as current slopes for
 every user per-gauge in `vote_user_slopes`, along with the power the user has
 used and the time their vote-lock ends.
-Scheduling of the changes is handled by the private method `enact_vote`.
+The totals for slopes and biases for vote weight per gauge, and sums of those
+per type, get scheduled / recorded for the next week, as well as the points
+when voting power gets to 0 at lock expiration for some of users.
 
 When user changes his preferences, the change of the gauge weight is scheduled
 for the next round week, not immediately. This is done in order to reduce the
@@ -302,6 +184,9 @@ Every pool allows the admin to collect fees using `withdraw_admin_fees`. Aragon
 should be able to collect those fees to the admin account and use them to buy
 and burn CRV on a free market once that free market exists.
 That should be possible to be done by anyone without a vote.
+
+Instead of burning, there could be different mechanisms working with the same
+interface. In any case, this will not be immediately applied.
 
 ## Gauges to rewards trading volume and governance votes
 

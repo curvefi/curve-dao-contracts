@@ -44,7 +44,7 @@ admin: public(address)
 YEAR: constant(uint256) = 86400 * 365
 
 # Supply parameters
-# Premine: 42% (vested shareholders (31%) + vested employees (3%) + vested users (3%) + burnable reserve(5%))
+# Premine: 42% (vested shareholders (31%) + vested employees (3%) + vested users (3%) + burnable reserve(5%))  XXX <- still will change
 INITIAL_SUPPLY: constant(uint256) = 1_272_727_273
 INITIAL_RATE: constant(uint256) = 279636603 * 10 ** 18 / YEAR  # leading to 42% premine
 RATE_REDUCTION_TIME: constant(uint256) = YEAR
