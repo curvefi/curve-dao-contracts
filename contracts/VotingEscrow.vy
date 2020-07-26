@@ -123,7 +123,7 @@ def apply_transfer_ownership():
 
 
 @external
-def commit_smart_wallet_cheker(addr: address):
+def commit_smart_wallet_checker(addr: address):
     """
     @notice Set an external contract to check whether a smart contract is
             non-transferrable
@@ -134,7 +134,7 @@ def commit_smart_wallet_cheker(addr: address):
 
 
 @external
-def apply_smart_wallet_cheker():
+def apply_smart_wallet_checker():
     """
     @notice Apply setting the external contract to check for legitimate smart
             contract wallets
