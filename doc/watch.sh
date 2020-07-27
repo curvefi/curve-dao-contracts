@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# This script compiles the document as soon as all the .tex files in the project are updated.
+# This script compiles the document as soon as all the .md files in the project are updated.
 # In debian-based distros, it needs inotify-tools and (optionally) libnotify-bin
 
 inotifywait -m -e create ./ | while read dir event file; do
