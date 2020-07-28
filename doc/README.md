@@ -128,7 +128,10 @@ or change of mining epoch).
 
 When a user deposits or withdraws, the change in $I_u$ can be calculated as
 the current (before user's action) value of $I_{is}$ multiplied by the
-pre-action user's balance.
+pre-action user's balance, and sumed up across user's balances:
+$$I_u(t_k) =\sum_k b_u(t_k) \left[I_{is}(t_k) - I_{is}(t_{k-1})\right].$$
+The per-user integral is possible to repalce with this sum because $b_u(t)$ is
+unchanged for all times between $t_{k-1}$ and $t_k$.
 
 In order to incentivize users to participate in governance, and additionally
 create stickiness for liquidity, we implement the following mechanism.
