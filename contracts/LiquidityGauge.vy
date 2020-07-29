@@ -58,6 +58,7 @@ working_supply: public(uint256)
 # The goal is to be able to calculate ∫(rate * balance / totalSupply dt) from 0 till checkpoint
 # All values are kept in units of being multiplied by 1e18
 period: public(int128)
+period_of: public(HashMap[address, int128])
 period_timestamp: public(uint256[100000000000000000000000000000])
 
 # 1e18 * ∫(rate(t) / totalSupply(t) dt) from 0 till checkpoint
@@ -172,32 +173,8 @@ def _checkpoint(addr: address):
     self.integrate_inv_supply[_period] = _integrate_inv_supply
 
     # Update user-specific integrals
-    user_period: int128 = _period  # Iteration starts from this
-    user_period_time: uint256 = block.timestamp
-    _user_checkpoint: uint256 = self.integrate_checkpoint_of[addr]
-    _period_inv_supply: uint256 = _integrate_inv_supply
-    _integrate_inv_supply_of: uint256 = self.integrate_inv_supply_of[addr]
-    _integrate_fraction: uint256 = self.integrate_fraction[addr]
-    # Cycle is going backwards in time over periods
-    for i in range(500):
-        if user_period < 0 or _user_checkpoint >= user_period_time:
-            # Last cycle => we are in the period of the user checkpoint
-            dI: uint256 = _period_inv_supply - _integrate_inv_supply_of
-            _integrate_fraction += _working_balance * dI / 10 ** 18
-            break
-        else:
-            user_period -= 1
-            prev_period_inv_supply: uint256 = 0
-            if user_period >= 0:
-                prev_period_inv_supply = self.integrate_inv_supply[user_period]
-            dI: uint256 = _period_inv_supply - prev_period_inv_supply
-            _period_inv_supply = prev_period_inv_supply
-            if user_period >= 0:
-                user_period_time = self.period_timestamp[user_period]
-            _integrate_fraction += _working_balance * dI / 10 ** 18
-
+    self.integrate_fraction[addr] += _working_balance * (_integrate_inv_supply - self.integrate_inv_supply_of[addr]) / 10 ** 18
     self.integrate_inv_supply_of[addr] = _integrate_inv_supply
-    self.integrate_fraction[addr] = _integrate_fraction
     self.integrate_checkpoint_of[addr] = block.timestamp
 
 
