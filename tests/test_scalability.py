@@ -11,9 +11,11 @@ GAUGE_COUNT = 100
 # number of gauge types (distributed evenly across the gauges)
 TYPE_COUNT = 5
 # number of rounds per test - every gauge will be interacted with once per round
-TEST_ROUNDS = 50
+TEST_ROUNDS = 40
 # number of times the test is run
 TEST_RUNS = 1
+# number of users in the test
+USER_COUNT = 1000
 
 
 class ActionEnum(IntEnum):
@@ -43,6 +45,9 @@ def setup(
 ):
     # general test setup
     token.set_minter(minter, {'from': accounts[0]})
+
+    while len(accounts) < USER_COUNT:
+        accounts.add()
 
     for i in range(len(accounts)):
         mock_lp_token.transfer(accounts[i], 10**22, {'from': accounts[0]})
