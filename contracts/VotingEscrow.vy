@@ -51,10 +51,12 @@ event Deposit:
     value: uint256
     locktime: indexed(uint256)
     type: int128
+    ts: uint256
 
 event Withdraw:
     provider: indexed(address)
     value: uint256
+    ts: uint256
 
 
 WEEK: constant(uint256) = 604800  # 7 * 86400 seconds - all future times are rounded by week
@@ -343,7 +345,7 @@ def _deposit_for(_addr: address, _value: uint256, unlock_time: uint256, locked_b
     if _value != 0:
         assert ERC20(self.token).transferFrom(_addr, self, _value)
 
-    log Deposit(_addr, _value, _locked.end, type)
+    log Deposit(_addr, _value, _locked.end, type, block.timestamp)
 
 
 @external
@@ -454,7 +456,7 @@ def withdraw():
 
     assert ERC20(self.token).transfer(msg.sender, value)
 
-    log Withdraw(msg.sender, value)
+    log Withdraw(msg.sender, value, block.timestamp)
 
 
 # The following ERC20/minime-compatible methods are not real balanceOf and supply!
