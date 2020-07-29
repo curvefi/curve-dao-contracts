@@ -58,7 +58,6 @@ working_supply: public(uint256)
 # The goal is to be able to calculate ∫(rate * balance / totalSupply dt) from 0 till checkpoint
 # All values are kept in units of being multiplied by 1e18
 period: public(int128)
-period_of: public(HashMap[address, int128])
 period_timestamp: public(uint256[100000000000000000000000000000])
 
 # 1e18 * ∫(rate(t) / totalSupply(t) dt) from 0 till checkpoint
