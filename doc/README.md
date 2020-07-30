@@ -88,7 +88,7 @@ his LP tokens into the gauge using `deposit()` and can withdraw using `withdraw(
 Coin rates which the gauge is getting depends on current inflation rate,
 and gauge _type weights_ (which get voted on in Aragon). Each user gets
 inflation proportional to his LP tokens locked. Additionally, the rewards
-could be _boosted_ by up to factor of 5 if user vote-locks tokens for Curve
+could be _boosted_ by up to factor of 2.5 if user vote-locks tokens for Curve
 governance in _VotingEscrow_.
 
 The user _does not_ require to periodically check in. We describe how this is
@@ -141,6 +141,13 @@ $$b_u^* = \min\left( 0.4\,b_u + 0.6\,S\frac{w_i}{W},\, b_u \right).$$
 The value of $w_i$ is taken at the time user performs any action (deposit,
 withdrawal, withdrawal of minted CRV tokens) and is applied until the next
 action this user performs.
+
+Implementation details are such that a user gets the boost actual at the time of
+the last action or checkpoint. Since the voting power decreases with time, it is
+favorable for users to apply a boost and do no further actions until they vote-lock
+more tokens. However, once vote-lock expires, everyone can "kick" the user by
+creating a checkpoint for that user and, essentially, resetting the user to
+no boost if he/she has no voting power at that point already.
 
 If no users vote-lock any CRV (or simply don't have any), the inflation will
 simply be distributed proportionally to the liquidity $b_u$ each one of them
