@@ -1,3 +1,5 @@
+# @version ^0.2.0
+
 from vyper.interfaces import ERC20
 
 interface Burner:

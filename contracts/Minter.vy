@@ -1,3 +1,5 @@
+# @version ^0.2.0
+
 interface Gauge:
     # Presumably, other gauges will provide the same interfaces
     def integrate_fraction(addr: address) -> uint256: view

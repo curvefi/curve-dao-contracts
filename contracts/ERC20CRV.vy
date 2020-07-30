@@ -1,3 +1,4 @@
+# @version ^0.2.0
 """
 This is an ERC20 with piecewise-linear mining supply.
 """

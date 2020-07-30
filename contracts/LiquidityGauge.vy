@@ -1,3 +1,4 @@
+# @version ^0.2.0
 # This gauge can be used for measuring liquidity and insurance
 
 from vyper.interfaces import ERC20

@@ -1,3 +1,5 @@
+# @version ^0.2.0
+
 # The contract which controls gauges and issuance of coins through those
 
 # 7 * 86400 seconds - all future times are rounded by week
