@@ -192,6 +192,9 @@ number of blockchain reads which need to be performed by each user: that will
 be proportional to the number of weeks since the last change instead of the
 number of interactions other users did.
 
+_GaugeController_ is one of the most central pieces to the system, so it must be
+controlled by the DAO.
+
 ## Fee burner
 
 Every pool allows the admin to collect fees using `withdraw_admin_fees`. Aragon
