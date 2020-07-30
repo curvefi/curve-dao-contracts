@@ -123,6 +123,21 @@ def start_epoch_time_write() -> uint256:
         return _start_epoch_time
 
 
+@external
+def future_epoch_time_write() -> uint256:
+    """
+    @notice Get timestamp of the future mining epoch start
+            simultaneously updating mining parameters
+    @return Timestamp of the epoch
+    """
+    _start_epoch_time: uint256 = self.start_epoch_time
+    if block.timestamp >= _start_epoch_time + RATE_REDUCTION_TIME:
+        self._update_mining_parameters()
+        return self.start_epoch_time + RATE_REDUCTION_TIME
+    else:
+        return _start_epoch_time + RATE_REDUCTION_TIME
+
+
 @internal
 @view
 def _available_supply() -> uint256:

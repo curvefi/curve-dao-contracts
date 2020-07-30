@@ -142,6 +142,12 @@ The value of $w_i$ is taken at the time user performs any action (deposit,
 withdrawal, withdrawal of minted CRV tokens) and is applied until the next
 action this user performs.
 
+If no users vote-lock any CRV (or simply don't have any), the inflation will
+simply be distributed proportionally to the liquidity $b_u$ each one of them
+provided. However, if a user stakes much enough CRV, he is able to boost his
+stream of CRV by up to factor of 2.5 (reducing it slightly for all users who are
+not doing that).
+
 Implementation details are such that a user gets the boost actual at the time of
 the last action or checkpoint. Since the voting power decreases with time, it is
 favorable for users to apply a boost and do no further actions until they vote-lock
@@ -149,11 +155,9 @@ more tokens. However, once vote-lock expires, everyone can "kick" the user by
 creating a checkpoint for that user and, essentially, resetting the user to
 no boost if he/she has no voting power at that point already.
 
-If no users vote-lock any CRV (or simply don't have any), the inflation will
-simply be distributed proportionally to the liquidity $b_u$ each one of them
-provided. However, if a user stakes much enough CRV, he is able to boost his
-stream of CRV by up to factor of 2.5 (reducing it slightly for all users who are
-not doing that).
+Finally, the gauge is supposed to not miss a full year of inflation (e.g. if
+there were no interactions with the guage for the full year). If that ever
+happens, the abandoned gauge gets less CRV.
 
 ## Weight voting for gauges
 

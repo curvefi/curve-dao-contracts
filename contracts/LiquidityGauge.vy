@@ -3,7 +3,7 @@
 from vyper.interfaces import ERC20
 
 interface CRV20:
-    def start_epoch_time_write() -> uint256: nonpayable
+    def future_epoch_time_write() -> uint256: nonpayable
     def rate() -> uint256: view
 
 interface Controller:
@@ -51,6 +51,7 @@ controller: public(address)
 voting_escrow: public(address)
 balanceOf: public(HashMap[address, uint256])
 totalSupply: public(uint256)
+future_epoch_time: public(uint256)
 
 working_balances: public(HashMap[address, uint256])
 working_supply: public(uint256)
@@ -86,6 +87,7 @@ def __init__(lp_addr: address, _minter: address):
     self.voting_escrow = Controller(controller_addr).voting_escrow()
     self.period_timestamp[0] = block.timestamp
     self.inflation_rate = CRV20(crv_addr).rate()
+    self.future_epoch_time = CRV20(crv_addr).future_epoch_time_write()
 
 
 @internal
@@ -129,8 +131,9 @@ def _checkpoint(addr: address):
     _integrate_inv_supply: uint256 = self.integrate_inv_supply[_period]
     rate: uint256 = self.inflation_rate
     new_rate: uint256 = rate
-    new_epoch: uint256 = CRV20(_token).start_epoch_time_write()
-    if new_epoch >= _period_time:
+    prev_future_epoch: uint256 = self.future_epoch_time
+    if prev_future_epoch >= _period_time:
+        self.future_epoch_time = CRV20(_token).future_epoch_time_write()
         new_rate = CRV20(_token).rate()
         self.inflation_rate = new_rate
     Controller(_controller).checkpoint_gauge(self)
@@ -148,10 +151,15 @@ def _checkpoint(addr: address):
             w: uint256 = Controller(_controller).gauge_relative_weight(self, prev_week_time / WEEK * WEEK)
 
             if _working_supply > 0:
-                if new_epoch >= prev_week_time and new_epoch < week_time:
-                    _integrate_inv_supply += rate * w * (new_epoch - prev_week_time) / _working_supply
+                if prev_future_epoch >= prev_week_time and prev_future_epoch < week_time:
+                    # If we went across one or multiple epochs, apply the rate
+                    # of the first epoch until it ends, and then the rate of
+                    # the last epoch.
+                    # If more than one epoch is crossed - the gauge gets less,
+                    # but that'd meen it wasn't called for more than 1 year
+                    _integrate_inv_supply += rate * w * (prev_future_epoch - prev_week_time) / _working_supply
                     rate = new_rate
-                    _integrate_inv_supply += rate * w * (week_time - new_epoch) / _working_supply
+                    _integrate_inv_supply += rate * w * (week_time - prev_future_epoch) / _working_supply
                 else:
                     _integrate_inv_supply += rate * w * dt / _working_supply
                 # On precisions of the calculation
