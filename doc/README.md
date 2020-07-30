@@ -193,7 +193,8 @@ be proportional to the number of weeks since the last change instead of the
 number of interactions other users did.
 
 _GaugeController_ is one of the most central pieces to the system, so it must be
-controlled by the DAO.
+controlled by the DAO. No centralized admin should control it, to not give anyone
+powers to change type weights unilaterally.
 
 ## Fee burner
 
