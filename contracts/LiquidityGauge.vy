@@ -79,6 +79,9 @@ inflation_rate: uint256
 
 @external
 def __init__(lp_addr: address, _minter: address):
+    assert lp_addr != ZERO_ADDRESS
+    assert _minter != ZERO_ADDRESS
+
     self.lp_token = lp_addr
     self.minter = _minter
     crv_addr: address = Minter(_minter).token()
