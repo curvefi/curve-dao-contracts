@@ -62,8 +62,18 @@ def pool_proxy(PoolProxy, accounts):
 
 
 @pytest.fixture(scope="module")
+def reward_contract(CurveRewards, mock_lp_token, accounts):
+    yield CurveRewards.deploy(mock_lp_token, {'from': accounts[0]})
+
+
+@pytest.fixture(scope="module")
 def liquidity_gauge(LiquidityGauge, accounts, mock_lp_token, minter):
     yield LiquidityGauge.deploy(mock_lp_token, minter, {'from': accounts[0]})
+
+
+@pytest.fixture(scope="module")
+def liquidity_gauge_reward(LiquidityGaugeReward, accounts, mock_lp_token, minter, reward_contract):
+    yield LiquidityGaugeReward.deploy(mock_lp_token, minter, reward_contract, {'from': accounts[0]})
 
 
 @pytest.fixture(scope="module")

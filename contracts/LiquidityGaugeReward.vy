@@ -101,6 +101,7 @@ def __init__(lp_addr: address, _minter: address, _reward_contract: address):
     self.inflation_rate = CRV20(crv_addr).rate()
     self.future_epoch_time = CRV20(crv_addr).future_epoch_time_write()
     self.reward_contract = _reward_contract
+    ERC20(lp_addr).approve(_reward_contract, MAX_UINT256)
 
 
 @internal
@@ -240,8 +241,9 @@ def deposit(_value: uint256):
 
     self._update_liquidity_limit(msg.sender, _balance, _supply)
 
-    assert ERC20(self.lp_token).transferFrom(msg.sender, self, _value)
-    CurveRewards(self.reward_contract).stake(_value)
+    if _value > 0:
+        assert ERC20(self.lp_token).transferFrom(msg.sender, self, _value)
+        CurveRewards(self.reward_contract).stake(_value)
 
     log Deposit(msg.sender, _value)
 
@@ -258,8 +260,9 @@ def withdraw(_value: uint256):
 
     self._update_liquidity_limit(msg.sender, _balance, _supply)
 
-    assert ERC20(self.lp_token).transfer(msg.sender, _value)
-    CurveRewards(self.reward_contract).withdraw(_value)
+    if _value > 0:
+        CurveRewards(self.reward_contract).withdraw(_value)
+        assert ERC20(self.lp_token).transfer(msg.sender, _value)
 
     log Withdraw(msg.sender, _value)
 
