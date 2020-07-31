@@ -333,7 +333,7 @@ def _deposit_for(_addr: address, _value: uint256, unlock_time: uint256, locked_b
     _locked: LockedBalance = locked_balance
     supply_before: uint256 = self.supply
 
-    self.supply += _value
+    self.supply = supply_before + _value
     old_locked: LockedBalance = _locked
     # Adding to existing lock, or if a lock is expired - creating a new one
     _locked.amount += convert(_value, int128)
@@ -454,7 +454,7 @@ def withdraw():
     _locked.amount = 0
     self.locked[msg.sender] = _locked
     supply_before: uint256 = self.supply
-    self.supply -= value
+    self.supply = supply_before - value
 
     # old_locked can have either expired <= timestamp or zero end
     # _locked has only 0 end
