@@ -63,7 +63,7 @@ def pool_proxy(PoolProxy, accounts):
 
 @pytest.fixture(scope="module")
 def reward_contract(CurveRewards, mock_lp_token, accounts):
-    yield CurveRewards.deploy(mock_lp_token, {'from': accounts[0]})
+    yield CurveRewards.deploy(mock_lp_token, "0x0000000000000000000000000000000000000000", {'from': accounts[0]})
 
 
 @pytest.fixture(scope="module")

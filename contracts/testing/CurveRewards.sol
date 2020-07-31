@@ -627,7 +627,7 @@ contract LPTokenWrapper {
 }
 
 contract CurveRewards is LPTokenWrapper, IRewardDistributionRecipient {
-    IERC20 public snx = IERC20(0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F);
+    IERC20 public snx;
     uint256 public constant DURATION = 7 days;
 
     uint256 public periodFinish = 0;
@@ -652,8 +652,9 @@ contract CurveRewards is LPTokenWrapper, IRewardDistributionRecipient {
         _;
     }
 
-    constructor(address _token) public {
+    constructor(address _token, address _reward) public {
         uni = IERC20(_token);
+        snx = IERC20(_reward);
     }
 
     function lastTimeRewardApplicable() public view returns (uint256) {
