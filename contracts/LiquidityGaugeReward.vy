@@ -108,7 +108,7 @@ def __init__(lp_addr: address, _minter: address, _reward_contract: address, _rew
     self.inflation_rate = CRV20(crv_addr).rate()
     self.future_epoch_time = CRV20(crv_addr).future_epoch_time_write()
     self.reward_contract = _reward_contract
-    ERC20(lp_addr).approve(_reward_contract, MAX_UINT256)
+    assert ERC20(lp_addr).approve(_reward_contract, MAX_UINT256)
     self.rewarded_token = _rewarded_token
 
 
@@ -215,7 +215,7 @@ def _checkpoint(addr: address):
 
     user_balance: uint256 = self.balanceOf[addr]
     total_balance: uint256 = self.totalSupply
-    dI: uint256 = 10 ** 18 * d_reward / total_balance
+    dI: uint256 = 10 ** 18 * d_reward / (total_balance + 1)
     I: uint256 = self.reward_integral + dI
     self.reward_integral = I
     self.rewards_for[addr] += user_balance * (I - self.reward_integral_for[addr]) / 10 ** 18
@@ -288,6 +288,15 @@ def withdraw(_value: uint256):
         assert ERC20(self.lp_token).transfer(msg.sender, _value)
 
     log Withdraw(msg.sender, _value)
+
+
+@external
+def claim_rewards():
+    self._checkpoint(msg.sender)
+    _rewards_for: uint256 = self.rewards_for[msg.sender]
+    assert ERC20(self.rewarded_token).transfer(
+        msg.sender, _rewards_for - self.claimed_rewards_for[msg.sender])
+    self.claimed_rewards_for[msg.sender] = _rewards_for
 
 
 @external
