@@ -291,6 +291,7 @@ def withdraw(_value: uint256):
 
 
 @external
+@nonreentrant('lock')
 def claim_rewards():
     self._checkpoint(msg.sender)
     _rewards_for: uint256 = self.rewards_for[msg.sender]
