@@ -351,7 +351,7 @@ def _deposit_for(_addr: address, _value: uint256, unlock_time: uint256, locked_b
         assert ERC20(self.token).transferFrom(_addr, self, _value)
 
     log Deposit(_addr, _value, _locked.end, type, block.timestamp)
-    log Supply(supply_before, self.supply)
+    log Supply(supply_before, supply_before + _value)
 
 
 @external
@@ -464,7 +464,7 @@ def withdraw():
     assert ERC20(self.token).transfer(msg.sender, value)
 
     log Withdraw(msg.sender, value, block.timestamp)
-    log Supply(supply_before, self.supply)
+    log Supply(supply_before, supply_before - value)
 
 
 # The following ERC20/minime-compatible methods are not real balanceOf and supply!
