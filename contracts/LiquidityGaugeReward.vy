@@ -54,7 +54,6 @@ WEEK: constant(uint256) = 604800
 minter: public(address)
 crv_token: public(address)
 lp_token: public(address)
-reward_contract: public(address)
 controller: public(address)
 voting_escrow: public(address)
 balanceOf: public(HashMap[address, uint256])
@@ -76,16 +75,19 @@ integrate_inv_supply: public(uint256[100000000000000000000000000000])  # bump ep
 integrate_inv_supply_of: public(HashMap[address, uint256])
 integrate_checkpoint_of: public(HashMap[address, uint256])
 
-
 # ∫(balance * rate(t) / totalSupply(t) dt) from 0 till checkpoint
 # Units: rate * t = already number of coins per address to issue
 integrate_fraction: public(HashMap[address, uint256])
 
 inflation_rate: uint256
 
+# For tracking external rewards
+reward_contract: public(address)
+rewarded_token: public(address)
+
 
 @external
-def __init__(lp_addr: address, _minter: address, _reward_contract: address):
+def __init__(lp_addr: address, _minter: address, _reward_contract: address, _rewarded_token: address):
     assert lp_addr != ZERO_ADDRESS
     assert _minter != ZERO_ADDRESS
     assert _reward_contract != ZERO_ADDRESS
@@ -102,6 +104,7 @@ def __init__(lp_addr: address, _minter: address, _reward_contract: address):
     self.future_epoch_time = CRV20(crv_addr).future_epoch_time_write()
     self.reward_contract = _reward_contract
     ERC20(lp_addr).approve(_reward_contract, MAX_UINT256)
+    self.rewarded_token = _rewarded_token
 
 
 @internal
