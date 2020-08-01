@@ -68,7 +68,9 @@ def coin_reward(ERC20, accounts):
 
 @pytest.fixture(scope="module")
 def reward_contract(CurveRewards, mock_lp_token, accounts, coin_reward):
-    yield CurveRewards.deploy(mock_lp_token, coin_reward, {'from': accounts[0]})
+    contract = CurveRewards.deploy(mock_lp_token, coin_reward, {'from': accounts[0]})
+    contract.setRewardDistribution(accounts[0], {'from': accounts[0]})
+    yield contract
 
 
 @pytest.fixture(scope="module")
