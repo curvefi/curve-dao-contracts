@@ -10,6 +10,10 @@ event Fund:
 event Claim:
     claimed: uint256
 
+event ToggleDisable:
+    recipient: address
+    disabled: bool
+
 
 token: public(address)
 default_start_time: public(uint256)
@@ -97,7 +101,10 @@ def toggle_disable(_recipient: address):
     assert msg.sender == self.admin
 
     if self.can_disable[_recipient]:
-        self.disabled[_recipient] = not self.disabled[_recipient]
+        is_disabled: bool = not self.disabled[_recipient]
+        self.disabled[_recipient] = is_disabled
+
+        log ToggleDisable(_recipient, is_disabled)
 
 
 @external
