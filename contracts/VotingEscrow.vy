@@ -1,3 +1,5 @@
+# @version 0.2.3
+
 # Voting escrow to have time-weighted votes
 # The idea: votes have a weight depending on time, so that users are committed
 # to the future of (whatever they are voting for).
@@ -134,7 +136,7 @@ def apply_transfer_ownership():
 
 
 @external
-def commit_smart_wallet_cheker(addr: address):
+def commit_smart_wallet_checker(addr: address):
     """
     @notice Set an external contract to check whether a smart contract is
             non-transferrable
@@ -145,7 +147,7 @@ def commit_smart_wallet_cheker(addr: address):
 
 
 @external
-def apply_smart_wallet_cheker():
+def apply_smart_wallet_checker():
     """
     @notice Apply setting the external contract to check for legitimate smart
             contract wallets

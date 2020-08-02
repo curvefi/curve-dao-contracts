@@ -1,3 +1,5 @@
+# @version 0.2.3
+
 # The contract which controls gauges and issuance of coins through those
 
 # 7 * 86400 seconds - all future times are rounded by week
@@ -100,6 +102,9 @@ time_type_weight: public(uint256[1000000000])  # type_id -> last scheduled time 
 
 @external
 def __init__(_token: address, _voting_escrow: address):
+    assert _token != ZERO_ADDRESS
+    assert _voting_escrow != ZERO_ADDRESS
+
     self.admin = msg.sender
     self.token = _token
     self.voting_escrow = _voting_escrow

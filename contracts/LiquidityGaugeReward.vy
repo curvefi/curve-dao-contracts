@@ -1,5 +1,6 @@
 # @version 0.2.3
-# This gauge can be used for measuring liquidity and insurance
+# This gauge can be used for measuring liquidity
+# Simultaneously stakes using Synthetix (== YFI) rewards contract
 
 from vyper.interfaces import ERC20
 
@@ -23,6 +24,11 @@ interface Minter:
 interface VotingEscrow:
     def user_point_epoch(addr: address) -> uint256: view
     def user_point_history__ts(addr: address, epoch: uint256) -> uint256: view
+
+interface CurveRewards:
+    def stake(amount: uint256): nonpayable
+    def withdraw(amount: uint256): nonpayable
+    def getReward(): nonpayable
 
 
 event Deposit:
@@ -69,18 +75,27 @@ integrate_inv_supply: public(uint256[100000000000000000000000000000])  # bump ep
 integrate_inv_supply_of: public(HashMap[address, uint256])
 integrate_checkpoint_of: public(HashMap[address, uint256])
 
-
 # ∫(balance * rate(t) / totalSupply(t) dt) from 0 till checkpoint
 # Units: rate * t = already number of coins per address to issue
 integrate_fraction: public(HashMap[address, uint256])
 
 inflation_rate: uint256
 
+# For tracking external rewards
+reward_contract: public(address)
+rewarded_token: public(address)
+
+reward_integral: public(uint256)
+reward_integral_for: public(HashMap[address, uint256])
+rewards_for: public(HashMap[address, uint256])
+claimed_rewards_for: public(HashMap[address, uint256])
+
 
 @external
-def __init__(lp_addr: address, _minter: address):
+def __init__(lp_addr: address, _minter: address, _reward_contract: address, _rewarded_token: address):
     assert lp_addr != ZERO_ADDRESS
     assert _minter != ZERO_ADDRESS
+    assert _reward_contract != ZERO_ADDRESS
 
     self.lp_token = lp_addr
     self.minter = _minter
@@ -92,6 +107,9 @@ def __init__(lp_addr: address, _minter: address):
     self.period_timestamp[0] = block.timestamp
     self.inflation_rate = CRV20(crv_addr).rate()
     self.future_epoch_time = CRV20(crv_addr).future_epoch_time_write()
+    self.reward_contract = _reward_contract
+    assert ERC20(lp_addr).approve(_reward_contract, MAX_UINT256)
+    self.rewarded_token = _rewarded_token
 
 
 @internal
@@ -188,6 +206,23 @@ def _checkpoint(addr: address):
     self.integrate_inv_supply_of[addr] = _integrate_inv_supply
     self.integrate_checkpoint_of[addr] = block.timestamp
 
+    # Update reward integrals (no gauge weights involved: easy)
+    _rewarded_token: address = self.rewarded_token
+
+    d_reward: uint256 = ERC20(_rewarded_token).balanceOf(self)
+    CurveRewards(self.reward_contract).getReward()
+    d_reward = ERC20(_rewarded_token).balanceOf(self) - d_reward
+
+    user_balance: uint256 = self.balanceOf[addr]
+    total_balance: uint256 = self.totalSupply
+    dI: uint256 = 0
+    if total_balance > 0:
+        dI = 10 ** 18 * d_reward / total_balance
+    I: uint256 = self.reward_integral + dI
+    self.reward_integral = I
+    self.rewards_for[addr] += user_balance * (I - self.reward_integral_for[addr]) / 10 ** 18
+    self.reward_integral_for[addr] = I
+
 
 @external
 def user_checkpoint(addr: address) -> bool:
@@ -231,7 +266,9 @@ def deposit(_value: uint256):
 
     self._update_liquidity_limit(msg.sender, _balance, _supply)
 
-    assert ERC20(self.lp_token).transferFrom(msg.sender, self, _value)
+    if _value > 0:
+        assert ERC20(self.lp_token).transferFrom(msg.sender, self, _value)
+        CurveRewards(self.reward_contract).stake(_value)
 
     log Deposit(msg.sender, _value)
 
@@ -248,9 +285,21 @@ def withdraw(_value: uint256):
 
     self._update_liquidity_limit(msg.sender, _balance, _supply)
 
-    assert ERC20(self.lp_token).transfer(msg.sender, _value)
+    if _value > 0:
+        CurveRewards(self.reward_contract).withdraw(_value)
+        assert ERC20(self.lp_token).transfer(msg.sender, _value)
 
     log Withdraw(msg.sender, _value)
+
+
+@external
+@nonreentrant('lock')
+def claim_rewards():
+    self._checkpoint(msg.sender)
+    _rewards_for: uint256 = self.rewards_for[msg.sender]
+    assert ERC20(self.rewarded_token).transfer(
+        msg.sender, _rewards_for - self.claimed_rewards_for[msg.sender])
+    self.claimed_rewards_for[msg.sender] = _rewards_for
 
 
 @external

@@ -1,3 +1,4 @@
+# @version 0.2.3
 """
 This is an ERC20 with piecewise-linear mining supply.
 """
@@ -44,7 +45,7 @@ admin: public(address)
 YEAR: constant(uint256) = 86400 * 365
 
 # Supply parameters
-# Premine: 42% (vested shareholders (31%) + vested employees (3%) + vested users (3%) + burnable reserve(5%))
+# Premine: 42% (vested shareholders (31%) + vested employees (3%) + vested users (3%) + burnable reserve(5%))  XXX <- still will change
 INITIAL_SUPPLY: constant(uint256) = 1_272_727_273
 INITIAL_RATE: constant(uint256) = 279636603 * 10 ** 18 / YEAR  # leading to 42% premine
 RATE_REDUCTION_TIME: constant(uint256) = YEAR
@@ -121,6 +122,21 @@ def start_epoch_time_write() -> uint256:
         return self.start_epoch_time
     else:
         return _start_epoch_time
+
+
+@external
+def future_epoch_time_write() -> uint256:
+    """
+    @notice Get timestamp of the future mining epoch start
+            simultaneously updating mining parameters
+    @return Timestamp of the epoch
+    """
+    _start_epoch_time: uint256 = self.start_epoch_time
+    if block.timestamp >= _start_epoch_time + RATE_REDUCTION_TIME:
+        self._update_mining_parameters()
+        return self.start_epoch_time + RATE_REDUCTION_TIME
+    else:
+        return _start_epoch_time + RATE_REDUCTION_TIME
 
 
 @internal
