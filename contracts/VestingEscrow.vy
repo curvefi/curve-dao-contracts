@@ -1,5 +1,15 @@
 from vyper.interfaces import ERC20
 
+event Fund:
+    recipient: indexed(address)
+    amount: uint256
+    start_time: uint256
+    time: uint256
+    can_disable: bool
+
+event Claim:
+    claimed: uint256
+
 
 token: public(address)
 default_start_time: public(uint256)
@@ -53,6 +63,8 @@ def fund(_recipients: address[10], _amounts: uint256[10], _times: uint256[10]):
         self.start_time[_recipients[i]] = default_start
         self.end_time[_recipients[i]] = _times[i]
 
+        log Fund(_recipients[i], _amounts[i], default_start, _times[i], False)
+
 
 @external
 @nonreentrant('lock')
@@ -60,11 +72,12 @@ def fund_individual(_recipient: address, _amount: uint256,
                     _start_time: uint256, _time: uint256, _can_disable: bool):
     assert msg.sender == self.admin
 
+    default_start: uint256 = self.default_start_time
     t0: uint256 = _start_time
     if t0 == 0:
-        t0 = self.default_start_time
+        t0 = default_start
     else:
-        assert t0 >= self.default_start_time
+        assert t0 >= default_start
     assert _time > t0, "Time is not in the future"
 
     assert ERC20(self.token).transferFrom(msg.sender, self, _amount)
@@ -75,6 +88,8 @@ def fund_individual(_recipient: address, _amount: uint256,
     self.initial_locked[_recipient] = _amount
     self.start_time[_recipient] = t0
     self.end_time[_recipient] = _time
+
+    log Fund(_recipient, _amount, default_start, _time, _can_disable)
 
 
 @external
@@ -126,3 +141,5 @@ def claim():
     claimable: uint256 = self._total_vested(msg.sender) - self.total_claimed[msg.sender]
     self.total_claimed[msg.sender] += claimable
     assert ERC20(self.token).transfer(msg.sender, claimable)
+
+    log Claim(claimable)
