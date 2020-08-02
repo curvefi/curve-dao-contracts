@@ -108,7 +108,7 @@ class StateMachine:
         Travel far enough in future for all rewards to be distributed (1 week)
         and claim all
         """
-        chain.sleep(7 * 86400 + 1)
+        chain.sleep(2 * 7 * 86400)
         rewards_claimed = 0
         for act in self.accounts:
             self.liquidity_gauge.claim_rewards({'from': act})
