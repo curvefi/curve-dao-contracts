@@ -60,6 +60,10 @@ event Withdraw:
     value: uint256
     ts: uint256
 
+event Supply:
+    prevSupply: uint256
+    supply: uint256
+
 
 WEEK: constant(uint256) = 604800  # 7 * 86400 seconds - all future times are rounded by week
 MAXTIME: constant(uint256) = 126144000  # 4 * 365 * 86400 - 4 years
@@ -329,8 +333,9 @@ def _deposit_for(_addr: address, _value: uint256, unlock_time: uint256, locked_b
     @param locked_balance Previous locked amount / timestamp
     """
     _locked: LockedBalance = locked_balance
+    supply_before: uint256 = self.supply
 
-    self.supply += _value
+    self.supply = supply_before + _value
     old_locked: LockedBalance = _locked
     # Adding to existing lock, or if a lock is expired - creating a new one
     _locked.amount += convert(_value, int128)
@@ -348,6 +353,7 @@ def _deposit_for(_addr: address, _value: uint256, unlock_time: uint256, locked_b
         assert ERC20(self.token).transferFrom(_addr, self, _value)
 
     log Deposit(_addr, _value, _locked.end, type, block.timestamp)
+    log Supply(supply_before, supply_before + _value)
 
 
 @external
@@ -449,7 +455,8 @@ def withdraw():
     _locked.end = 0
     _locked.amount = 0
     self.locked[msg.sender] = _locked
-    self.supply -= value
+    supply_before: uint256 = self.supply
+    self.supply = supply_before - value
 
     # old_locked can have either expired <= timestamp or zero end
     # _locked has only 0 end
@@ -459,6 +466,7 @@ def withdraw():
     assert ERC20(self.token).transfer(msg.sender, value)
 
     log Withdraw(msg.sender, value, block.timestamp)
+    log Supply(supply_before, supply_before - value)
 
 
 # The following ERC20/minime-compatible methods are not real balanceOf and supply!
