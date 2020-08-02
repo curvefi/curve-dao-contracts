@@ -35,5 +35,6 @@ def test_ratio_equality(chain, accounts, liquidity_gauge_reward, mock_lp_token,
         rewards.append(after - before)
 
     for v, r in zip(values, rewards):
-        precision = 1 / min(r, v)
-        assert approx(v / sum(values), r / sum(rewards), precision)
+        if r > 0 and v > 0:
+            precision = 1 / min(r, v)
+            assert approx(v / sum(values), r / sum(rewards), precision)
