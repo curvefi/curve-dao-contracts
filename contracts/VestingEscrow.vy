@@ -82,6 +82,7 @@ def fund_individual(_recipient: address, _amount: uint256,
         t0 = default_start
     else:
         assert t0 >= default_start
+
     assert _time > t0, "Time is not in the future"
 
     assert ERC20(self.token).transferFrom(msg.sender, self, _amount)
@@ -94,7 +95,6 @@ def fund_individual(_recipient: address, _amount: uint256,
     self.end_time[_recipient] = _time
 
     log Fund(_recipient, _amount, default_start, _time, _can_disable)
-
 
 @external
 def toggle_disable(_recipient: address):
