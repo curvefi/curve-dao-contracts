@@ -1,4 +1,4 @@
-# @version ^0.2.0
+# @version 0.2.3
 # This gauge can be used for measuring liquidity
 # Simultaneously stakes using Synthetix (== YFI) rewards contract
 

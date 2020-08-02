@@ -1,4 +1,4 @@
-# @version ^0.2.0
+# @version 0.2.3
 
 # The contract which controls gauges and issuance of coins through those
 
