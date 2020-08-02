@@ -215,7 +215,9 @@ def _checkpoint(addr: address):
 
     user_balance: uint256 = self.balanceOf[addr]
     total_balance: uint256 = self.totalSupply
-    dI: uint256 = 10 ** 18 * d_reward / (total_balance + 1)
+    dI: uint256 = 0
+    if total_balance > 0:
+        dI = 10 ** 18 * d_reward / total_balance
     I: uint256 = self.reward_integral + dI
     self.reward_integral = I
     self.rewards_for[addr] += user_balance * (I - self.reward_integral_for[addr]) / 10 ** 18
