@@ -73,7 +73,7 @@ def fund(_recipients: address[10], _amounts: uint256[10]):
     for i in range(10):
         if _recipients[i] == ZERO_ADDRESS:
             break
-        self.initial_locked[_recipients[i]] = _amounts[i]
+        self.initial_locked[_recipients[i]] += _amounts[i]
 
         log Fund(_recipients[i], _amounts[i])
 
