@@ -1,3 +1,4 @@
+# @version 0.2.3
 from vyper.interfaces import ERC20
 
 event Fund:
@@ -22,6 +23,7 @@ initial_locked_supply: public(uint256)
 
 can_disable: public(bool)
 disabled: public(HashMap[address, bool])
+disabled_at: public(HashMap[address, uint256])
 
 admin: public(address)
 
@@ -44,7 +46,10 @@ def __init__(_token: address, _start_time: uint256, _end_time: uint256, _can_dis
     self.end_time = _end_time
     self.can_disable = _can_disable
 
-# XXX set admin (DAO?)
+# TODO:
+# * set admin (commit / transfer ownership w/o wait)
+# * make a contract which gets funded and can create and fund new VestedEscrow
+#   contracts with 1 user in each (factory)
 
 
 @external
@@ -77,6 +82,8 @@ def toggle_disable(_recipient: address):
 
     is_disabled: bool = not self.disabled[_recipient]
     self.disabled[_recipient] = is_disabled
+    if is_disabled:
+        self.disabled_at[_recipient] = block.timestamp
 
     log ToggleDisable(_recipient, is_disabled)
 
@@ -89,11 +96,14 @@ def disable_can_disable(_recipient: address):
 
 @internal
 @view
-def _total_vested_of(_recipient: address) -> uint256:
+def _total_vested_of(_recipient: address, _time: uint256 = 0) -> uint256:
     start: uint256 = self.start_time
     end: uint256 = self.end_time
     locked: uint256 = self.initial_locked[_recipient]
-    return min(locked * (block.timestamp - start) / (end - start), locked)
+    t: uint256 = _time
+    if t == 0:
+        t = block.timestamp
+    return min(locked * (t - start) / (end - start), locked)
 
 
 @internal
@@ -135,13 +145,22 @@ def lockedOf(_recipient: address) -> uint256:
     return self.initial_locked[_recipient] - self._total_vested_of(_recipient)
 
 
-@external
-@nonreentrant('lock')
-def claim():
-    if self.can_disable:  # XXX
-        assert not self.disabled[msg.sender], "Vesting was frozen"
-    claimable: uint256 = self._total_vested_of(msg.sender) - self.total_claimed[msg.sender]
-    self.total_claimed[msg.sender] += claimable
-    assert ERC20(self.token).transfer(msg.sender, claimable)
+@internal
+def _claim_for(addr: address):
+    t: uint256 = block.timestamp
+    if self.disabled[addr]:
+        t = self.disabled_at[addr]
+    claimable: uint256 = self._total_vested_of(addr, t) - self.total_claimed[addr]
+    self.total_claimed[addr] += claimable
+    assert ERC20(self.token).transfer(addr, claimable)
 
     log Claim(claimable)
+
+
+@external
+@nonreentrant('lock')
+def claim(addr: address = ZERO_ADDRESS):
+    if addr == ZERO_ADDRESS:
+        self._claim_for(msg.sender)
+    else:
+        self._claim_for(addr)
