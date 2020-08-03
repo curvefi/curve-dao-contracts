@@ -202,6 +202,16 @@ def user_checkpoint(addr: address) -> bool:
 
 
 @external
+def claimable_tokens() -> uint256:
+    """
+    @notice Claimable number of tokens per-user
+            This function should be manually changed to "view" in the ABI
+    """
+    self._checkpoint(msg.sender)
+    return self.integrate_fraction[msg.sender]
+
+
+@external
 def kick(addr: address):
     # Kick someone who is abusing his boost
     # Only if either they had another VE event, or they had VE lock expired
