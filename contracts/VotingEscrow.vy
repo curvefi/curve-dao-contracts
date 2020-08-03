@@ -498,18 +498,21 @@ def find_block_epoch(_block: uint256, max_epoch: uint256) -> uint256:
 
 @external
 @view
-def balanceOf(addr: address) -> uint256:
+def balanceOf(addr: address, _t: uint256 = 0) -> uint256:
     """
     @notice Standard ERC20-compatible balanceOf which actually measures voting power
     @param addr User's wallet address
     @return User's voting power
     """
+    t: uint256 = block.timestamp
+    if _t != 0:
+        t = _t
     _epoch: uint256 = self.user_point_epoch[addr]
     if _epoch == 0:
         return 0
     else:
         last_point: Point = self.user_point_history[addr][_epoch]
-        last_point.bias -= last_point.slope * convert(block.timestamp - last_point.ts, int128)
+        last_point.bias -= last_point.slope * convert(t - last_point.ts, int128)
         if last_point.bias < 0:
             last_point.bias = 0
         return convert(last_point.bias, uint256)
@@ -596,14 +599,17 @@ def supply_at(point: Point, t: uint256) -> uint256:
 
 @external
 @view
-def totalSupply() -> uint256:
+def totalSupply(t: uint256 = 0) -> uint256:
     """
     @notice Calculate current total voting power
     @return Total voting power
     """
     _epoch: uint256 = self.epoch
     last_point: Point = self.point_history[_epoch]
-    return self.supply_at(last_point, block.timestamp)
+    if t == 0:
+        return self.supply_at(last_point, block.timestamp)
+    else:
+        return self.supply_at(last_point, t)
 
 
 @external
