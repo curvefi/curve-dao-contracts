@@ -142,6 +142,26 @@ def _update_liquidity_limit(addr: address, l: uint256, L: uint256):
 
 
 @internal
+def _checkpoint_rewards(addr: address):
+    # Update reward integrals (no gauge weights involved: easy)
+    _rewarded_token: address = self.rewarded_token
+
+    d_reward: uint256 = ERC20(_rewarded_token).balanceOf(self)
+    CurveRewards(self.reward_contract).getReward()
+    d_reward = ERC20(_rewarded_token).balanceOf(self) - d_reward
+
+    user_balance: uint256 = self.balanceOf[addr]
+    total_balance: uint256 = self.totalSupply
+    dI: uint256 = 0
+    if total_balance > 0:
+        dI = 10 ** 18 * d_reward / total_balance
+    I: uint256 = self.reward_integral + dI
+    self.reward_integral = I
+    self.rewards_for[addr] += user_balance * (I - self.reward_integral_for[addr]) / 10 ** 18
+    self.reward_integral_for[addr] = I
+
+
+@internal
 def _checkpoint(addr: address):
     """
     @notice Checkpoint for a user
@@ -207,22 +227,7 @@ def _checkpoint(addr: address):
     self.integrate_inv_supply_of[addr] = _integrate_inv_supply
     self.integrate_checkpoint_of[addr] = block.timestamp
 
-    # Update reward integrals (no gauge weights involved: easy)
-    _rewarded_token: address = self.rewarded_token
-
-    d_reward: uint256 = ERC20(_rewarded_token).balanceOf(self)
-    CurveRewards(self.reward_contract).getReward()
-    d_reward = ERC20(_rewarded_token).balanceOf(self) - d_reward
-
-    user_balance: uint256 = self.balanceOf[addr]
-    total_balance: uint256 = self.totalSupply
-    dI: uint256 = 0
-    if total_balance > 0:
-        dI = 10 ** 18 * d_reward / total_balance
-    I: uint256 = self.reward_integral + dI
-    self.reward_integral = I
-    self.rewards_for[addr] += user_balance * (I - self.reward_integral_for[addr]) / 10 ** 18
-    self.reward_integral_for[addr] = I
+    self._checkpoint_rewards(addr)
 
 
 @external
@@ -330,6 +335,16 @@ def claim_rewards():
     assert ERC20(self.rewarded_token).transfer(
         msg.sender, _rewards_for - self.claimed_rewards_for[msg.sender])
     self.claimed_rewards_for[msg.sender] = _rewards_for
+
+
+@external
+@nonreentrant('lock')
+def claim_rewards_for(addr: address):
+    self._checkpoint_rewards(addr)
+    _rewards_for: uint256 = self.rewards_for[addr]
+    assert ERC20(self.rewarded_token).transfer(
+        addr, _rewards_for - self.claimed_rewards_for[addr])
+    self.claimed_rewards_for[addr] = _rewards_for
 
 
 @external
