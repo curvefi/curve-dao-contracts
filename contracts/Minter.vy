@@ -51,6 +51,18 @@ def mint(gauge_addr: address):
 
 @external
 @nonreentrant('lock')
+def mint_many(gauge_addrs: address[8]):
+    """
+    Mint everything which belongs to msg.sender and send to them
+    """
+    for i in range(8):
+        if gauge_addrs[i] == ZERO_ADDRESS:
+            break
+        self._mint_for(gauge_addrs[i], msg.sender)
+
+
+@external
+@nonreentrant('lock')
 def mint_for(gauge_addr: address, _for: address):
     """
     Mint for someone else
