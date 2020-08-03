@@ -12,6 +12,12 @@ event ToggleDisable:
     recipient: address
     disabled: bool
 
+event CommitOwnership:
+    admin: address
+
+event ApplyOwnership:
+    admin: address
+
 
 token: public(address)
 start_time: public(uint256)
@@ -26,6 +32,7 @@ disabled: public(HashMap[address, bool])
 disabled_at: public(HashMap[address, uint256])
 
 admin: public(address)
+future_admin: public(address)
 
 
 @external
@@ -46,10 +53,6 @@ def __init__(_token: address, _start_time: uint256, _end_time: uint256, _can_dis
     self.end_time = _end_time
     self.can_disable = _can_disable
 
-# TODO:
-# * set admin (commit / transfer ownership w/o wait)
-# * make a contract which gets funded and can create and fund new VestedEscrow
-#   contracts with 1 user in each (factory)
 
 
 @external
@@ -164,3 +167,29 @@ def claim(addr: address = ZERO_ADDRESS):
         self._claim_for(msg.sender)
     else:
         self._claim_for(addr)
+
+
+@external
+def commit_transfer_ownership(addr: address) -> bool:
+    """
+    @notice Transfer ownership of GaugeController to `addr`
+    @param addr Address to have ownership transferred to
+    """
+    assert msg.sender == self.admin
+    self.future_admin = addr
+    log CommitOwnership(addr)
+
+    return True
+
+
+@external
+def apply_transfer_ownership() -> bool:
+    """
+    @notice Apply pending ownership transfer
+    """
+    assert msg.sender == self.admin
+    _admin: address = self.future_admin
+    self.admin = _admin
+    log ApplyOwnership(_admin)
+
+    return True
