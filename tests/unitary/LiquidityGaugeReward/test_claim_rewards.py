@@ -57,7 +57,7 @@ def test_claim_one_lp(accounts, chain, liquidity_gauge_reward, mock_lp_token,
 
 
 def test_claim_two_lp(accounts, chain, liquidity_gauge_reward, mock_lp_token,
-                      reward_contract, coin_reward):
+                      reward_contract, coin_reward, no_call_coverage):
     # Fund
     coin_reward._mint_for_testing(REWARD, {'from': accounts[0]})
     coin_reward.transfer(reward_contract, REWARD, {'from': accounts[0]})
