@@ -79,6 +79,13 @@ def test_claim_two_lp(accounts, chain, liquidity_gauge_reward, mock_lp_token,
         liquidity_gauge_reward.claim_rewards({'from': accounts[i]})
         rewards += [coin_reward.balanceOf(accounts[i])]
 
+    # Calculate rewards
+    claimable_rewards = [liquidity_gauge_reward.claimable_reward({'from': acc})
+                         for acc in accounts[:2]]
+
+    # Calculation == results
+    assert tuple(claimable_rewards) == tuple(rewards)
+
     # Approximately equal apart from what caused by 1 s ganache-cli jitter
     assert sum(rewards) <= REWARD
     assert approx(sum(rewards), REWARD, 1.001 / WEEK)  # ganache-cli jitter of 1 s

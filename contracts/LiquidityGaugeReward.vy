@@ -29,6 +29,7 @@ interface CurveRewards:
     def stake(amount: uint256): nonpayable
     def withdraw(amount: uint256): nonpayable
     def getReward(): nonpayable
+    def earned(addr: address) -> uint256: view
 
 
 event Deposit:
@@ -234,6 +235,35 @@ def user_checkpoint(addr: address) -> bool:
     self._checkpoint(addr)
     self._update_liquidity_limit(addr, self.balanceOf[addr], self.totalSupply)
     return True  # XXX explain
+
+
+@external
+def claimable_tokens() -> uint256:
+    """
+    @notice Claimable number of tokens per-user
+            This function should be manually changed to "view" in the ABI
+    """
+    self._checkpoint(msg.sender)
+    return self.integrate_fraction[msg.sender]
+
+
+@external
+@view
+def claimable_reward(_addr: address = ZERO_ADDRESS) -> uint256:
+    addr: address = msg.sender
+    if _addr != ZERO_ADDRESS:
+        addr = msg.sender
+
+    d_reward: uint256 = CurveRewards(self.reward_contract).earned(self)
+
+    user_balance: uint256 = self.balanceOf[addr]
+    total_balance: uint256 = self.totalSupply
+    dI: uint256 = 0
+    if total_balance > 0:
+        dI = 10 ** 18 * d_reward / total_balance
+    I: uint256 = self.reward_integral + dI
+
+    return self.rewards_for[addr] + user_balance * (I - self.reward_integral_for[addr]) / 10 ** 18
 
 
 @external
