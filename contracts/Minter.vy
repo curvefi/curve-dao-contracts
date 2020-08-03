@@ -18,11 +18,26 @@ controller: public(address)
 # user -> gauge -> value
 minted: public(HashMap[address, HashMap[address, uint256]])
 
+allowed_to_mint_for: public(HashMap[address, HashMap[address, bool]])  # minter -> user -> can?
+
 
 @external
 def __init__(_token: address, _controller: address):
     self.token = _token
     self.controller = _controller
+
+
+@internal
+def _mint_for(gauge_addr: address, _for: address):
+    assert GaugeController(self.controller).gauge_types(gauge_addr) >= 0  # dev: gauge is not added
+
+    Gauge(gauge_addr).user_checkpoint(_for)
+    total_mint: uint256 = Gauge(gauge_addr).integrate_fraction(_for)
+    to_mint: uint256 = total_mint - self.minted[_for][gauge_addr]
+
+    if to_mint != 0:
+        MERC20(self.token).mint(_for, to_mint)
+        self.minted[_for][gauge_addr] = total_mint
 
 
 @external
@@ -31,15 +46,22 @@ def mint(gauge_addr: address):
     """
     Mint everything which belongs to msg.sender and send to them
     """
-    assert GaugeController(self.controller).gauge_types(gauge_addr) >= 0  # dev: gauge is not added
-
-    Gauge(gauge_addr).user_checkpoint(msg.sender)
-    total_mint: uint256 = Gauge(gauge_addr).integrate_fraction(msg.sender)
-    to_mint: uint256 = total_mint - self.minted[msg.sender][gauge_addr]
-
-    if to_mint != 0:
-        MERC20(self.token).mint(msg.sender, to_mint)
-        self.minted[msg.sender][gauge_addr] = total_mint
+    self._mint_for(gauge_addr, msg.sender)
 
 
-# XXX change controller
+@external
+@nonreentrant('lock')
+def mint_for(gauge_addr: address, _for: address):
+    """
+    Mint for someone else
+    """
+    if self.allowed_to_mint_for[msg.sender][_for]:
+        self._mint_for(gauge_addr, _for)
+
+
+@external
+def toggle_approve_mint(minting_user: address):
+    """
+    @notice allow `minting_user` to ming for `msg.sender`
+    """
+    self.allowed_to_mint_for[minting_user][msg.sender] = not self.allowed_to_mint_for[minting_user][msg.sender]
