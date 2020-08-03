@@ -11,6 +11,10 @@ interface MERC20:
 interface GaugeController:
     def gauge_types(addr: address) -> int128: view
 
+event Minted:
+    recipient: indexed(address)
+    gauge: address
+    minted: uint256
 
 token: public(address)
 controller: public(address)
@@ -40,6 +44,8 @@ def mint(gauge_addr: address):
     if to_mint != 0:
         MERC20(self.token).mint(msg.sender, to_mint)
         self.minted[msg.sender][gauge_addr] = total_mint
+
+        log Minted(msg.sender, gauge_addr, total_mint)
 
 
 # XXX change controller
