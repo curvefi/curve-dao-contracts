@@ -117,7 +117,7 @@ def commit_transfer_ownership(addr: address):
     @notice Transfer ownership of GaugeController to `addr`
     @param addr Address to have ownership transferred to
     """
-    assert msg.sender == self.admin
+    assert msg.sender == self.admin  # dev: admin only
     self.future_admin = addr
     log CommitOwnership(addr)
 
@@ -127,9 +127,9 @@ def apply_transfer_ownership():
     """
     @notice Apply pending ownership transfer
     """
-    assert msg.sender == self.admin
+    assert msg.sender == self.admin  # dev: admin only
     _admin: address = self.future_admin
-    assert _admin != ZERO_ADDRESS
+    assert _admin != ZERO_ADDRESS  # dev: admin not set
     self.admin = _admin
     log ApplyOwnership(_admin)
 
