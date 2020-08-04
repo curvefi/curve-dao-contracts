@@ -182,6 +182,7 @@ def apply_transfer_ownership() -> bool:
     """
     assert msg.sender == self.admin  # dev: admin only
     _admin: address = self.future_admin
+    assert _admin != ZERO_ADDRESS  # dev: admin not set
     self.admin = _admin
     log ApplyOwnership(_admin)
 
