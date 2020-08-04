@@ -79,7 +79,7 @@ def toggle_disable(_recipient: address):
 
 
 @external
-def disable_can_disable(_recipient: address):
+def disable_can_disable():
     assert msg.sender == self.admin  # dev: admin only
     self.can_disable = False
 
