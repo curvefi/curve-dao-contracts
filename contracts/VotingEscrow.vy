@@ -140,7 +140,9 @@ def apply_transfer_ownership():
     @notice Apply ownershipt transfer
     """
     assert msg.sender == self.admin
-    self.admin = self.future_admin
+    _admin: address = self.future_admin
+    assert _admin != ZERO_ADDRESS
+    self.admin = _admin
     log ApplyOwnership(_admin)
 
 

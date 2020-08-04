@@ -129,6 +129,7 @@ def apply_transfer_ownership():
     """
     assert msg.sender == self.admin
     _admin: address = self.future_admin
+    assert _admin != ZERO_ADDRESS
     self.admin = _admin
     log ApplyOwnership(_admin)
 
