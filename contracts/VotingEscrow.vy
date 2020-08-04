@@ -48,6 +48,13 @@ CREATE_LOCK_TYPE: constant(int128) = 1
 INCREASE_LOCK_AMOUNT: constant(int128) = 2
 INCREASE_UNLOCK_TIME: constant(int128) = 3
 
+
+event CommitOwnership:
+    admin: address
+
+event ApplyOwnership:
+    admin: address
+
 event Deposit:
     provider: indexed(address)
     value: uint256
@@ -124,6 +131,7 @@ def commit_transfer_ownership(addr: address):
     """
     assert msg.sender == self.admin
     self.future_admin = addr
+    log CommitOwnership(addr)
 
 
 @external
@@ -133,6 +141,7 @@ def apply_transfer_ownership():
     """
     assert msg.sender == self.admin
     self.admin = self.future_admin
+    log ApplyOwnership(_admin)
 
 
 @external
