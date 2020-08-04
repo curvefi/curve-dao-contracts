@@ -58,7 +58,7 @@ def __init__(_token: address, _start_time: uint256, _end_time: uint256, _can_dis
 @external
 @nonreentrant('lock')
 def fund(_recipients: address[10], _amounts: uint256[10]):
-    assert msg.sender == self.admin
+    assert msg.sender == self.admin  # dev: admin only
 
     # Transfer tokens for all of the recipients here
     _total_amount: uint256 = 0
@@ -67,7 +67,7 @@ def fund(_recipients: address[10], _amounts: uint256[10]):
             break
         _total_amount += _amounts[i]
     self.initial_locked_supply += _total_amount
-    assert ERC20(self.token).transferFrom(msg.sender, self, _total_amount)
+    assert ERC20(self.token).transferFrom(msg.sender, self, _total_amount)  # dev: transfer failed
 
     # Create individual records
     for i in range(10):
@@ -80,7 +80,7 @@ def fund(_recipients: address[10], _amounts: uint256[10]):
 
 @external
 def toggle_disable(_recipient: address):
-    assert msg.sender == self.admin
+    assert msg.sender == self.admin  # dev: admin only
     assert self.can_disable, "Cannot disable"
 
     is_disabled: bool = not self.disabled[_recipient]
@@ -93,7 +93,7 @@ def toggle_disable(_recipient: address):
 
 @external
 def disable_can_disable(_recipient: address):
-    assert msg.sender == self.admin
+    assert msg.sender == self.admin  # dev: admin only
     self.can_disable = False
 
 
@@ -167,7 +167,7 @@ def commit_transfer_ownership(addr: address) -> bool:
     @notice Transfer ownership of GaugeController to `addr`
     @param addr Address to have ownership transferred to
     """
-    assert msg.sender == self.admin
+    assert msg.sender == self.admin  # dev: admin only
     self.future_admin = addr
     log CommitOwnership(addr)
 
@@ -179,7 +179,7 @@ def apply_transfer_ownership() -> bool:
     """
     @notice Apply pending ownership transfer
     """
-    assert msg.sender == self.admin
+    assert msg.sender == self.admin  # dev: admin only
     _admin: address = self.future_admin
     self.admin = _admin
     log ApplyOwnership(_admin)
