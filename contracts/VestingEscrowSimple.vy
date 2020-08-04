@@ -135,8 +135,9 @@ def lockedOf(_recipient: address) -> uint256:
     return self.initial_locked[_recipient] - self._total_vested_of(_recipient)
 
 
-@internal
-def _claim_for(addr: address):
+@external
+@nonreentrant('lock')
+def claim(addr: address = msg.sender):
     t: uint256 = block.timestamp
     if self.disabled[addr]:
         t = self.disabled_at[addr]
@@ -145,15 +146,6 @@ def _claim_for(addr: address):
     assert ERC20(self.token).transfer(addr, claimable)
 
     log Claim(claimable)
-
-
-@external
-@nonreentrant('lock')
-def claim(addr: address = ZERO_ADDRESS):
-    if addr == ZERO_ADDRESS:
-        self._claim_for(msg.sender)
-    else:
-        self._claim_for(addr)
 
 
 @external
