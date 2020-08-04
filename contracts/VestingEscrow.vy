@@ -106,6 +106,8 @@ def _total_vested_of(_recipient: address, _time: uint256 = 0) -> uint256:
     t: uint256 = _time
     if t == 0:
         t = block.timestamp
+    if t < start:
+        return 0
     return min(locked * (t - start) / (end - start), locked)
 
 
@@ -115,6 +117,8 @@ def _total_vested() -> uint256:
     start: uint256 = self.start_time
     end: uint256 = self.end_time
     locked: uint256 = self.initial_locked_supply
+    if block.timestamp < start:
+        return 0
     return min(locked * (block.timestamp - start) / (end - start), locked)
 
 
