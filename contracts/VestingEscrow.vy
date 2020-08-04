@@ -28,7 +28,6 @@ total_claimed: public(HashMap[address, uint256])
 initial_locked_supply: public(uint256)
 
 can_disable: public(bool)
-disabled: public(HashMap[address, bool])
 disabled_at: public(HashMap[address, uint256])
 
 admin: public(address)
@@ -83,10 +82,11 @@ def toggle_disable(_recipient: address):
     assert msg.sender == self.admin  # dev: admin only
     assert self.can_disable, "Cannot disable"
 
-    is_disabled: bool = not self.disabled[_recipient]
-    self.disabled[_recipient] = is_disabled
+    is_disabled: bool = self.disabled_at[_recipient] == 0
     if is_disabled:
         self.disabled_at[_recipient] = block.timestamp
+    else:
+        self.disabled_at[_recipient] = 0
 
     log ToggleDisable(_recipient, is_disabled)
 
@@ -151,9 +151,9 @@ def lockedOf(_recipient: address) -> uint256:
 @external
 @nonreentrant('lock')
 def claim(addr: address = msg.sender):
-    t: uint256 = block.timestamp
-    if self.disabled[addr]:
-        t = self.disabled_at[addr]
+    t: uint256 = self.disabled_at[addr]
+    if t == 0:
+        t = block.timestamp
     claimable: uint256 = self._total_vested_of(addr, t) - self.total_claimed[addr]
     self.total_claimed[addr] += claimable
     assert ERC20(self.token).transfer(addr, claimable)
