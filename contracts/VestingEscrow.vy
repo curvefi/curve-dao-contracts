@@ -99,16 +99,13 @@ def disable_can_disable():
 
 @internal
 @view
-def _total_vested_of(_recipient: address, _time: uint256 = 0) -> uint256:
+def _total_vested_of(_recipient: address, _time: uint256 = block.timestamp) -> uint256:
     start: uint256 = self.start_time
     end: uint256 = self.end_time
     locked: uint256 = self.initial_locked[_recipient]
-    t: uint256 = _time
-    if t == 0:
-        t = block.timestamp
-    if t < start:
+    if _time < start:
         return 0
-    return min(locked * (t - start) / (end - start), locked)
+    return min(locked * (_time - start) / (end - start), locked)
 
 
 @internal
