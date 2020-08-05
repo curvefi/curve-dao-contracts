@@ -40,10 +40,9 @@ def deploy_vesting_contract(
     _end_time: uint256,
     _can_disable: bool
 ) -> address:
-
-    # TODO restrictions on vesting parameters?
+    assert msg.sender == self.admin  # dev: admin only
     _contract: address = create_forwarder_to(self.target)
-    ERC20(_token).approve(_contract, _amount)
+    assert ERC20(_token).approve(_contract, _amount)  # dev: approve failed
     VestingEscrowSimple(_contract).initialize(
         self.admin, _token, _recipient, _amount, _start_time, _end_time, _can_disable
     )

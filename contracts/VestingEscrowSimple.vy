@@ -1,4 +1,5 @@
 # @version 0.2.3
+
 from vyper.interfaces import ERC20
 
 event Fund:
@@ -33,11 +34,28 @@ disabled_at: public(HashMap[address, uint256])
 admin: public(address)
 future_admin: public(address)
 
+@external
+def __init__():
+    # ensure that the original contract cannot be initialized
+    self.admin = msg.sender
+
 
 @external
 @nonreentrant('lock')
-def initialize(_admin: address, _token: address, _recipient: address, _amount: uint256, _start_time: uint256, _end_time: uint256, _can_disable: bool) -> bool:
+def initialize(
+    _admin: address,
+    _token: address,
+    _recipient: address,
+    _amount: uint256,
+    _start_time: uint256,
+    _end_time: uint256,
+    _can_disable: bool
+) -> bool:
     """
+    @notice Initialize the contract.
+    @dev This function is seperate from `__init__` because of the factory pattern
+         used in `VestingEscrowFactory.deploy_vesting_contract`. It may be called
+         once per deployment.
     @param _token Address of the ERC20 token being distributed
     @param _start_time Timestamp at which the distribution starts. Should be in
         the future, so that we have enough time to VoteLock everyone
@@ -46,11 +64,11 @@ def initialize(_admin: address, _token: address, _recipient: address, _amount: u
     """
     assert self.admin == ZERO_ADDRESS  # dev: can only initialize once
 
-    assert _start_time >= block.timestamp  # dev: start before now
-    assert _end_time > _start_time  # dev: end before start
+    assert _start_time >= block.timestamp
+    assert _end_time > _start_time
 
     self.token = _token
-    self.admin = msg.sender
+    self.admin = _admin
     self.start_time = _start_time
     self.end_time = _end_time
     self.can_disable = _can_disable
