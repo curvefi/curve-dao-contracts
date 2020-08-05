@@ -113,6 +113,26 @@ def vesting(VestingEscrow, accounts, coin_a, start_time, end_time):
     yield contract
 
 
+@pytest.fixture(scope="module")
+def vesting_target(VestingEscrowSimple, accounts):
+    yield VestingEscrowSimple.deploy({'from': accounts[0]})
+
+
+@pytest.fixture(scope="module")
+def vesting_factory(VestingEscrowFactory, accounts, vesting_target):
+    yield VestingEscrowFactory.deploy(vesting_target, {'from': accounts[0]})
+
+
+@pytest.fixture(scope="module")
+def vesting_simple(VestingEscrowSimple, accounts, vesting_factory, coin_a, start_time, end_time):
+    coin_a._mint_for_testing(10**21, {'from': accounts[0]})
+    coin_a.transfer(vesting_factory, 10**21, {'from': accounts[0]})
+    tx = vesting_factory.deploy_vesting_contract(
+        coin_a, accounts[1], 10**20, start_time, end_time, True, {'from': accounts[0]}
+    )
+    yield VestingEscrowSimple.at(tx.new_contracts[0])
+
+
 # testing contracts
 
 @pytest.fixture(scope="module")
