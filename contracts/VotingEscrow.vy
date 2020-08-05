@@ -48,6 +48,13 @@ CREATE_LOCK_TYPE: constant(int128) = 1
 INCREASE_LOCK_AMOUNT: constant(int128) = 2
 INCREASE_UNLOCK_TIME: constant(int128) = 3
 
+
+event CommitOwnership:
+    admin: address
+
+event ApplyOwnership:
+    admin: address
+
 event Deposit:
     provider: indexed(address)
     value: uint256
@@ -122,8 +129,9 @@ def commit_transfer_ownership(addr: address):
     @notice Transfer ownership of VotingEscrow contract to `addr`
     @param addr Address to have ownership transferred to
     """
-    assert msg.sender == self.admin
+    assert msg.sender == self.admin  # dev: admin only
     self.future_admin = addr
+    log CommitOwnership(addr)
 
 
 @external
@@ -131,8 +139,11 @@ def apply_transfer_ownership():
     """
     @notice Apply ownershipt transfer
     """
-    assert msg.sender == self.admin
-    self.admin = self.future_admin
+    assert msg.sender == self.admin  # dev: admin only
+    _admin: address = self.future_admin
+    assert _admin != ZERO_ADDRESS  # dev: admin not set
+    self.admin = _admin
+    log ApplyOwnership(_admin)
 
 
 @external
