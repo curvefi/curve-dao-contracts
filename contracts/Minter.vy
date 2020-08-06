@@ -43,6 +43,8 @@ def _mint_for(gauge_addr: address, _for: address):
         MERC20(self.token).mint(_for, to_mint)
         self.minted[_for][gauge_addr] = total_mint
 
+        log Minted(_for, gauge_addr, total_mint)
+
 
 @external
 @nonreentrant('lock')
@@ -63,8 +65,6 @@ def mint_many(gauge_addrs: address[8]):
         if gauge_addrs[i] == ZERO_ADDRESS:
             break
         self._mint_for(gauge_addrs[i], msg.sender)
-
-        log Minted(msg.sender, gauge_addr, total_mint)
 
 
 @external
