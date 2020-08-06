@@ -11,6 +11,10 @@ interface MERC20:
 interface GaugeController:
     def gauge_types(addr: address) -> int128: view
 
+event Minted:
+    recipient: indexed(address)
+    gauge: address
+    minted: uint256
 
 token: public(address)
 controller: public(address)
@@ -59,6 +63,8 @@ def mint_many(gauge_addrs: address[8]):
         if gauge_addrs[i] == ZERO_ADDRESS:
             break
         self._mint_for(gauge_addrs[i], msg.sender)
+
+        log Minted(msg.sender, gauge_addr, total_mint)
 
 
 @external
