@@ -40,6 +40,18 @@ def deploy_vesting_contract(
     _end_time: uint256,
     _can_disable: bool
 ) -> address:
+    """
+    @notice Deploy a new vesting contract
+    @dev Each contract holds tokens which vest for a single account. Tokens
+         must be sent to this contract via the regular `ERC20.transfer` method
+         prior to calling this method.
+    @param _token Address of the ERC20 token being distributed
+    @param _recipient Address to vest tokens for
+    @param _amount Amount of tokens being vested for `_recipient`
+    @param _start_time Epoch time at which token distribution starts
+    @param _end_time Time until everything should be vested
+    @param _can_disable Can admin disable recipient's ability to claim tokens?
+    """
     assert msg.sender == self.admin  # dev: admin only
     _contract: address = create_forwarder_to(self.target)
     assert ERC20(_token).approve(_contract, _amount)  # dev: approve failed

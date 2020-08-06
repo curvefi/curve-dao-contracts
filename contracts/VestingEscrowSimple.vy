@@ -56,11 +56,13 @@ def initialize(
     @dev This function is seperate from `__init__` because of the factory pattern
          used in `VestingEscrowFactory.deploy_vesting_contract`. It may be called
          once per deployment.
+    @param _admin Admin address
     @param _token Address of the ERC20 token being distributed
-    @param _start_time Timestamp at which the distribution starts. Should be in
-        the future, so that we have enough time to VoteLock everyone
+    @param _recipient Address to vest tokens for
+    @param _amount Amount of tokens being vested for `_recipient`
+    @param _start_time Epoch time at which token distribution starts
     @param _end_time Time until everything should be vested
-    @param _can_disable Whether admin can disable accounts in this deployment
+    @param _can_disable Can admin disable recipient's ability to claim tokens?
     """
     assert self.admin == ZERO_ADDRESS  # dev: can only initialize once
 
@@ -84,6 +86,13 @@ def initialize(
 
 @external
 def toggle_disable(_recipient: address):
+    """
+    @notice Disable or re-enable a vested address's ability to claim tokens
+    @dev When disabled, the address is only unable to claim tokens which are still
+         locked at the time of this call. It is not possible to block the claim
+         of tokens which have already vested.
+    @param _recipient Address to disable or enable
+    """
     assert msg.sender == self.admin  # dev: admin only
     assert self.can_disable, "Cannot disable"
 
@@ -98,6 +107,9 @@ def toggle_disable(_recipient: address):
 
 @external
 def disable_can_disable():
+    """
+    @notice Disable the ability to call `toggle_disable`
+    """
     assert msg.sender == self.admin  # dev: admin only
     self.can_disable = False
 
@@ -127,36 +139,60 @@ def _total_vested() -> uint256:
 @external
 @view
 def vestedSupply() -> uint256:
+    """
+    @notice Get the total number of tokens which have vested, that are held
+            by this contract
+    """
     return self._total_vested()
 
 
 @external
 @view
 def lockedSupply() -> uint256:
+    """
+    @notice Get the total number of tokens which are still locked
+            (have not yet vested)
+    """
     return self.initial_locked_supply - self._total_vested()
 
 
 @external
 @view
 def vestedOf(_recipient: address) -> uint256:
+    """
+    @notice Get the number of tokens which have vested for a given address
+    @param _recipient address to check
+    """
     return self._total_vested_of(_recipient)
 
 
 @external
 @view
 def balanceOf(_recipient: address) -> uint256:
+    """
+    @notice Get the number of unclaimed, vested tokens for a given address
+    @param _recipient address to check
+    """
     return self._total_vested_of(_recipient) - self.total_claimed[_recipient]
 
 
 @external
 @view
 def lockedOf(_recipient: address) -> uint256:
+    """
+    @notice Get the number of locked tokens for a given address
+    @param _recipient address to check
+    """
     return self.initial_locked[_recipient] - self._total_vested_of(_recipient)
 
 
 @external
 @nonreentrant('lock')
 def claim(addr: address = msg.sender):
+    """
+    @notice Claim tokens which have vested
+    @param addr Address to claim tokens for
+    """
     t: uint256 = self.disabled_at[addr]
     if t == 0:
         t = block.timestamp
