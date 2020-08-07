@@ -1,2 +1,2 @@
-eth-brownie>=1.10.2,<2.0.0
+eth-brownie>=1.10.5,<2.0.0
 vyper==0.2.3
