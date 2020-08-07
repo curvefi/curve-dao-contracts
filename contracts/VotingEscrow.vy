@@ -1,4 +1,4 @@
-# @version 0.2.3
+# @version 0.2.4
 
 # Voting escrow to have time-weighted votes
 # The idea: votes have a weight depending on time, so that users are committed
