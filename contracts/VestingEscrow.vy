@@ -1,4 +1,5 @@
-# @version 0.2.3
+# @version 0.2.4
+
 from vyper.interfaces import ERC20
 
 event Fund:

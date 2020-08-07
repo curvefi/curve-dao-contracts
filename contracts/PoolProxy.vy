@@ -1,4 +1,4 @@
-# @version 0.2.3
+# @version 0.2.4
 
 from vyper.interfaces import ERC20
 
@@ -146,7 +146,7 @@ def burn_coin(_coin: address):
 @nonreentrant('lock')
 def burn_eth():
     """
-    @notice Burn ETH 
+    @notice Burn ETH
     """
     Burner(self.burners[ZERO_ADDRESS]).burn_eth(value=self.balance)  # dev: should implement burn_eth()
 
@@ -180,7 +180,7 @@ def commit_transfer_ownership(_pool: address, new_owner: address):
     @notice Transfer ownership for `_pool` pool to `new_owner` address
     @param _pool Pool which ownership is to be tranaferred
     @param new_owner New pool owner address
-    """ 
+    """
     assert msg.sender == self.ownership_admin, "Access denied"
     Curve(_pool).commit_transfer_ownership(new_owner)
 
