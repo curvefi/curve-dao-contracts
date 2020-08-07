@@ -1,5 +1,8 @@
 # @version 0.2.4
-# This gauge can be used for measuring liquidity and insurance
+"""
+@title Liquidity Gauge
+@notice Used for measuring liquidity and insurance
+"""
 
 from vyper.interfaces import ERC20
 
@@ -79,6 +82,12 @@ inflation_rate: uint256
 
 @external
 def __init__(lp_addr: address, _minter: address):
+    """
+    @notice Contract constructor
+    @param lp_addr Liquidity Pool contract address
+    @param _minter Minter contract address
+    """
+
     assert lp_addr != ZERO_ADDRESS
     assert _minter != ZERO_ADDRESS
 
@@ -192,8 +201,9 @@ def _checkpoint(addr: address):
 @external
 def user_checkpoint(addr: address) -> bool:
     """
-    @notice Checkpoint for a user
+    @notice Record a checkpoint for `addr`
     @param addr User address
+    @return bool success
     """
     assert (msg.sender == addr) or (msg.sender == self.minter)  # dev: unauthorized
     self._checkpoint(addr)
@@ -204,8 +214,9 @@ def user_checkpoint(addr: address) -> bool:
 @external
 def claimable_tokens(addr: address) -> uint256:
     """
-    @notice Claimable number of tokens per-user
-            This function should be manually changed to "view" in the ABI
+    @notice Get the number of claimable tokens per user
+    @dev This function should be manually changed to "view" in the ABI
+    @return uint256 number of claimable tokens per user
     """
     self._checkpoint(addr)
     return self.integrate_fraction[addr]
@@ -213,8 +224,11 @@ def claimable_tokens(addr: address) -> uint256:
 
 @external
 def kick(addr: address):
-    # Kick someone who is abusing his boost
-    # Only if either they had another VE event, or they had VE lock expired
+    """
+    @notice Kick `addr` for abusing their boost
+    @dev Only if either they had another voting event, or their voting escrow lock expired
+    @param addr Address to kick
+    """
     _voting_escrow: address = self.voting_escrow
     t_last: uint256 = self.integrate_checkpoint_of[addr]
     t_ve: uint256 = VotingEscrow(_voting_escrow).user_point_history__ts(
@@ -232,6 +246,10 @@ def kick(addr: address):
 @external
 @nonreentrant('lock')
 def deposit(_value: uint256):
+    """
+    @notice Deposit `_value` LP tokens
+    @param _value Number of tokens to deposit
+    """
     self._checkpoint(msg.sender)
 
     _balance: uint256 = self.balanceOf[msg.sender] + _value
@@ -249,6 +267,10 @@ def deposit(_value: uint256):
 @external
 @nonreentrant('lock')
 def withdraw(_value: uint256):
+    """
+    @notice Withdraw `_value` LP tokens
+    @param _value Number of tokens to withdraw
+    """
     self._checkpoint(msg.sender)
 
     _balance: uint256 = self.balanceOf[msg.sender] - _value
