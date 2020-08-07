@@ -93,6 +93,46 @@ def three_gauges(LiquidityGauge, accounts, mock_lp_token, minter):
     yield contracts
 
 
+# VestingEscrow fixtures
+
+@pytest.fixture(scope="module")
+def start_time(chain):
+    yield chain.time() + 1000
+
+
+@pytest.fixture(scope="module")
+def end_time(start_time):
+    yield start_time + 100000
+
+
+@pytest.fixture(scope="module")
+def vesting(VestingEscrow, accounts, coin_a, start_time, end_time):
+    contract = VestingEscrow.deploy(coin_a, start_time, end_time, True, {'from': accounts[0]})
+    coin_a._mint_for_testing(10**21, {'from': accounts[0]})
+    coin_a.approve(contract, 10**21, {'from': accounts[0]})
+    yield contract
+
+
+@pytest.fixture(scope="module")
+def vesting_target(VestingEscrowSimple, accounts):
+    yield VestingEscrowSimple.deploy({'from': accounts[0]})
+
+
+@pytest.fixture(scope="module")
+def vesting_factory(VestingEscrowFactory, accounts, vesting_target):
+    yield VestingEscrowFactory.deploy(vesting_target, {'from': accounts[0]})
+
+
+@pytest.fixture(scope="module")
+def vesting_simple(VestingEscrowSimple, accounts, vesting_factory, coin_a, start_time, end_time):
+    coin_a._mint_for_testing(10**21, {'from': accounts[0]})
+    coin_a.transfer(vesting_factory, 10**21, {'from': accounts[0]})
+    tx = vesting_factory.deploy_vesting_contract(
+        coin_a, accounts[1], 10**20, start_time, end_time, True, {'from': accounts[0]}
+    )
+    yield VestingEscrowSimple.at(tx.new_contracts[0])
+
+
 # testing contracts
 
 @pytest.fixture(scope="module")
