@@ -24,15 +24,15 @@ def test_approve_fail(VestingEscrowSimple, accounts, vesting_factory, coin_a, st
         )
 
 
-def test_start_before_now(VestingEscrowSimple, accounts, chain, vesting_factory, coin_a, end_time):
-    with brownie.reverts():
+def test_start_too_soon(VestingEscrowSimple, accounts, chain, vesting_factory, coin_a, end_time):
+    with brownie.reverts("dev: start time too soon"):
         vesting_factory.deploy_vesting_contract(
-            coin_a, accounts[1], 10**18, chain.time() - 5, end_time, True, {'from': accounts[0]}
+            coin_a, accounts[1], 10**18, chain.time() + 86400 * 364, end_time, True, {'from': accounts[0]}
         )
 
 
 def test_end_before_start(VestingEscrowSimple, accounts, vesting_factory, coin_a, start_time):
-    with brownie.reverts():
+    with brownie.reverts("dev: end before start"):
         vesting_factory.deploy_vesting_contract(
             coin_a, accounts[1], 10**18, start_time, start_time - 1, True, {'from': accounts[0]}
         )
