@@ -1,6 +1,8 @@
 # @version 0.2.4
 """
 @title Curve StableSwap Proxy
+@author Curve Finance
+@license MIT
 """
 
 from vyper.interfaces import ERC20

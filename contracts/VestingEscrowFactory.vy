@@ -1,6 +1,8 @@
 # @version 0.2.4
 """
 @title Vesting Escrow Factory
+@author Curve Finance
+@license MIT
 @notice Stores and distributes `ERC20CRV` tokens by deploying `VestingEscrowSimple` contracts
 """
 

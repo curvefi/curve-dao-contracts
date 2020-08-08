@@ -1,6 +1,8 @@
 # @version 0.2.4
 """
 @title Vesting Escrow
+@author Curve Finance
+@license MIT
 @notice Vests `ERC20CRV` tokens for multiple addresses over multiple vesting periods
 """
 

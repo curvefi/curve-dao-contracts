@@ -1,6 +1,8 @@
 # @version 0.2.4
 """
 @title Liquidity Gauge
+@author Curve Finance
+@license MIT
 @notice Used for measuring liquidity and insurance
 """
 

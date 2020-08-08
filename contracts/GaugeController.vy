@@ -2,6 +2,8 @@
 
 """
 @title Gauge Controller
+@author Curve Finance
+@license MIT
 @notice Controls liquidity gauges and the issuance of coins through the gauges
 """
 

@@ -1,5 +1,8 @@
 # @version 0.2.4
 """
+@title Curve DAO Token
+@author Curve Finance
+@license MIT
 @notice ERC20 with piecewise-linear mining supply.
 @dev Based on the ERC-20 token standard as defined at
      https://eips.ethereum.org/EIPS/eip-20

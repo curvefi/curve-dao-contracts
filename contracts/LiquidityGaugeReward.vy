@@ -1,6 +1,8 @@
 # @version 0.2.4
 """
 @title Staking Liquidity Gauge
+@author Curve Finance
+@license MIT
 @notice Simultaneously stakes using Synthetix (== YFI) rewards contract
 """
 
