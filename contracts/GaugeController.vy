@@ -30,6 +30,10 @@ event CommitOwnership:
 event ApplyOwnership:
     admin: address
 
+event AddType:
+    name: String[64]
+    type_id: int128
+
 event NewTypeWeight:
     type_id: int128
     time: uint256
@@ -412,6 +416,7 @@ def add_type(_name: String[64], weight: uint256 = 0):
     self.n_gauge_types = type_id + 1
     if weight != 0:
         self._change_type_weight(type_id, weight)
+        log AddType(_name, type_id)
 
 
 @external

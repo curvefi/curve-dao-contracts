@@ -7,6 +7,7 @@ event Fund:
     amount: uint256
 
 event Claim:
+    recipient: indexed(address)
     claimed: uint256
 
 event ToggleDisable:
@@ -199,7 +200,7 @@ def claim(addr: address = msg.sender):
     self.total_claimed[addr] += claimable
     assert ERC20(self.token).transfer(addr, claimable)
 
-    log Claim(claimable)
+    log Claim(addr, claimable)
 
 
 @external
