@@ -1,6 +1,11 @@
 # @version 0.2.4
 """
-This is an ERC20 with piecewise-linear mining supply.
+@title Curve DAO Token
+@author Curve Finance
+@license MIT
+@notice ERC20 with piecewise-linear mining supply.
+@dev Based on the ERC-20 token standard as defined at
+     https://eips.ethereum.org/EIPS/eip-20
 """
 
 from vyper.interfaces import ERC20
@@ -62,6 +67,12 @@ start_epoch_supply: uint256
 
 @external
 def __init__(_name: String[64], _symbol: String[32], _decimals: uint256):
+    """
+    @notice Contract constructor
+    @param _name Token full name
+    @param _symbol Token symbol
+    @param _decimals Number of decimals for token
+    """
     init_supply: uint256 = INITIAL_SUPPLY * 10 ** _decimals
     self.name = _name
     self.symbol = _symbol
@@ -79,8 +90,8 @@ def __init__(_name: String[64], _symbol: String[32], _decimals: uint256):
 @internal
 def _update_mining_parameters():
     """
-    @notice Update mining rate and supply at the start of the epoch
-            Any modifying mining call must also call this
+    @dev Update mining rate and supply at the start of the epoch
+         Any modifying mining call must also call this
     """
     self.start_epoch_time += RATE_REDUCTION_TIME
     self.mining_epoch += 1
@@ -102,8 +113,8 @@ def _update_mining_parameters():
 def update_mining_parameters():
     """
     @notice Update mining rate and supply at the start of the epoch
-            Everyone can do this but only once per epoch
-            Total supply becomes slightly larger if this function is called late
+    @dev Callable by any address, but only once per epoch
+         Total supply becomes slightly larger if this function is called late
     """
     assert block.timestamp >= self.start_epoch_time + RATE_REDUCTION_TIME  # dev: too soon!
     self._update_mining_parameters()
@@ -112,8 +123,8 @@ def update_mining_parameters():
 @external
 def start_epoch_time_write() -> uint256:
     """
-    @notice Get timestamp of the mining epoch start
-            simultaneously updating mining parameters
+    @notice Get timestamp of the current mining epoch start
+            while simultaneously updating mining parameters
     @return Timestamp of the epoch
     """
     _start_epoch_time: uint256 = self.start_epoch_time
@@ -127,9 +138,9 @@ def start_epoch_time_write() -> uint256:
 @external
 def future_epoch_time_write() -> uint256:
     """
-    @notice Get timestamp of the future mining epoch start
-            simultaneously updating mining parameters
-    @return Timestamp of the epoch
+    @notice Get timestamp of the next mining epoch start
+            while simultaneously updating mining parameters
+    @return Timestamp of the next epoch
     """
     _start_epoch_time: uint256 = self.start_epoch_time
     if block.timestamp >= _start_epoch_time + RATE_REDUCTION_TIME:
@@ -203,7 +214,8 @@ def mintable_in_timeframe(start: uint256, end: uint256) -> uint256:
 @external
 def set_minter(_minter: address):
     """
-    @notice Setting new minter. Works only once - when minter wasn't set
+    @notice Set the minter address
+    @dev Only callable once, when minter has not yet been set
     @param _minter Address of the minter
     """
     assert msg.sender == self.admin  # dev: admin only
@@ -215,7 +227,8 @@ def set_minter(_minter: address):
 @external
 def set_admin(_admin: address):
     """
-    @notice Set the new admin. After all is set up, admin only can change the token name
+    @notice Set the new admin.
+    @dev After all is set up, admin only can change the token name
     @param _admin New admin address
     """
     assert msg.sender == self.admin  # dev: admin only
@@ -236,10 +249,10 @@ def totalSupply() -> uint256:
 @view
 def allowance(_owner : address, _spender : address) -> uint256:
     """
-    @notice Function to check the amount of tokens that an owner allowed to a spender.
-    @param _owner The address which owns the funds.
-    @param _spender The address which will spend the funds.
-    @return An uint256 specifying the amount of tokens still available for the spender.
+    @notice Check the amount of tokens that an owner allowed to a spender
+    @param _owner The address which owns the funds
+    @param _spender The address which will spend the funds
+    @return uint256 specifying the amount of tokens still available for the spender
     """
     return self.allowances[_owner][_spender]
 
@@ -247,13 +260,14 @@ def allowance(_owner : address, _spender : address) -> uint256:
 @external
 def transfer(_to : address, _value : uint256) -> bool:
     """
-    @notice Transfer token for a specified address
-    @param _to The address to transfer to.
-    @param _value The amount to be transferred.
+    @notice Transfer `_value` tokens from `msg.sender` to `_to`
+    @dev Vyper does not allow underflows, so the subtraction in
+         this function will revert on an insufficient balance
+    @param _to The address to transfer to
+    @param _value The amount to be transferred
+    @return bool success
     """
     assert _to != ZERO_ADDRESS  # dev: transfers to 0x0 are not allowed
-    # NOTE: vyper does not allow underflows
-    #       so the following subtraction would revert on insufficient balance
     self.balanceOf[msg.sender] -= _value
     self.balanceOf[_to] += _value
     log Transfer(msg.sender, _to, _value)
@@ -263,10 +277,11 @@ def transfer(_to : address, _value : uint256) -> bool:
 @external
 def transferFrom(_from : address, _to : address, _value : uint256) -> bool:
     """
-     @notice Transfer tokens from one address to another.
+     @notice Transfer `_value` tokens from `_from` to `_to`
      @param _from address The address which you want to send tokens from
      @param _to address The address which you want to transfer to
      @param _value uint256 the amount of tokens to be transferred
+     @return bool success
     """
     assert _to != ZERO_ADDRESS  # dev: transfers to 0x0 are not allowed
     # NOTE: vyper does not allow underflows
@@ -281,13 +296,13 @@ def transferFrom(_from : address, _to : address, _value : uint256) -> bool:
 @external
 def approve(_spender : address, _value : uint256) -> bool:
     """
-    @notice Approve the passed address to spend the specified amount of tokens on behalf of msg.sender.
-         Beware that changing an allowance with this method brings the risk that someone may use both the old
-         and the new allowance by unfortunate transaction ordering. One possible solution to mitigate this
-         race condition is to first reduce the spender's allowance to 0 and set the desired value afterwards:
-         https://github.com/ethereum/EIPs/issues/20#issuecomment-263524729
-    @param _spender The address which will spend the funds.
-    @param _value The amount of tokens to be spent.
+    @notice Approve `_spender` to transfer `_value` tokens on behalf of `msg.sender`
+    @dev Approval may only be from zero -> nonzero or from nonzero -> zero in order
+        to mitigate the potential race condition described here:
+        https://github.com/ethereum/EIPs/issues/20#issuecomment-263524729
+    @param _spender The address which will spend the funds
+    @param _value The amount of tokens to be spent
+    @return bool success
     """
     assert _value == 0 or self.allowances[msg.sender][_spender] == 0
     self.allowances[msg.sender][_spender] = _value
@@ -298,11 +313,11 @@ def approve(_spender : address, _value : uint256) -> bool:
 @external
 def mint(_to: address, _value: uint256) -> bool:
     """
-    @notice Mint an amount of the token and assigns it to an account.
-         This encapsulates the modification of balances such that the
-         proper events are emitted.
-    @param _to The account that will receive the created tokens.
-    @param _value The amount that will be created.
+    @notice Mint `_value` tokens and assign them to `_to`
+    @dev Emits a Transfer event originating from 0x00
+    @param _to The account that will receive the created tokens
+    @param _value The amount that will be created
+    @return bool success
     """
     assert msg.sender == self.minter  # dev: minter only
     assert _to != ZERO_ADDRESS  # dev: zero address
@@ -323,8 +338,10 @@ def mint(_to: address, _value: uint256) -> bool:
 @external
 def burn(_value: uint256) -> bool:
     """
-    @notice Burn an amount of the token of msg.sender.
-    @param _value The amount that will be burned.
+    @notice Burn `_value` tokens belonging to `msg.sender`
+    @dev Emits a Transfer event with a destination of 0x00
+    @param _value The amount that will be burned
+    @return bool success
     """
     self.balanceOf[msg.sender] -= _value
     self.total_supply -= _value
@@ -336,7 +353,8 @@ def burn(_value: uint256) -> bool:
 @external
 def set_name(_name: String[64], _symbol: String[32]):
     """
-    @notice Change the token name (only admin can)
+    @notice Change the token name and symbol to `_name` and `_symbol`
+    @dev Only callable by the admin account
     @param _name New token name
     @param _symbol New token symbol
     """

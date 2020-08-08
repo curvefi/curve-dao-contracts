@@ -1,6 +1,11 @@
 # @version 0.2.4
 
-# The contract which controls gauges and issuance of coins through those
+"""
+@title Gauge Controller
+@author Curve Finance
+@license MIT
+@notice Controls liquidity gauges and the issuance of coins through the gauges
+"""
 
 # 7 * 86400 seconds - all future times are rounded by week
 WEEK: constant(uint256) = 604800
@@ -106,6 +111,11 @@ time_type_weight: public(uint256[1000000000])  # type_id -> last scheduled time 
 
 @external
 def __init__(_token: address, _voting_escrow: address):
+    """
+    @notice Contract constructor
+    @param _token `ERC20CRV` contract address
+    @param _voting_escrow `VotingEscrow` contract address
+    """
     assert _token != ZERO_ADDRESS
     assert _voting_escrow != ZERO_ADDRESS
 
@@ -142,7 +152,7 @@ def apply_transfer_ownership():
 @view
 def gauge_types(_addr: address) -> int128:
     """
-    @notice Gauge type for address
+    @notice Get gauge type for address
     @param _addr Gauge address
     @return Gauge type id
     """
@@ -357,18 +367,6 @@ def _gauge_relative_weight(addr: address, time: uint256) -> uint256:
 
 
 @external
-def gauge_relative_weight_write(addr: address, time: uint256 = block.timestamp) -> uint256:
-    """
-    Same as gauge_relative_weight(), but also fill all the unfilled values
-    for type and gauge records
-    Everyone can call, however nothing is recorded if the values are filled already
-    """
-    self._get_weight(addr)
-    self._get_total()  # Also calculates get_sum
-    return self._gauge_relative_weight(addr, time)
-
-
-@external
 @view
 def gauge_relative_weight(addr: address, time: uint256 = block.timestamp) -> uint256:
     """
@@ -380,6 +378,23 @@ def gauge_relative_weight(addr: address, time: uint256 = block.timestamp) -> uin
     @return Value of relative weight normalized to 1e18
     """
     return self._gauge_relative_weight(addr, time)
+
+
+@external
+def gauge_relative_weight_write(addr: address, time: uint256 = block.timestamp) -> uint256:
+    """
+    @notice Get gauge weight normalized to 1e18 and also fill all the unfilled
+            values for type and gauge records
+    @dev Any address can call, however nothing is recorded if the values are filled already
+    @param addr Gauge address
+    @param time Relative weight at the specified timestamp in the past or present
+    @return Value of relative weight normalized to 1e18
+    """
+    self._get_weight(addr)
+    self._get_total()  # Also calculates get_sum
+    return self._gauge_relative_weight(addr, time)
+
+
 
 
 @internal
@@ -457,6 +472,11 @@ def _change_gauge_weight(addr: address, weight: uint256):
 
 @external
 def change_gauge_weight(addr: address, weight: uint256):
+    """
+    @notice Change weight of gauge `addr` to `weight`
+    @param addr `GaugeController` contract address
+    @param weight New Gauge weight
+    """
     assert msg.sender == self.admin
     self._change_gauge_weight(addr, weight)
 
