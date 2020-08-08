@@ -339,11 +339,7 @@ def _gauge_relative_weight(addr: address, time: uint256) -> uint256:
     @param time Relative weight at the specified timestamp in the past or present
     @return Value of relative weight normalized to 1e18
     """
-    t: uint256 = 0
-    if time == 0:
-        t = block.timestamp / WEEK * WEEK
-    else:
-        t = time / WEEK * WEEK
+    t: uint256 = time / WEEK * WEEK
     _total_weight: uint256 = self.points_total[t]
 
     if _total_weight > 0:
@@ -357,7 +353,7 @@ def _gauge_relative_weight(addr: address, time: uint256) -> uint256:
 
 
 @external
-def gauge_relative_weight_write(addr: address, time: uint256 = 0) -> uint256:
+def gauge_relative_weight_write(addr: address, time: uint256 = block.timestamp) -> uint256:
     """
     Same as gauge_relative_weight(), but also fill all the unfilled values
     for type and gauge records
@@ -370,7 +366,7 @@ def gauge_relative_weight_write(addr: address, time: uint256 = 0) -> uint256:
 
 @external
 @view
-def gauge_relative_weight(addr: address, time: uint256 = 0) -> uint256:
+def gauge_relative_weight(addr: address, time: uint256 = block.timestamp) -> uint256:
     """
     @notice Get Gauge relative weight (not more than 1.0) normalized to 1e18
             (e.g. 1.0 == 1e18). Inflation which will be received by it is
