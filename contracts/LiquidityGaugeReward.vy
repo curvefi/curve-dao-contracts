@@ -329,17 +329,7 @@ def withdraw(_value: uint256):
 
 @external
 @nonreentrant('lock')
-def claim_rewards():
-    self._checkpoint(msg.sender)
-    _rewards_for: uint256 = self.rewards_for[msg.sender]
-    assert ERC20(self.rewarded_token).transfer(
-        msg.sender, _rewards_for - self.claimed_rewards_for[msg.sender])
-    self.claimed_rewards_for[msg.sender] = _rewards_for
-
-
-@external
-@nonreentrant('lock')
-def claim_rewards_for(addr: address):
+def claim_rewards(addr: address = msg.sender):
     self._checkpoint_rewards(addr)
     _rewards_for: uint256 = self.rewards_for[addr]
     assert ERC20(self.rewarded_token).transfer(
