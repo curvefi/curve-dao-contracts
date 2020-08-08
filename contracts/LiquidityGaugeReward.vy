@@ -239,7 +239,7 @@ def user_checkpoint(addr: address) -> bool:
     assert (msg.sender == addr) or (msg.sender == self.minter)  # dev: unauthorized
     self._checkpoint(addr)
     self._update_liquidity_limit(addr, self.balanceOf[addr], self.totalSupply)
-    return True  # XXX explain
+    return True
 
 
 @external
@@ -254,11 +254,7 @@ def claimable_tokens(addr: address) -> uint256:
 
 @external
 @view
-def claimable_reward(_addr: address = ZERO_ADDRESS) -> uint256:
-    addr: address = msg.sender
-    if _addr != ZERO_ADDRESS:
-        addr = msg.sender
-
+def claimable_reward(addr: address) -> uint256:
     d_reward: uint256 = CurveRewards(self.reward_contract).earned(self)
 
     user_balance: uint256 = self.balanceOf[addr]
