@@ -202,13 +202,13 @@ def user_checkpoint(addr: address) -> bool:
 
 
 @external
-def claimable_tokens() -> uint256:
+def claimable_tokens(addr: address) -> uint256:
     """
     @notice Claimable number of tokens per-user
             This function should be manually changed to "view" in the ABI
     """
-    self._checkpoint(msg.sender)
-    return self.integrate_fraction[msg.sender]
+    self._checkpoint(addr)
+    return self.integrate_fraction[addr]
 
 
 @external
