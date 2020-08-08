@@ -1,4 +1,9 @@
 # @version 0.2.4
+"""
+@title Simple Vesting Escrow
+@notice Vests `ERC20CRV` tokens for a single address
+@dev Intended to be deployed many times via `VotingEscrowFactory`
+"""
 
 from vyper.interfaces import ERC20
 
