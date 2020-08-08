@@ -239,26 +239,22 @@ def user_checkpoint(addr: address) -> bool:
     assert (msg.sender == addr) or (msg.sender == self.minter)  # dev: unauthorized
     self._checkpoint(addr)
     self._update_liquidity_limit(addr, self.balanceOf[addr], self.totalSupply)
-    return True  # XXX explain
+    return True
 
 
 @external
-def claimable_tokens() -> uint256:
+def claimable_tokens(addr: address) -> uint256:
     """
     @notice Claimable number of tokens per-user
             This function should be manually changed to "view" in the ABI
     """
-    self._checkpoint(msg.sender)
-    return self.integrate_fraction[msg.sender]
+    self._checkpoint(addr)
+    return self.integrate_fraction[addr]
 
 
 @external
 @view
-def claimable_reward(_addr: address = ZERO_ADDRESS) -> uint256:
-    addr: address = msg.sender
-    if _addr != ZERO_ADDRESS:
-        addr = msg.sender
-
+def claimable_reward(addr: address) -> uint256:
     d_reward: uint256 = CurveRewards(self.reward_contract).earned(self)
 
     user_balance: uint256 = self.balanceOf[addr]
@@ -329,17 +325,7 @@ def withdraw(_value: uint256):
 
 @external
 @nonreentrant('lock')
-def claim_rewards():
-    self._checkpoint(msg.sender)
-    _rewards_for: uint256 = self.rewards_for[msg.sender]
-    assert ERC20(self.rewarded_token).transfer(
-        msg.sender, _rewards_for - self.claimed_rewards_for[msg.sender])
-    self.claimed_rewards_for[msg.sender] = _rewards_for
-
-
-@external
-@nonreentrant('lock')
-def claim_rewards_for(addr: address):
+def claim_rewards(addr: address = msg.sender):
     self._checkpoint_rewards(addr)
     _rewards_for: uint256 = self.rewards_for[addr]
     assert ERC20(self.rewarded_token).transfer(
