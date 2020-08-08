@@ -97,7 +97,7 @@ def three_gauges(LiquidityGauge, accounts, mock_lp_token, minter):
 
 @pytest.fixture(scope="module")
 def start_time(chain):
-    yield chain.time() + 1000
+    yield chain.time() + 1000 + 86400*365
 
 
 @pytest.fixture(scope="module")

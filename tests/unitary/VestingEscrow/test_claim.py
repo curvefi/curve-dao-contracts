@@ -46,7 +46,8 @@ def test_claim_partial(vesting, coin_a, accounts, chain, start_time, end_time):
     assert vesting.total_claimed(accounts[1]) == expected_amount
 
 
-def test_claim_multiple(vesting, coin_a, accounts, chain):
+def test_claim_multiple(vesting, coin_a, accounts, chain, start_time):
+    chain.sleep(start_time - chain.time() - 1000)
     for i in range(11):
         chain.sleep(10000)
         vesting.claim({'from': accounts[1]})

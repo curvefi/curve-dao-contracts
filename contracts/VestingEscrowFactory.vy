@@ -2,6 +2,9 @@
 
 from vyper.interfaces import ERC20
 
+MIN_VESTING_START: constant(uint256) = 86400 * 365
+
+
 interface VestingEscrowSimple:
     def initialize(
         _admin: address,
@@ -53,6 +56,9 @@ def deploy_vesting_contract(
     @param _can_disable Can admin disable recipient's ability to claim tokens?
     """
     assert msg.sender == self.admin  # dev: admin only
+    assert _start_time >= block.timestamp + MIN_VESTING_START  # dev: start time too soon
+    assert _end_time > _start_time  # dev: end before start
+
     _contract: address = create_forwarder_to(self.target)
     assert ERC20(_token).approve(_contract, _amount)  # dev: approve failed
     VestingEscrowSimple(_contract).initialize(

@@ -89,7 +89,6 @@ class StateMachine:
         """
         self.liquidity_gauge.user_checkpoint(st_account, {"from": st_account})
 
-
     def invariant_balances(self):
         """
         Validate expected balances against actual balances.
@@ -115,7 +114,7 @@ class StateMachine:
             rewards_claimed += self.coin_reward.balanceOf(act)
 
         if self.rewards_total > 7 * 86400:  # Otherwise we may have 0 claimed
-            precision = max(7 * 86400 / self.rewards_total, 1e-10)
+            precision = max(7 * 86400 / self.rewards_total * 2, 1e-10)
             assert approx(rewards_claimed, self.rewards_total, precision)
 
 

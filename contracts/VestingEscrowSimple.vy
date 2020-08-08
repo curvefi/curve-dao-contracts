@@ -66,9 +66,6 @@ def initialize(
     """
     assert self.admin == ZERO_ADDRESS  # dev: can only initialize once
 
-    assert _start_time >= block.timestamp
-    assert _end_time > _start_time
-
     self.token = _token
     self.admin = _admin
     self.start_time = _start_time
