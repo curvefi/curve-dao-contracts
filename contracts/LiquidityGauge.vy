@@ -279,7 +279,7 @@ def deposit(_value: uint256, addr: address = msg.sender):
 
         self._update_liquidity_limit(addr, _balance, _supply)
 
-        assert ERC20(self.lp_token).transferFrom(addr, self, _value)
+        assert ERC20(self.lp_token).transferFrom(msg.sender, self, _value)
 
     log Deposit(addr, _value)
 
