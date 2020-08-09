@@ -332,14 +332,14 @@ def deposit(_value: uint256, addr: address = msg.sender):
 
     self._checkpoint(addr)
 
-    _balance: uint256 = self.balanceOf[addr] + _value
-    _supply: uint256 = self.totalSupply + _value
-    self.balanceOf[addr] = _balance
-    self.totalSupply = _supply
+    if _value != 0:
+        _balance: uint256 = self.balanceOf[addr] + _value
+        _supply: uint256 = self.totalSupply + _value
+        self.balanceOf[addr] = _balance
+        self.totalSupply = _supply
 
-    self._update_liquidity_limit(addr, _balance, _supply)
+        self._update_liquidity_limit(addr, _balance, _supply)
 
-    if _value > 0:
         assert ERC20(self.lp_token).transferFrom(addr, self, _value)
         CurveRewards(self.reward_contract).stake(_value)
 
