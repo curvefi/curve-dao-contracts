@@ -35,6 +35,7 @@ initial_locked: public(HashMap[address, uint256])
 total_claimed: public(HashMap[address, uint256])
 
 initial_locked_supply: public(uint256)
+unallocated_supply: public(uint256)
 
 can_disable: public(bool)
 disabled_at: public(HashMap[address, uint256])
@@ -75,12 +76,23 @@ def __init__(
         self.fund_admins[addr] = True
 
 
+@external
+def add_tokens(_amount: uint256):
+    """
+    @notice Transfer vestable tokens into the contract
+    @dev Handled separate from `fund` to reduce transaction count when using funding admins
+    @param _amount Number of tokens to transfer
+    """
+    assert msg.sender == self.admin  # dev: admin only
+    assert ERC20(self.token).transferFrom(msg.sender, self, _amount)  # dev: transfer failed
+    self.unallocated_supply += _amount
+
 
 @external
 @nonreentrant('lock')
 def fund(_recipients: address[100], _amounts: uint256[100]):
     """
-    @notice Add vested tokens for multiple recipients
+    @notice Vest tokens for multiple recipients
     @param _recipients List of addresses to fund
     @param _amounts Amount of vested tokens for each address
     """
@@ -99,7 +111,7 @@ def fund(_recipients: address[100], _amounts: uint256[100]):
         log Fund(recipient, amount)
 
     self.initial_locked_supply += _total_amount
-    assert ERC20(self.token).transferFrom(msg.sender, self, _total_amount)  # dev: transfer failed
+    self.unallocated_supply -= _total_amount
 
 
 @external
