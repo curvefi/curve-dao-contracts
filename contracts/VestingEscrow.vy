@@ -65,7 +65,7 @@ def __init__(_token: address, _start_time: uint256, _end_time: uint256, _can_dis
 
 @external
 @nonreentrant('lock')
-def fund(_recipients: address[10], _amounts: uint256[10]):
+def fund(_recipients: address[100], _amounts: uint256[100]):
     """
     @notice Add vested tokens for multiple recipients
     @param _recipients List of addresses to fund
@@ -75,20 +75,17 @@ def fund(_recipients: address[10], _amounts: uint256[10]):
 
     # Transfer tokens for all of the recipients here
     _total_amount: uint256 = 0
-    for i in range(10):
-        if _recipients[i] == ZERO_ADDRESS:
+    for i in range(100):
+        amount: uint256 = _amounts[i]
+        recipient: address = _recipients[i]
+        if amount == 0:
             break
-        _total_amount += _amounts[i]
+        _total_amount += amount
+        self.initial_locked[recipient] += amount
+        log Fund(recipient, amount)
+
     self.initial_locked_supply += _total_amount
     assert ERC20(self.token).transferFrom(msg.sender, self, _total_amount)  # dev: transfer failed
-
-    # Create individual records
-    for i in range(10):
-        if _recipients[i] == ZERO_ADDRESS:
-            break
-        self.initial_locked[_recipients[i]] += _amounts[i]
-
-        log Fund(_recipients[i], _amounts[i])
 
 
 @external
