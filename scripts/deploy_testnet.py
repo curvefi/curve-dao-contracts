@@ -1,12 +1,13 @@
 # Testnet deployment script
 
 import json
+import time
 from web3 import middleware
 from web3.gas_strategies.time_based import fast_gas_price_strategy as gas_strategy
 from brownie import (
         web3, accounts,
         ERC20CRV, VotingEscrow, ERC20, ERC20LP, CurvePool, Registry,
-        GaugeController, Minter, LiquidityGauge, PoolProxy
+        GaugeController, Minter, LiquidityGauge, PoolProxy, VestingEscrow, LiquidityGaugeReward, CurveRewards
         )
 
 
@@ -14,11 +15,11 @@ USE_STRATEGIES = False  # Needed for the ganache-cli tester which doesn't like m
 POA = True
 
 # DEPLOYER = "0xFD3DeCC0cF498bb9f54786cb65800599De505706"
-DEPLOYER = "0x66aB6D9362d4F35596279692F0251Db635165871"
-ARAGON_AGENT = "0xa01556dB443292BD3754C1CCd0B9ecFE8CE9E356"
+ARAGON_AGENT = "0x9cf0c9f5a0dD48cB5c7D5F3f64Cd2206A0D0010d"
 
 DISTRIBUTION_AMOUNT = 10 ** 6 * 10 ** 18
 DISTRIBUTION_ADDRESSES = ["0x39415255619783A2E71fcF7d8f708A951d92e1b6", "0x6cd85bbb9147b86201d882ae1068c67286855211"]
+VESTING_ADDRESSES = ['0x6637e8531d68917f5Ec31D6bA5fc80bDB34d9ef1']
 
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
@@ -66,7 +67,7 @@ def deploy_erc20s_and_pool(deployer):
     repeat(registry.commit_transfer_ownership, ARAGON_AGENT, {'from': deployer, 'required_confs': CONFS})
     repeat(registry.apply_transfer_ownership, {'from': deployer, 'required_confs': CONFS})
 
-    return lp_token
+    return [lp_token, coin_a]
 
 
 def main():
@@ -80,7 +81,11 @@ def main():
 
     deployer = accounts.at(DEPLOYER)
 
-    lp_token = deploy_erc20s_and_pool(deployer)
+
+    coins = deploy_erc20s_and_pool(deployer)
+
+    lp_token = coins[0]
+    coin_a = coins[1]
 
     token = repeat(ERC20CRV.deploy, "Curve DAO Token", "CRV", 18, {'from': deployer, 'required_confs': CONFS})
     save_abi(token, 'token_crv')
@@ -102,10 +107,19 @@ def main():
     liquidity_gauge = repeat(LiquidityGauge.deploy, lp_token, minter, {'from': deployer, 'required_confs': CONFS})
     save_abi(liquidity_gauge, 'liquidity_gauge')
 
+    contract = repeat(CurveRewards.deploy, lp_token, coin_a, {'from': accounts[0], 'required_confs': CONFS})
+    repeat(contract.setRewardDistribution, accounts[0], {'from': accounts[0], 'required_confs': CONFS})
+
+    liquidity_gauge_rewards = repeat(LiquidityGaugeReward.deploy, lp_token, minter, contract, coin_a, {'from': deployer, 'required_confs': CONFS})
+
     repeat(token.set_minter, minter, {'from': deployer, 'required_confs': CONFS})
     repeat(gauge_controller.add_type, b'Liquidity', {'from': deployer, 'required_confs': CONFS})
     repeat(gauge_controller.change_type_weight, 0, 10 ** 18, {'from': deployer, 'required_confs': CONFS})
     repeat(gauge_controller.add_gauge, liquidity_gauge, 0, 10 ** 18, {'from': deployer, 'required_confs': CONFS})
+
+    repeat(gauge_controller.add_type, b'LiquidityRewards', {'from': deployer, 'required_confs': CONFS})
+    repeat(gauge_controller.change_type_weight, 1, 10 ** 18, {'from': deployer, 'required_confs': CONFS})
+    repeat(gauge_controller.add_gauge, liquidity_gauge_rewards, 1, 10 ** 18, {'from': deployer, 'required_confs': CONFS})
 
     repeat(gauge_controller.commit_transfer_ownership, ARAGON_AGENT, {'from': deployer, 'required_confs': CONFS})
     repeat(gauge_controller.apply_transfer_ownership, {'from': deployer, 'required_confs': CONFS})
@@ -113,3 +127,11 @@ def main():
     repeat(escrow.apply_transfer_ownership, {'from': deployer, 'required_confs': CONFS})
 
     repeat(PoolProxy.deploy, {'from': deployer, 'required_confs': CONFS})
+
+    vesting = repeat(VestingEscrow.deploy, token, time.time() + 300, '1628364267', False, {'from': deployer, 'required_confs': CONFS})
+    save_abi(vesting, 'vesting')
+
+    repeat(token.approve, vesting, 1000e18, {'from': deployer, 'required_confs': CONFS})
+    repeat(vesting.fund, VESTING_ADDRESSES + ['0x0000000000000000000000000000000000000000']*9, [1000e18] + [0]*9, {'from': deployer, 'required_confs': CONFS})
+
+
