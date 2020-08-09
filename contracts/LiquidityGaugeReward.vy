@@ -65,6 +65,9 @@ balanceOf: public(HashMap[address, uint256])
 totalSupply: public(uint256)
 future_epoch_time: public(uint256)
 
+# caller -> recipient -> can deposit?
+approved_to_deposit: public(HashMap[address, HashMap[address, bool]])
+
 working_balances: public(HashMap[address, uint256])
 working_supply: public(uint256)
 
@@ -307,26 +310,40 @@ def kick(addr: address):
 
 
 @external
+def set_approve_deposit(addr: address, can_deposit: bool):
+    """
+    @notice Set whether `addr` can deposit tokens for `msg.sender`
+    @param addr Address to set approval on
+    @param can_deposit bool - can this account deposit for `msg.sender`?
+    """
+    self.approved_to_deposit[addr][msg.sender] = can_deposit
+
+
+@external
 @nonreentrant('lock')
-def deposit(_value: uint256):
+def deposit(_value: uint256, addr: address = msg.sender):
     """
     @notice Deposit `_value` LP tokens
     @param _value Number of tokens to deposit
+    @param addr Address to deposit for
     """
-    self._checkpoint(msg.sender)
+    if addr != msg.sender:
+        assert self.approved_to_deposit[msg.sender][addr], "Not approved"
 
-    _balance: uint256 = self.balanceOf[msg.sender] + _value
+    self._checkpoint(addr)
+
+    _balance: uint256 = self.balanceOf[addr] + _value
     _supply: uint256 = self.totalSupply + _value
-    self.balanceOf[msg.sender] = _balance
+    self.balanceOf[addr] = _balance
     self.totalSupply = _supply
 
-    self._update_liquidity_limit(msg.sender, _balance, _supply)
+    self._update_liquidity_limit(addr, _balance, _supply)
 
     if _value > 0:
-        assert ERC20(self.lp_token).transferFrom(msg.sender, self, _value)
+        assert ERC20(self.lp_token).transferFrom(addr, self, _value)
         CurveRewards(self.reward_contract).stake(_value)
 
-    log Deposit(msg.sender, _value)
+    log Deposit(addr, _value)
 
 
 @external
