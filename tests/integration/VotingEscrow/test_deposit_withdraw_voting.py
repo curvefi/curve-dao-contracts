@@ -10,7 +10,7 @@ GAS_LIMIT = 4_000_000
 class StateMachine:
 
     # account to perform a deposit / withdrawal from
-    st_account = strategy('address')
+    st_account = strategy('address', length=10)
 
     # amount to deposit / withdraw
     st_value = strategy('uint64')
@@ -172,4 +172,4 @@ def test_state_machine(state_machine, accounts, ERC20, VotingEscrow):
         token, 'Voting-escrowed CRV', 'veCRV', 'veCRV_0.99', {'from': accounts[0]}
     )
 
-    state_machine(StateMachine, accounts, token, voting_escrow)
+    state_machine(StateMachine, accounts[:10], token, voting_escrow)

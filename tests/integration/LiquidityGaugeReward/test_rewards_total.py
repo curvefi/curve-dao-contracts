@@ -132,4 +132,4 @@ def test_state_machine(
     # because this is a simple state machine, we use more steps than normal
     settings = {"stateful_step_count": 25}
 
-    state_machine(StateMachine, accounts, liquidity_gauge_reward, mock_lp_token, reward_contract, coin_reward, settings=settings)
+    state_machine(StateMachine, accounts[:5], liquidity_gauge_reward, mock_lp_token, reward_contract, coin_reward, settings=settings)
