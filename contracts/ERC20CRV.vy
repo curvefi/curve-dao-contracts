@@ -56,6 +56,7 @@ INITIAL_RATE: constant(uint256) = 279636603 * 10 ** 18 / YEAR  # leading to 42% 
 RATE_REDUCTION_TIME: constant(uint256) = YEAR
 RATE_REDUCTION_COEFFICIENT: constant(uint256) = 1189207115002721024  # 2 ** (1/4) * 1e18
 RATE_DENOMINATOR: constant(uint256) = 10 ** 18
+INFLATION_DELAY: constant(uint256) = 86400
 
 # Supply variables
 mining_epoch: public(int128)
@@ -82,8 +83,9 @@ def __init__(_name: String[64], _symbol: String[32], _decimals: uint256):
     self.admin = msg.sender
     log Transfer(ZERO_ADDRESS, msg.sender, init_supply)
 
-    self.start_epoch_time = block.timestamp
-    self.rate = INITIAL_RATE
+    self.start_epoch_time = block.timestamp + INFLATION_DELAY - RATE_REDUCTION_TIME
+    self.mining_epoch = -1
+    self.rate = 0
     self.start_epoch_supply = init_supply
 
 
@@ -93,18 +95,20 @@ def _update_mining_parameters():
     @dev Update mining rate and supply at the start of the epoch
          Any modifying mining call must also call this
     """
+    _rate: uint256 = self.rate
+    _start_epoch_supply: uint256 = self.start_epoch_supply
+
     self.start_epoch_time += RATE_REDUCTION_TIME
     self.mining_epoch += 1
 
-    _rate: uint256 = self.rate
+    if _rate == 0:
+        _rate = INITIAL_RATE
+    else:
+        _start_epoch_supply += _rate * RATE_REDUCTION_TIME
+        self.start_epoch_supply = _start_epoch_supply
+        _rate = _rate * RATE_DENOMINATOR / RATE_REDUCTION_COEFFICIENT
 
-    _start_epoch_supply: uint256 = self.start_epoch_supply
-    _start_epoch_supply += _rate * RATE_REDUCTION_TIME
-    self.start_epoch_supply = _start_epoch_supply
-
-    _rate = _rate * RATE_DENOMINATOR / RATE_REDUCTION_COEFFICIENT
     self.rate = _rate
-
 
     log UpdateMiningParameters(block.timestamp, _rate, _start_epoch_supply)
 
