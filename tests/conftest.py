@@ -102,7 +102,7 @@ def start_time(chain):
 
 @pytest.fixture(scope="module")
 def end_time(start_time):
-    yield start_time + 100000
+    yield start_time + 100000000
 
 
 @pytest.fixture(scope="module")
@@ -124,11 +124,11 @@ def vesting_factory(VestingEscrowFactory, accounts, vesting_target):
 
 
 @pytest.fixture(scope="module")
-def vesting_simple(VestingEscrowSimple, accounts, vesting_factory, coin_a, start_time, end_time):
+def vesting_simple(VestingEscrowSimple, accounts, vesting_factory, coin_a, start_time):
     coin_a._mint_for_testing(10**21, {'from': accounts[0]})
     coin_a.transfer(vesting_factory, 10**21, {'from': accounts[0]})
     tx = vesting_factory.deploy_vesting_contract(
-        coin_a, accounts[1], 10**20, start_time, end_time, True, {'from': accounts[0]}
+        coin_a, accounts[1], 10**20, True, 100000000, start_time, {'from': accounts[0]}
     )
     yield VestingEscrowSimple.at(tx.new_contracts[0])
 

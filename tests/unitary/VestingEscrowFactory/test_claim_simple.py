@@ -38,10 +38,14 @@ def test_claim_partial(vesting_simple, coin_a, accounts, chain, start_time, end_
     assert vesting_simple.total_claimed(accounts[1]) == expected_amount
 
 
-def test_claim_multiple(vesting_simple, coin_a, accounts, chain, start_time):
+def test_claim_multiple(vesting_simple, coin_a, accounts, chain, start_time, end_time):
     chain.sleep(start_time - chain.time() - 1000)
+    balance = 0
     for i in range(11):
-        chain.sleep(10000)
+        chain.sleep((end_time - start_time) // 10)
         vesting_simple.claim({'from': accounts[1]})
+        new_balance = coin_a.balanceOf(accounts[1])
+        assert new_balance > balance
+        balance = new_balance
 
     assert coin_a.balanceOf(accounts[1]) == 10**20
