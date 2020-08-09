@@ -107,8 +107,8 @@ def main():
     liquidity_gauge = repeat(LiquidityGauge.deploy, lp_token, minter, {'from': deployer, 'required_confs': CONFS})
     save_abi(liquidity_gauge, 'liquidity_gauge')
 
-    contract = repeat(CurveRewards.deploy, lp_token, coin_a, {'from': accounts[0]})
-    contract.setRewardDistribution(accounts[0], {'from': accounts[0]})
+    contract = repeat(CurveRewards.deploy, lp_token, coin_a, {'from': accounts[0], 'required_confs': CONFS})
+    repeat(contract.setRewardDistribution, accounts[0], {'from': accounts[0], 'required_confs': CONFS})
 
     liquidity_gauge_rewards = repeat(LiquidityGaugeReward.deploy, lp_token, minter, contract, coin_a, {'from': deployer, 'required_confs': CONFS})
 
