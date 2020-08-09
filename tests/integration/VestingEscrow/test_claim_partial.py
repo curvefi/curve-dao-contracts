@@ -6,8 +6,9 @@ ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
 @pytest.fixture(scope="module", autouse=True)
 def initial_funding(vesting, accounts):
-    recipients = [accounts[1]] + [ZERO_ADDRESS] * 9
-    vesting.fund(recipients, [10**20] + [0] * 9, {'from': accounts[0]})
+    vesting.add_tokens(10**21, {'from': accounts[0]})
+    recipients = [accounts[1]] + [ZERO_ADDRESS] * 99
+    vesting.fund(recipients, [10**20] + [0] * 99, {'from': accounts[0]})
 
 
 @given(sleep_time=strategy("uint", max_value=100000))
