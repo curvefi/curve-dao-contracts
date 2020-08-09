@@ -42,15 +42,25 @@ disabled_at: public(HashMap[address, uint256])
 admin: public(address)
 future_admin: public(address)
 
+fund_admins_enabled: public(bool)
+fund_admins: public(HashMap[address, bool])
+
 
 @external
-def __init__(_token: address, _start_time: uint256, _end_time: uint256, _can_disable: bool):
+def __init__(
+    _token: address,
+    _start_time: uint256,
+    _end_time: uint256,
+    _can_disable: bool,
+    _fund_admins: address[4]
+):
     """
     @param _token Address of the ERC20 token being distributed
     @param _start_time Timestamp at which the distribution starts. Should be in
         the future, so that we have enough time to VoteLock everyone
     @param _end_time Time until everything should be vested
     @param _can_disable Whether admin can disable accounts in this deployment
+    @param _fund_admins Temporary admin accounts used only for funding
     """
     assert _start_time >= block.timestamp
     assert _end_time > _start_time
@@ -60,6 +70,9 @@ def __init__(_token: address, _start_time: uint256, _end_time: uint256, _can_dis
     self.start_time = _start_time
     self.end_time = _end_time
     self.can_disable = _can_disable
+    self.fund_admins_enabled = True
+    for addr in _fund_admins:
+        self.fund_admins[addr] = True
 
 
 
@@ -71,14 +84,15 @@ def fund(_recipients: address[100], _amounts: uint256[100]):
     @param _recipients List of addresses to fund
     @param _amounts Amount of vested tokens for each address
     """
-    assert msg.sender == self.admin  # dev: admin only
+    if msg.sender != self.admin:
+        assert self.fund_admins[msg.sender]  # dev: admin only
+        assert self.fund_admins_enabled  # dev: fund admins disabled
 
-    # Transfer tokens for all of the recipients here
     _total_amount: uint256 = 0
     for i in range(100):
         amount: uint256 = _amounts[i]
         recipient: address = _recipients[i]
-        if amount == 0:
+        if recipient == ZERO_ADDRESS:
             break
         _total_amount += amount
         self.initial_locked[recipient] += amount
@@ -116,6 +130,15 @@ def disable_can_disable():
     """
     assert msg.sender == self.admin  # dev: admin only
     self.can_disable = False
+
+
+@external
+def disable_fund_admins():
+    """
+    @notice Disable the funding admin accounts
+    """
+    assert msg.sender == self.admin  # dev: admin only
+    self.fund_admins_enabled = False
 
 
 @internal
