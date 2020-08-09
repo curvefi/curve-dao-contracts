@@ -8,7 +8,7 @@
 
 from vyper.interfaces import ERC20
 
-MIN_VESTING_START: constant(uint256) = 86400 * 365
+MIN_VESTING_DURATION: constant(uint256) = 86400 * 365
 
 
 interface VestingEscrowSimple:
@@ -51,9 +51,9 @@ def deploy_vesting_contract(
     _token: address,
     _recipient: address,
     _amount: uint256,
-    _start_time: uint256,
-    _end_time: uint256,
-    _can_disable: bool
+    _can_disable: bool,
+    _vesting_duration: uint256,
+    _vesting_start: uint256 = block.timestamp
 ) -> address:
     """
     @notice Deploy a new vesting contract
@@ -63,18 +63,24 @@ def deploy_vesting_contract(
     @param _token Address of the ERC20 token being distributed
     @param _recipient Address to vest tokens for
     @param _amount Amount of tokens being vested for `_recipient`
-    @param _start_time Epoch time at which token distribution starts
-    @param _end_time Time until everything should be vested
     @param _can_disable Can admin disable recipient's ability to claim tokens?
+    @param _vesting_duration Time period over which tokens are released
+    @param _vesting_start Epoch time when tokens begin to vest
     """
     assert msg.sender == self.admin  # dev: admin only
-    assert _start_time >= block.timestamp + MIN_VESTING_START  # dev: start time too soon
-    assert _end_time > _start_time  # dev: end before start
+    assert _vesting_start >= block.timestamp  # dev: start time too soon
+    assert _vesting_duration >= MIN_VESTING_DURATION  # dev: duration too short
 
     _contract: address = create_forwarder_to(self.target)
     assert ERC20(_token).approve(_contract, _amount)  # dev: approve failed
     VestingEscrowSimple(_contract).initialize(
-        self.admin, _token, _recipient, _amount, _start_time, _end_time, _can_disable
+        self.admin,
+        _token,
+        _recipient,
+        _amount,
+        _vesting_start,
+        _vesting_start + _vesting_duration,
+        _can_disable
     )
 
     return _contract
