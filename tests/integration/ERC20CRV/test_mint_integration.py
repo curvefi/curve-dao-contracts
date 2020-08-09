@@ -1,10 +1,17 @@
 import brownie
+import pytest
 from brownie.test import strategy, given
 
 from tests.conftest import YEAR
 
 
-@given(duration=strategy('uint', min_value=1, max_value=YEAR))
+@pytest.fixture(scope="module", autouse=True)
+def initial_setup(chain, token):
+    chain.sleep(86401)
+    token.update_mining_parameters()
+
+
+@given(duration=strategy('uint', min_value=86500, max_value=YEAR))
 def test_mint(accounts, chain, token, duration):
     token.set_minter(accounts[0], {'from': accounts[0]})
     creation_time = token.start_epoch_time()
@@ -19,7 +26,7 @@ def test_mint(accounts, chain, token, duration):
     assert token.totalSupply() == initial_supply + amount
 
 
-@given(duration=strategy('uint', min_value=1, max_value=YEAR))
+@given(duration=strategy('uint', min_value=86500, max_value=YEAR))
 def test_overmint(accounts, chain, token, duration):
     token.set_minter(accounts[0], {'from': accounts[0]})
     creation_time = token.start_epoch_time()

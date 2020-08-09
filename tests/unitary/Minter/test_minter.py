@@ -41,6 +41,7 @@ def test_mint(accounts, chain, three_gauges, minter, token):
     minter.mint(three_gauges[0], {'from': accounts[1]})
     expected = three_gauges[0].integrate_fraction(accounts[1])
 
+    assert expected > 0
     assert token.balanceOf(accounts[1]) == expected
     assert minter.minted(accounts[1], three_gauges[0]) == expected
 
@@ -138,3 +139,13 @@ def test_mint_wrong_gauge(accounts, chain, three_gauges, minter, token):
 def test_mint_not_a_gauge(accounts, minter):
     with brownie.reverts('dev: gauge is not added'):
         minter.mint(accounts[1], {'from': accounts[0]})
+
+
+def test_mint_before_inflation_begins(accounts, chain, three_gauges, minter, token):
+    three_gauges[0].deposit(1e18, {'from': accounts[1]})
+
+    chain.sleep(token.start_epoch_time() - chain.time() - 5)
+    minter.mint(three_gauges[0], {'from': accounts[1]})
+
+    assert token.balanceOf(accounts[1]) == 0
+    assert minter.minted(accounts[1], three_gauges[0]) == 0
