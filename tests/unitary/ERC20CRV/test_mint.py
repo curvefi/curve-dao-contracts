@@ -1,11 +1,18 @@
 import brownie
+import pytest
 
 WEEK = 86400 * 7
 YEAR = 365 * 86400
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
 
-def test_available_supply(chain, web3, token):
+@pytest.fixture(scope="module", autouse=True)
+def initial_setup(chain, token):
+    chain.sleep(86401)
+    token.update_mining_parameters()
+
+
+def test_available_supply(chain, token):
     creation_time = token.start_epoch_time()
     initial_supply = token.totalSupply()
     rate = token.rate()

@@ -1,7 +1,14 @@
+import pytest
 from brownie.test import strategy, given
 
 from tests.conftest import approx
 from tests.conftest import YEAR, YEAR_1_SUPPLY, INITIAL_SUPPLY
+
+
+@pytest.fixture(scope="module", autouse=True)
+def initial_setup(chain, token):
+    chain.sleep(86401)
+    token.update_mining_parameters()
 
 
 @given(time=strategy("decimal", min_value=1, max_value=7))
