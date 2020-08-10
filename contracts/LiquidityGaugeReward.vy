@@ -267,7 +267,7 @@ def claimable_tokens(addr: address) -> uint256:
     @return uint256 number of claimable tokens per user
     """
     self._checkpoint(addr, True)
-    return self.integrate_fraction[addr]
+    return self.rewards_for[addr] - self.claimed_rewards_for[addr]
 
 
 @external
