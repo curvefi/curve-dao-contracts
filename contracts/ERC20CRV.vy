@@ -50,7 +50,6 @@ admin: public(address)
 YEAR: constant(uint256) = 86400 * 365
 
 # Supply parameters
-# Premine: 42% (vested shareholders (31%) + vested employees (3%) + vested users (3%) + burnable reserve(5%))  XXX <- still will change
 INITIAL_SUPPLY: constant(uint256) = 1_272_727_273
 INITIAL_RATE: constant(uint256) = 279636603 * 10 ** 18 / YEAR  # leading to 42% premine
 RATE_REDUCTION_TIME: constant(uint256) = YEAR
@@ -169,7 +168,6 @@ def available_supply() -> uint256:
     return self._available_supply()
 
 
-# XXX this might end up being not needed
 @external
 @view
 def mintable_in_timeframe(start: uint256, end: uint256) -> uint256:
