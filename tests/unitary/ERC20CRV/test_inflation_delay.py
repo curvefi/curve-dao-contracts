@@ -31,9 +31,9 @@ def test_mining_epoch(accounts, chain, token):
 
 
 def test_available_supply(accounts, chain, token):
-    assert token.available_supply() == 1_272_727_273 * 10**18
+    assert token.available_supply() == 1_303_030_303 * 10**18
 
     chain.sleep(86401)
     token.update_mining_parameters({'from': accounts[0]})
 
-    assert token.available_supply() > 1_272_727_273 * 10**18
+    assert token.available_supply() > 1_303_030_303 * 10**18

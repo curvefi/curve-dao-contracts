@@ -49,9 +49,18 @@ admin: public(address)
 # General constants
 YEAR: constant(uint256) = 86400 * 365
 
+# Allocation:
+# =========
+# * shareholders - 30%
+# * emplyees - 3%
+# * DAO-controlled reserve - 5%
+# * Early users - 5%
+# == 43% ==
+# left for inflation: 57%
+
 # Supply parameters
-INITIAL_SUPPLY: constant(uint256) = 1_272_727_273
-INITIAL_RATE: constant(uint256) = 279636603 * 10 ** 18 / YEAR  # leading to 42% premine
+INITIAL_SUPPLY: constant(uint256) = 1_303_030_303
+INITIAL_RATE: constant(uint256) = 274_815_283 * 10 ** 18 / YEAR  # leading to 43% premine
 RATE_REDUCTION_TIME: constant(uint256) = YEAR
 RATE_REDUCTION_COEFFICIENT: constant(uint256) = 1189207115002721024  # 2 ** (1/4) * 1e18
 RATE_DENOMINATOR: constant(uint256) = 10 ** 18
