@@ -156,13 +156,15 @@ def _update_liquidity_limit(addr: address, l: uint256, L: uint256):
 
 
 @internal
-def _checkpoint_rewards(addr: address):
+def _checkpoint_rewards(addr: address, claim_rewards: bool):
     # Update reward integrals (no gauge weights involved: easy)
     _rewarded_token: address = self.rewarded_token
 
-    d_reward: uint256 = ERC20(_rewarded_token).balanceOf(self)
-    CurveRewards(self.reward_contract).getReward()
-    d_reward = ERC20(_rewarded_token).balanceOf(self) - d_reward
+    d_reward: uint256 = 0
+    if claim_rewards:
+        d_reward = ERC20(_rewarded_token).balanceOf(self)
+        CurveRewards(self.reward_contract).getReward()
+        d_reward = ERC20(_rewarded_token).balanceOf(self) - d_reward
 
     user_balance: uint256 = self.balanceOf[addr]
     total_balance: uint256 = self.totalSupply
@@ -176,7 +178,7 @@ def _checkpoint_rewards(addr: address):
 
 
 @internal
-def _checkpoint(addr: address):
+def _checkpoint(addr: address, claim_rewards: bool):
     """
     @notice Checkpoint for a user
     @param addr User address
@@ -241,7 +243,7 @@ def _checkpoint(addr: address):
     self.integrate_inv_supply_of[addr] = _integrate_inv_supply
     self.integrate_checkpoint_of[addr] = block.timestamp
 
-    self._checkpoint_rewards(addr)
+    self._checkpoint_rewards(addr, claim_rewards)
 
 
 @external
@@ -252,7 +254,7 @@ def user_checkpoint(addr: address) -> bool:
     @return bool success
     """
     assert (msg.sender == addr) or (msg.sender == self.minter)  # dev: unauthorized
-    self._checkpoint(addr)
+    self._checkpoint(addr, True)
     self._update_liquidity_limit(addr, self.balanceOf[addr], self.totalSupply)
     return True
 
@@ -264,7 +266,7 @@ def claimable_tokens(addr: address) -> uint256:
     @dev This function should be manually changed to "view" in the ABI
     @return uint256 number of claimable tokens per user
     """
-    self._checkpoint(addr)
+    self._checkpoint(addr, True)
     return self.integrate_fraction[addr]
 
 
@@ -305,7 +307,7 @@ def kick(addr: address):
     assert ERC20(self.voting_escrow).balanceOf(addr) == 0 or t_ve > t_last # dev: kick not allowed
     assert self.working_balances[addr] > _balance * TOKENLESS_PRODUCTION / 100  # dev: kick not needed
 
-    self._checkpoint(addr)
+    self._checkpoint(addr, True)
     self._update_liquidity_limit(addr, self.balanceOf[addr], self.totalSupply)
 
 
@@ -330,7 +332,7 @@ def deposit(_value: uint256, addr: address = msg.sender):
     if addr != msg.sender:
         assert self.approved_to_deposit[msg.sender][addr], "Not approved"
 
-    self._checkpoint(addr)
+    self._checkpoint(addr, True)
 
     if _value != 0:
         _balance: uint256 = self.balanceOf[addr] + _value
@@ -348,12 +350,12 @@ def deposit(_value: uint256, addr: address = msg.sender):
 
 @external
 @nonreentrant('lock')
-def withdraw(_value: uint256):
+def withdraw(_value: uint256, claim_rewards: bool = True):
     """
     @notice Withdraw `_value` LP tokens
     @param _value Number of tokens to withdraw
     """
-    self._checkpoint(msg.sender)
+    self._checkpoint(msg.sender, claim_rewards)
 
     _balance: uint256 = self.balanceOf[msg.sender] - _value
     _supply: uint256 = self.totalSupply - _value
@@ -372,7 +374,7 @@ def withdraw(_value: uint256):
 @external
 @nonreentrant('lock')
 def claim_rewards(addr: address = msg.sender):
-    self._checkpoint_rewards(addr)
+    self._checkpoint_rewards(addr, True)
     _rewards_for: uint256 = self.rewards_for[addr]
     assert ERC20(self.rewarded_token).transfer(
         addr, _rewards_for - self.claimed_rewards_for[addr])
