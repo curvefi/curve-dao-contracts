@@ -48,7 +48,7 @@ Deployment scripts for the Curve DAO.
     npm install --global @aragon/cli
     ```
 
-... TODO ...
+Aragon: [Custom Deploy](https://hack.aragon.org/docs/guides-custom-deploy)
 
 Once the DAO is successfully deployed, modify [`deployment_config`](deployment_config.py) so that `ARAGON_AGENT` points to the [Aragon Ownership Agent](https://github.com/aragon/aragon-apps/blob/master/apps/agent/contracts/Agent.sol) deployment.
 
@@ -107,3 +107,31 @@ Vesting distribution is split between historic liquidity providers and other acc
     brownie run vest_other_tokens live --network mainnet
     ```
 6. Transfer reserve vesting escrow admin to Aragon Ownership Agent
+
+### 6. Transferring Ownership of Curve Pools to Aragon
+
+Transferring ownership of pools requires a three day delay between the first call and the second. Calls must be made from the [pool owner](https://etherscan.io/address/0xc447fcaf1def19a583f97b3620627bf69c05b5fb) address.
+
+1. Verify [`transfer_pool_ownership`](transfer_pool_ownership.py) by testing it against a forked mainnet:
+
+    Ganache allows us to broadcast from the pool owner without unlocking the account - no setup is required here.
+
+    ```bash
+    brownie run transfer_pool_ownership development --network mainnet-fork
+    ```
+
+    This test verifies both the initial commit and the final transfer.
+
+2. Run the [`transfer_pool_ownership`](transfer_pool_ownership.py) script to initiate the ownership transfer:
+
+    Before running this script, make sure the pool owner account has been unlocked.
+
+    ```bash
+    brownie run transfer_pool_ownership live --network mainnet
+    ```
+
+2. Three days later, run [`transfer_pool_ownership`](transfer_pool_ownership.py) again to apply the transfer:
+
+    ```bash
+    brownie run transfer_pool_ownership live --network mainnet
+    ```
