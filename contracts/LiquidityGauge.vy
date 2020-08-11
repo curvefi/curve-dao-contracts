@@ -83,7 +83,7 @@ integrate_checkpoint_of: public(HashMap[address, uint256])
 # Units: rate * t = already number of coins per address to issue
 integrate_fraction: public(HashMap[address, uint256])
 
-inflation_rate: uint256
+inflation_rate: public(uint256)
 
 
 @external
