@@ -6,7 +6,7 @@ from web3 import middleware
 from web3.gas_strategies.time_based import fast_gas_price_strategy as gas_strategy
 from brownie import (
         web3, accounts,
-        ERC20CRV, VotingEscrow, ERC20, ERC20LP, CurvePool, Registry,
+        ERC20CRV, VotingEscrow, ERC20, ERC20LP, CurvePool,
         GaugeController, Minter, LiquidityGauge, PoolProxy, VestingEscrow, LiquidityGaugeReward, CurveRewards
         )
 
@@ -15,7 +15,7 @@ USE_STRATEGIES = False  # Needed for the ganache-cli tester which doesn't like m
 POA = True
 
 # DEPLOYER = "0xFD3DeCC0cF498bb9f54786cb65800599De505706"
-ARAGON_AGENT = "0x9cf0c9f5a0dD48cB5c7D5F3f64Cd2206A0D0010d"
+ARAGON_AGENT = "0x22D61abd46F14D40Ca9bF8eDD9445DCF29208589"
 
 DISTRIBUTION_AMOUNT = 10 ** 6 * 10 ** 18
 DISTRIBUTION_ADDRESSES = ["0x39415255619783A2E71fcF7d8f708A951d92e1b6", "0x6cd85bbb9147b86201d882ae1068c67286855211"]
@@ -82,6 +82,29 @@ def main():
     deployer = accounts.at(DEPLOYER)
 
 
+    # deploy pools and gauges
+
+    coin_a = repeat(ERC20.deploy, "Coin A", "USDA", 18, {'from': deployer, 'required_confs': CONFS})
+    repeat(coin_a._mint_for_testing, 10 ** 9 * 10 ** 18, {'from': deployer, 'required_confs': CONFS})
+    coin_b = repeat(ERC20.deploy, "Coin B", "USDB", 18, {'from': deployer, 'required_confs': CONFS})
+    repeat(coin_b._mint_for_testing, 10 ** 9 * 10 ** 18, {'from': deployer, 'required_confs': CONFS})
+
+    lp_token = repeat(ERC20LP.deploy, "Some pool", "cPool", 18, 0, {'from': deployer, 'required_confs': CONFS})
+    save_abi(lp_token, 'lp_token')
+    pool = repeat(CurvePool.deploy, [coin_a, coin_b], lp_token, 100, 4 * 10 ** 6, {'from': deployer, 'required_confs': CONFS})
+    save_abi(pool, 'curve_pool')
+    repeat(lp_token.set_minter, pool, {'from': deployer, 'required_confs': CONFS})
+
+    repeat(coin_a.transfer, '0x6cd85bbb9147b86201d882ae1068c67286855211', DISTRIBUTION_AMOUNT, {'from': deployer, 'required_confs': CONFS})
+    repeat(coin_b.transfer, '0x6cd85bbb9147b86201d882ae1068c67286855211', DISTRIBUTION_AMOUNT, {'from': deployer, 'required_confs': CONFS})
+
+    contract = repeat(CurveRewards.deploy, lp_token, coin_a, {'from': accounts[0], 'required_confs': CONFS})
+    repeat(contract.setRewardDistribution, accounts[0], {'from': accounts[0], 'required_confs': CONFS})
+    repeat(coin_a.transfer, contract, 100e18, {'from': accounts[0], 'required_confs': CONFS})
+
+    liquidity_gauge_rewards = repeat(LiquidityGaugeReward.deploy, lp_token, '0xbE45e0E4a72aEbF9D08F93E64701964d2CC4cF96', contract, coin_a, {'from': deployer, 'required_confs': CONFS})
+
+
     coins = deploy_erc20s_and_pool(deployer)
 
     lp_token = coins[0]
@@ -109,6 +132,7 @@ def main():
 
     contract = repeat(CurveRewards.deploy, lp_token, coin_a, {'from': accounts[0], 'required_confs': CONFS})
     repeat(contract.setRewardDistribution, accounts[0], {'from': accounts[0], 'required_confs': CONFS})
+    repeat(coin_a.transfer, contract, 100e18, {'from': accounts[0], 'required_confs': CONFS})
 
     liquidity_gauge_rewards = repeat(LiquidityGaugeReward.deploy, lp_token, minter, contract, coin_a, {'from': deployer, 'required_confs': CONFS})
 
