@@ -15,6 +15,7 @@ def live():
         deployments['GaugeController'],
         deployments['VotingEscrow'],
         deployments['PoolProxy'],
+        deployments['ERC20CRV'],
         config.REQUIRED_CONFIRMATIONS
     )
 
@@ -31,10 +32,11 @@ def development():
         deployments['GaugeController'],
         deployments['VotingEscrow'],
         deployments['PoolProxy'],
+        deployments['ERC20CRV']
     )
 
 
-def transfer_ownership(admin, new_admin, gauge_controller, voting_escrow, pool_proxy, confs=1):
+def transfer_ownership(admin, new_admin, gauge_controller, voting_escrow, pool_proxy, erc20crv, confs=1):
     gauge_controller = GaugeController.at(gauge_controller)
     voting_escrow = VotingEscrow.at(voting_escrow)
     pool_proxy = PoolProxy.at(pool_proxy)
@@ -50,3 +52,5 @@ def transfer_ownership(admin, new_admin, gauge_controller, voting_escrow, pool_p
         new_admin, new_admin, new_admin, {'from': admin, 'required_confs': confs}
     )
     pool_proxy.apply_set_admins({'from': admin, 'required_confs': confs})
+
+    erc20crv.set_admin(new_admin, {'from': admin, 'required_confs': confs})

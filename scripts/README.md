@@ -50,7 +50,7 @@ Deployment scripts for the Curve DAO.
 
 ... TODO ...
 
-Once the DAO is successfully deployed, modify [`deployment_config`](deployment_config.py) so that `ARAGON_AGENT` points to the [Aragon Agent](https://github.com/aragon/aragon-apps/blob/master/apps/agent/contracts/Agent.sol) deployment.
+Once the DAO is successfully deployed, modify [`deployment_config`](deployment_config.py) so that `ARAGON_AGENT` points to the [Aragon Ownership Agent](https://github.com/aragon/aragon-apps/blob/master/apps/agent/contracts/Agent.sol) deployment.
 
 ### 4. Transferring Ownership of Curve DAO to Aragon
 
@@ -62,13 +62,13 @@ Once the DAO is successfully deployed, modify [`deployment_config`](deployment_c
 
 2. Run the [`transfer_dao_ownership`](transfer_dao_ownership) script:
 
-    If you haven't yet, modify [`deployment_config`](deployment_config.py) so that `ARAGON_AGENT` points to the [Aragon Agent](https://github.com/aragon/aragon-apps/blob/master/apps/agent/contracts/Agent.sol) deployment address. Then:
+    If you haven't yet, modify [`deployment_config`](deployment_config.py) so that `ARAGON_AGENT` points to the [Aragon Ownership Agent](https://github.com/aragon/aragon-apps/blob/master/apps/agent/contracts/Agent.sol) deployment address. Then:
 
     ```bash
     brownie run transfer_dao_ownership live --network mainnet
     ```
 
-    This transfers the ownership of [`GaugeController`](../contracts/GaugeController.vy), [`PoolProxy`](../contracts/PoolProxy.vy) and [`VotingEscrow`](../contracts/VotingEscrow.vy) from the main admin account to the [Aragon Agent](https://github.com/aragon/aragon-apps/blob/master/apps/agent/contracts/Agent.sol).
+    This transfers the ownership of [`GaugeController`](../contracts/GaugeController.vy), [`PoolProxy`](../contracts/PoolProxy.vy), [`VotingEscrow`](../contracts/VotingEscrow.vy) and [`ERC20CRV`](../contracts/ERC20CRV.vy) from the main admin account to the [Aragon Ownership Agent](https://github.com/aragon/aragon-apps/blob/master/apps/agent/contracts/Agent.sol).
 
 ### 5. Distributing Vested Tokens
 
@@ -85,7 +85,7 @@ Vesting distribution is split between historic liquidity providers and other acc
     brownie run vest_lp_tokens development
     ```
 
-4. Run the [`vest_lp_tokens`](vest_lp_tokens.py) script:
+3. Run the [`vest_lp_tokens`](vest_lp_tokens.py) script:
 
     Confirm that the admin and funding accounts have sufficient ether to pay for the required gas costs. Then:
 
@@ -95,14 +95,15 @@ Vesting distribution is split between historic liquidity providers and other acc
 
     This script generates a JSON logging file in case it fails during execution, so you know exactly which transactions were completed.
 
-5. Verify [`vest_other_tokens`](vest_other_tokens.py) by testing it locally:
+4. Verify [`vest_other_tokens`](vest_other_tokens.py) by testing it locally:
 
     ```bash
     brownie run vest_other_tokens development
     ```
 
-6. Run the [`vest_other_tokens`](vest_other_tokens.py) script:
+5. Run the [`vest_other_tokens`](vest_other_tokens.py) script:
 
     ```bash
     brownie run vest_other_tokens live --network mainnet
     ```
+6. Transfer reserve vesting escrow admin to Aragon Ownership Agent
