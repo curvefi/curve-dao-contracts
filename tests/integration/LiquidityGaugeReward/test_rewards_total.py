@@ -130,6 +130,14 @@ def test_state_machine(
         mock_lp_token.approve(liquidity_gauge_reward, 2 ** 256 - 1, {"from": acct})
 
     # because this is a simple state machine, we use more steps than normal
-    settings = {"stateful_step_count": 25}
+    settings = {"stateful_step_count": 25, "max_examples": 30}
 
-    state_machine(StateMachine, accounts[:5], liquidity_gauge_reward, mock_lp_token, reward_contract, coin_reward, settings=settings)
+    state_machine(
+        StateMachine,
+        accounts[:5],
+        liquidity_gauge_reward,
+        mock_lp_token,
+        reward_contract,
+        coin_reward,
+        settings=settings
+    )
