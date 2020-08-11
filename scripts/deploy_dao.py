@@ -47,21 +47,46 @@ REWARD_POOL_TOKENS = {
 }
 
 
-def live():
+def live_part_one():
     admin, _ = config.get_live_admin()
-    deploy_dao(admin, config.REQUIRED_CONFIRMATIONS, config.DEPLOYMENTS_JSON)
+    deploy_part_one(admin, config.REQUIRED_CONFIRMATIONS, config.DEPLOYMENTS_JSON)
+
+
+def live_part_two():
+    admin, _ = config.get_live_admin()
+    with open(config.DEPLOYMENTS_JSON) as fp:
+        deployments = json.load(fp)
+    token = ERC20CRV.at(deployments['ERC20CRV'])
+    voting_escrow = VotingEscrow.at(deployments['VotingEscrow'])
+
+    deploy_part_two(
+        admin, token, voting_escrow, config.REQUIRED_CONFIRMATIONS, config.DEPLOYMENTS_JSON
+    )
 
 
 def development():
-    deploy_dao(accounts[0])
+    token, voting_escrow = deploy_part_one(accounts[0])
+    deploy_part_two(accounts[0], token, voting_escrow)
 
 
-def deploy_dao(admin, confs=1, deployments_json=None):
+def deploy_part_one(admin, confs=1, deployments_json=None):
     token = ERC20CRV.deploy("Curve DAO Token", "CRV", 18, {'from': admin, 'required_confs': confs})
     voting_escrow = VotingEscrow.deploy(
         token, "Vote-escrowed CRV", "veCRV", "veCRV_1.0.0", {'from': admin, 'required_confs': confs}
     )
+    deployments = {
+        "ERC20CRV": token.address,
+        "VotingEscrow": voting_escrow.address,
+    }
+    if deployments_json is not None:
+        with open(deployments_json, 'w') as fp:
+            json.dump(deployments, fp)
+        print(f"Deployment addresses saved to {deployments_json}")
 
+    return token, voting_escrow
+
+
+def deploy_part_two(admin, token, voting_escrow, confs=1, deployments_json=None):
     gauge_controller = GaugeController.deploy(
         token, voting_escrow, {'from': admin, 'required_confs': confs}
     )
