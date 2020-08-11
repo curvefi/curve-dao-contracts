@@ -18,7 +18,6 @@ from . import deployment_config as config
 # name, type weight
 GAUGE_TYPES = [
     ("Liquidity", 10**18),
-    ("LiquidityRewards", 10**18),
 ]
 
 # lp token, gauge weight
@@ -91,7 +90,7 @@ def deploy_dao(admin, confs=1, deployments_json=None):
         gauge = LiquidityGaugeReward.deploy(
             lp_token, minter, reward_claim, reward_token, {'from': admin, 'required_confs': confs}
         )
-        gauge_controller.add_gauge(gauge, 1, weight, {'from': admin, 'required_confs': confs})
+        gauge_controller.add_gauge(gauge, 0, weight, {'from': admin, 'required_confs': confs})
         deployments['LiquidityGaugeReward'][name] = gauge.address
 
     print(f"Deployment complete! Total gas used: {sum(i.gas_used for i in history)}")
