@@ -1,6 +1,7 @@
+import pytest
 
 from brownie.test import given, strategy
-import pytest
+from hypothesis import settings
 
 from tests.conftest import approx
 
@@ -25,6 +26,7 @@ def minter_setup(accounts, mock_lp_token, token, minter, gauge_controller, liqui
 
 
 @given(st_duration=strategy("uint[3]", min_value=WEEK, max_value=MONTH, unique=True))
+@settings(max_examples=30)
 def test_duration(accounts, chain, liquidity_gauge, minter, token, st_duration):
     accts = accounts[1:]
     chain.sleep(7 * 86400)
@@ -55,6 +57,7 @@ def test_duration(accounts, chain, liquidity_gauge, minter, token, st_duration):
 
 
 @given(st_amounts=strategy("uint[3]", min_value=10**17, max_value=10**18, unique=True))
+@settings(max_examples=30)
 def test_amounts(accounts, chain, liquidity_gauge, minter, token, st_amounts):
     accts = accounts[1:]
 
