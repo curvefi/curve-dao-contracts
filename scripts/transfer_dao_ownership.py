@@ -40,6 +40,7 @@ def transfer_ownership(admin, new_admin, gauge_controller, voting_escrow, pool_p
     gauge_controller = GaugeController.at(gauge_controller)
     voting_escrow = VotingEscrow.at(voting_escrow)
     pool_proxy = PoolProxy.at(pool_proxy)
+    erc20crv = ERC20CRV.at(erc20crv)
 
     gauge_controller.commit_transfer_ownership(new_admin, {'from': admin, 'required_confs': confs})
     gauge_controller.apply_transfer_ownership({'from': admin, 'required_confs': confs})
