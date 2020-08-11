@@ -4,3 +4,5 @@ venv
 __pycache__
 build/
 reports/
+/scripts/deployment_config_prod.py
+/scripts/deployment_keys.py

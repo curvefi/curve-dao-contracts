@@ -42,6 +42,10 @@ brownie test tests/unitary
 brownie test tests/integration
 ```
 
+## Deployment
+
+See the [deployment documentation](scripts/README.md) for detailed information on how to deploy Curve DAO.
+
 ## Resources
 
 You may find the following guides useful:
