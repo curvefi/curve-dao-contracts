@@ -35,7 +35,7 @@ future_admin: public(address)
 target: public(address)
 
 @external
-def __init__(_target: address):
+def __init__(_target: address, _admin: address):
     """
     @notice Contract constructor
     @dev Prior to deployment you must deploy one copy of `VestingEscrowSimple` which
@@ -43,7 +43,7 @@ def __init__(_target: address):
     @param _target `VestingEscrowSimple` contract address
     """
     self.target = _target
-    self.admin = msg.sender
+    self.admin = _admin
 
 
 @external

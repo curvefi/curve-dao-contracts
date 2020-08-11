@@ -24,6 +24,7 @@ interface Controller:
 interface Minter:
     def token() -> address: view
     def controller() -> address: view
+    def minted(user: address, gauge: address) -> uint256: view
 
 interface VotingEscrow:
     def user_point_epoch(addr: address) -> uint256: view
@@ -224,7 +225,7 @@ def claimable_tokens(addr: address) -> uint256:
     @return uint256 number of claimable tokens per user
     """
     self._checkpoint(addr)
-    return self.integrate_fraction[addr]
+    return self.integrate_fraction[addr] - Minter(self.minter).minted(addr, self)
 
 
 @external

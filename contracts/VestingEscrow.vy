@@ -71,9 +71,15 @@ def __init__(
     self.start_time = _start_time
     self.end_time = _end_time
     self.can_disable = _can_disable
-    self.fund_admins_enabled = True
+
+    _fund_admins_enabled: bool = False
     for addr in _fund_admins:
-        self.fund_admins[addr] = True
+        if addr != ZERO_ADDRESS:
+            self.fund_admins[addr] = True
+            if not _fund_admins_enabled:
+                _fund_admins_enabled = True
+                self.fund_admins_enabled = True
+
 
 
 @external
