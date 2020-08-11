@@ -51,4 +51,27 @@ jobs:
       run: pip install -r requirements.txt
 
     - name: Run Tests
-      run: brownie test tests/integration -n auto --failfast --durations 5
+      run: brownie test tests/integration -n auto --failfast --durations 5 --stateful false
+
+  integration-stateful:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v1
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v1
+
+    - name: Install Ganache
+      run: npm install -g ganache-cli@6.10.1
+
+    - name: Setup Python 3.8
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.8
+
+    - name: Install Requirements
+      run: pip install -r requirements.txt
+
+    - name: Run Tests
+      run: brownie test tests/integration -n auto --failfast --durations 5 --stateful true
