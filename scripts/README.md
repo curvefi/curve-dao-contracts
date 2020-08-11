@@ -32,10 +32,20 @@ Deployment scripts for the Curve DAO.
     brownie run deploy_dao development --network mainnet-fork
     ```
 
-3. Run the [`deploy_dao`](deploy_dao.py) script:
+3. Run the first stage of the [`deploy_dao`](deploy_dao.py) script:
+
+    Live deployment this is split into two calls. The first action deploys only `ERC20CRV` and `VotingEscrow`:
 
     ```bash
-    brownie run deploy_dao live --network mainnet
+    brownie run deploy_dao live_part_one --network mainnet
+    ```
+
+    With these contracts deployed, the Aragon DAO setup can begin while the rest of Curve DAO is deployed.
+
+4. Run the second stage of [`deploy_dao`](deploy_dao.py):
+
+    ```bash
+    brownie run deploy_dao live_part_two --network mainnet
     ```
 
     This deploys and links all of the core Curve DAO contracts. A JSON is generated containing the address of each deployed contract. **DO NOT MOVE OR DELETE THIS FILE**. It is required in later deployment stages.
