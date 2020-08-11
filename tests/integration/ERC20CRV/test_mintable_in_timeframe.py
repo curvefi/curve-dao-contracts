@@ -56,7 +56,7 @@ def test_random_range_multiple_epochs(token, chain, accounts, start, duration):
         token.update_mining_parameters({'from': accounts[0]})
 
     if start_epoch == end_epoch:
-        assert approx(token.mintable_in_timeframe(start, end), rate * (end-start), 1e-16)
+        assert approx(token.mintable_in_timeframe(start, end), rate * (end-start), 2e-16)
     else:
         assert token.mintable_in_timeframe(start, end) < rate * end
 
