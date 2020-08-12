@@ -1,3 +1,10 @@
+Deploy Emergency DAO through Aragon UI - Membership template
+
+After making DAO - assigning `MINT_ROLE` and `BURN_ROLE` to deployer address in order to add initial members faster 
+
+After adding initial members, `MINT_ROLE` and `BURN_ROLE` manager will be assigned to Emergency Voting and managed by Ownership Agent in main DAO
+and the `APP_MANAGER_ROLE` and `CREATE_PERMISSIONS_ROLE` should be set to Ownership Agent
+
 [Install Aragon CLI](https://github.com/aragon/aragon-cli)
 Preferably, for easier usage, install [frame.sh](https://frame.sh/)
 
