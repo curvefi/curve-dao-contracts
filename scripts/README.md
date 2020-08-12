@@ -153,3 +153,10 @@ Transferring ownership of pools requires a three day delay between the first cal
     ```bash
     brownie run transfer_pool_ownership live --network mainnet
     ```
+
+
+Subgraph setup for UI
+
+Deploy [connect-thegraph-voting](https://github.com/curvefi/connect-thegraph-voting)
+
+Deploy [votingescrow-subgraph](https://github.com/curvefi/votingescrow-subgraph)
