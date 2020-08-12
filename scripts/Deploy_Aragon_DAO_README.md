@@ -56,6 +56,9 @@ Parameter Voting: `dao install $DAO_ADDRESS curve-voting6.open.aragonpm.eth --ap
 
 # And to give up control to main DAO in the end - 
 
+In both main DAO and Emergency DAO change system permissions(`APP_MANAGER_ROLE`, `CREATE_PERMISSIONS_ROLE`, ...) to Ownership Voting App
+
+[Tutorial](https://help.aragon.org/article/21-permissions)
 
 `dao acl create $DAO_ADDRESS $DAO_ADDRESS APP_MANAGER_ROLE $OWNERSHIP_VOTING_APP_ADDRESS $OWNERSHIP_VOTING_APP_ADDRESS --use-frame --env aragon:rinkeby`
 
