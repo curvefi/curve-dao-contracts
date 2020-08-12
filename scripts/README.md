@@ -60,6 +60,12 @@ Deployment scripts for the Curve DAO.
 
 Aragon: [Custom Deploy](https://hack.aragon.org/docs/guides-custom-deploy)
 
+# Deploy the [Curve Aragon Voting App](https://github.com/curvefi/curve-aragon-voting/blob/master/README.md)
+
+# Deploy Aragon DAO 
+    
+Read instructions in [Deploy Aragon DAO README](./Deploy_Aragon_DAO_README.md) 
+
 Once the DAO is successfully deployed, modify [`deployment_config`](deployment_config.py) so that `ARAGON_AGENT` points to the [Aragon Ownership Agent](https://github.com/aragon/aragon-apps/blob/master/apps/agent/contracts/Agent.sol) deployment.
 
 Deploy subgraphs for Curve Voting App and VotingEscrow
