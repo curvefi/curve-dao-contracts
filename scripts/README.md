@@ -62,6 +62,8 @@ Aragon: [Custom Deploy](https://hack.aragon.org/docs/guides-custom-deploy)
 
 Once the DAO is successfully deployed, modify [`deployment_config`](deployment_config.py) so that `ARAGON_AGENT` points to the [Aragon Ownership Agent](https://github.com/aragon/aragon-apps/blob/master/apps/agent/contracts/Agent.sol) deployment.
 
+Deploy subgraphs for Curve Voting App and VotingEscrow
+
 ### 4. Transferring Ownership of Curve DAO to Aragon
 
 1. Verify [`transfer_dao_ownership`](transfer_dao_ownership) by testing it on a forked mainnet:
