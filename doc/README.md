@@ -58,21 +58,21 @@ missed weeks at most, not number of users (which can be potentially large).
 ## Inflation schedule. ERC20CRV
 
 Token _ERC20CRV_ is an ERC20 token which allows a piecewise linear inflation
-schedule. The inflation is dropping by $2^{1/4}$ every year.
-Only _Minter_ contract can directly mint _ERC20CRV_, but only within the limits
+schedule. The inflation drops by $2^{1/4}$ percent every year.
+Only the _Minter_ contract can directly mint _ERC20CRV_, but strictly within the limits
 defined by inflation.
 
-Each time the inflation changes, a new mining epoch starts.
+Each time the inflation rate changes, a new mining epoch starts.
 
 ![CRV token inflation schedule](inflation.pdf){width=280px}
 
-Initial supply of CRV is $1.273$ billion tokens, which is $42\%$ of the eventual
+Initial supply of CRV is $1,303,303,303$ tokens, which is $43\%$ of the eventual
 ($t\rightarrow\infty$) supply of $\approx 3.03$ billion tokens.
 All of those initial tokens tokens are gradually vested (with every block).
 The initial inflation rate which supports the above inflation schedule is
-$r=22.0\%$ (279.6 millions per year). All of the inflation is distributed to users of Curve,
+$r=21.0\%$ (274 million per year). All of the inflation is distributed to users of Curve,
 according to measurements taken by _gauges_.
-During the first year, the approximate inflow into circulating supply is 2 millions
+During the first year, the approximate inflow into circulating supply is 1 million
 CRV per day, starting from 0.
 
 ## System of Gauges. LiquidityGauge and GaugeController
