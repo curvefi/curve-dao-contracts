@@ -1,5 +1,5 @@
 import json
-from brownie import GaugeController, PoolProxy, VotingEscrow
+from brownie import ERC20CRV, GaugeController, PoolProxy, VotingEscrow
 
 from . import deployment_config as config
 
@@ -45,8 +45,6 @@ def transfer_ownership(admin, new_admin, gauge_controller, voting_escrow, pool_p
     gauge_controller.commit_transfer_ownership(new_admin, {'from': admin, 'required_confs': confs})
     gauge_controller.apply_transfer_ownership({'from': admin, 'required_confs': confs})
 
-    #just a dummy method for compatibility with Aragon, not needed to be transferred to DAO
-    #voting_escrow.changeController(new_admin, {'from': admin, 'required_confs': confs})
     voting_escrow.commit_transfer_ownership(new_admin, {'from': admin, 'required_confs': confs})
     voting_escrow.apply_transfer_ownership({'from': admin, 'required_confs': confs})
 
