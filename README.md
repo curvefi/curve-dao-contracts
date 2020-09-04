@@ -14,7 +14,7 @@ View the [documentation](doc/readme.pdf) for a more in-depth explanation of how 
 
 * [python3](https://www.python.org/downloads/release/python-368/) version 3.6 or greater, python3-dev
 * [vyper](https://github.com/vyperlang/vyper) version [0.2.4](https://github.com/vyperlang/vyper/releases/tag/v0.2.4)
-* [brownie](https://github.com/iamdefinitelyahuman/brownie) - tested with version [1.10.5](https://github.com/eth-brownie/brownie/releases/tag/v1.10.5)
+* [brownie](https://github.com/iamdefinitelyahuman/brownie) - tested with version [1.11.0](https://github.com/eth-brownie/brownie/releases/tag/v1.11.0)
 * [ganache-cli](https://github.com/trufflesuite/ganache-cli) - tested with version [6.10.1](https://github.com/trufflesuite/ganache-cli/releases/tag/v6.10.1)
 
 ### Setup
@@ -46,12 +46,19 @@ brownie test tests/integration
 
 See the [deployment documentation](scripts/README.md) for detailed information on how to deploy Curve DAO.
 
+## Audits and Security
+
+Curve DAO contracts have been audited by Trail of Bits and Quantstamp. These audit reports are made available on the [Curve website](https://dao.curve.fi/audits).
+
+There is also an active [bug bounty](https://www.curve.fi/bugbounty) for issues which can lead to substantial loss of money, critical bugs such as a broken live-ness condition, or irreversible loss of funds.
+
 ## Resources
 
 You may find the following guides useful:
 
-1. [How to earn and claim CRV](https://guides.curve.fi/how-to-earn-and-claim-crv/)
-2. [Voting and vote locking on Curve DAO](https://guides.curve.fi/voting-and-vote-locking-curve-dao/)
+1. [Curve and Curve DAO Resources](https://resources.curve.fi/)
+2. [How to earn and claim CRV](https://guides.curve.fi/how-to-earn-and-claim-crv/)
+3. [Voting and vote locking on Curve DAO](https://guides.curve.fi/voting-and-vote-locking-curve-dao/)
 
 ## Community
 
