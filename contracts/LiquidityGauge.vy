@@ -20,6 +20,7 @@ interface Controller:
     def voting_escrow() -> address: view
     def checkpoint(): nonpayable
     def checkpoint_gauge(addr: address): nonpayable
+    def admin() -> address: view
 
 interface Minter:
     def token() -> address: view
@@ -84,6 +85,8 @@ integrate_checkpoint_of: public(HashMap[address, uint256])
 integrate_fraction: public(HashMap[address, uint256])
 
 inflation_rate: public(uint256)
+
+is_killed: public(bool)
 
 
 @external
@@ -159,6 +162,9 @@ def _checkpoint(addr: address):
 
     _working_balance: uint256 = self.working_balances[addr]
     _working_supply: uint256 = self.working_supply
+
+    if self.is_killed:
+        rate = 0  # Stop distributing inflation as soon as killed
 
     # Update integral of 1/supply
     if block.timestamp > _period_time:
@@ -310,3 +316,9 @@ def withdraw(_value: uint256):
 @view
 def integrate_checkpoint() -> uint256:
     return self.period_timestamp[self.period]
+
+
+@external
+def kill_me():
+    assert msg.sender == Controller(self.controller).admin()
+    self.is_killed = not self.is_killed
