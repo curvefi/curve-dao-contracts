@@ -20,7 +20,6 @@ interface Controller:
     def voting_escrow() -> address: view
     def checkpoint(): nonpayable
     def checkpoint_gauge(addr: address): nonpayable
-    def admin() -> address: view
 
 interface Minter:
     def token() -> address: view
@@ -52,6 +51,12 @@ event UpdateLiquidityLimit:
     original_supply: uint256
     working_balance: uint256
     working_supply: uint256
+
+event CommitOwnership:
+    admin: address
+
+event ApplyOwnership:
+    admin: address
 
 
 TOKENLESS_PRODUCTION: constant(uint256) = 40
@@ -100,6 +105,8 @@ reward_integral_for: public(HashMap[address, uint256])
 rewards_for: public(HashMap[address, uint256])
 claimed_rewards_for: public(HashMap[address, uint256])
 
+admin: public(address)
+future_admin: public(address)  # Can and will be a smart contract
 is_killed: public(bool)
 
 @external
@@ -128,6 +135,7 @@ def __init__(lp_addr: address, _minter: address, _reward_contract: address, _rew
     self.reward_contract = _reward_contract
     assert ERC20(lp_addr).approve(_reward_contract, MAX_UINT256)
     self.rewarded_token = _rewarded_token
+    self.admin = msg.sender
 
 
 @internal
@@ -395,5 +403,28 @@ def integrate_checkpoint() -> uint256:
 
 @external
 def kill_me():
-    assert msg.sender == Controller(self.controller).admin()
+    assert msg.sender == self.admin
     self.is_killed = not self.is_killed
+
+
+@external
+def commit_transfer_ownership(addr: address):
+    """
+    @notice Transfer ownership of GaugeController to `addr`
+    @param addr Address to have ownership transferred to
+    """
+    assert msg.sender == self.admin  # dev: admin only
+    self.future_admin = addr
+    log CommitOwnership(addr)
+
+
+@external
+def apply_transfer_ownership():
+    """
+    @notice Apply pending ownership transfer
+    """
+    assert msg.sender == self.admin  # dev: admin only
+    _admin: address = self.future_admin
+    assert _admin != ZERO_ADDRESS  # dev: admin not set
+    self.admin = _admin
+    log ApplyOwnership(_admin)
