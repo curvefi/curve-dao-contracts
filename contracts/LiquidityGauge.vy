@@ -97,11 +97,12 @@ is_killed: public(bool)
 
 
 @external
-def __init__(lp_addr: address, _minter: address):
+def __init__(lp_addr: address, _minter: address, _admin: address):
     """
     @notice Contract constructor
     @param lp_addr Liquidity Pool contract address
     @param _minter Minter contract address
+    @param _admin Admin who can kill the gauge
     """
 
     assert lp_addr != ZERO_ADDRESS
@@ -117,7 +118,7 @@ def __init__(lp_addr: address, _minter: address):
     self.period_timestamp[0] = block.timestamp
     self.inflation_rate = CRV20(crv_addr).rate()
     self.future_epoch_time = CRV20(crv_addr).future_epoch_time_write()
-    self.admin = msg.sender
+    self.admin = _admin
 
 
 @internal

@@ -75,18 +75,18 @@ def reward_contract(CurveRewards, mock_lp_token, accounts, coin_reward):
 
 @pytest.fixture(scope="module")
 def liquidity_gauge(LiquidityGauge, accounts, mock_lp_token, minter):
-    yield LiquidityGauge.deploy(mock_lp_token, minter, {'from': accounts[0]})
+    yield LiquidityGauge.deploy(mock_lp_token, minter, accounts[0], {'from': accounts[0]})
 
 
 @pytest.fixture(scope="module")
 def liquidity_gauge_reward(LiquidityGaugeReward, accounts, mock_lp_token, minter, reward_contract, coin_reward):
-    yield LiquidityGaugeReward.deploy(mock_lp_token, minter, reward_contract, coin_reward, {'from': accounts[0]})
+    yield LiquidityGaugeReward.deploy(mock_lp_token, minter, reward_contract, coin_reward, accounts[0], {'from': accounts[0]})
 
 
 @pytest.fixture(scope="module")
 def three_gauges(LiquidityGauge, accounts, mock_lp_token, minter):
     contracts = [
-        LiquidityGauge.deploy(mock_lp_token, minter, {'from': accounts[0]})
+        LiquidityGauge.deploy(mock_lp_token, minter, accounts[0], {'from': accounts[0]})
         for _ in range(3)
     ]
 

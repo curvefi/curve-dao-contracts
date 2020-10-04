@@ -110,13 +110,14 @@ future_admin: public(address)  # Can and will be a smart contract
 is_killed: public(bool)
 
 @external
-def __init__(lp_addr: address, _minter: address, _reward_contract: address, _rewarded_token: address):
+def __init__(lp_addr: address, _minter: address, _reward_contract: address, _rewarded_token: address, _admin: address):
     """
     @notice Contract constructor
     @param lp_addr Liquidity Pool contract address
     @param _minter Minter contract address
     @param _reward_contract Synthetix reward contract address
     @param _rewarded_token Received synthetix token contract address
+    @param _admin Admin who can kill the gauge
     """
     assert lp_addr != ZERO_ADDRESS
     assert _minter != ZERO_ADDRESS
@@ -135,7 +136,7 @@ def __init__(lp_addr: address, _minter: address, _reward_contract: address, _rew
     self.reward_contract = _reward_contract
     assert ERC20(lp_addr).approve(_reward_contract, MAX_UINT256)
     self.rewarded_token = _rewarded_token
-    self.admin = msg.sender
+    self.admin = _admin
 
 
 @internal

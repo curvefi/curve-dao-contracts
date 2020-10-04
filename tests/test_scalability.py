@@ -64,7 +64,7 @@ def gauges(LiquidityGauge, accounts, gauge_controller, mock_lp_token, minter, se
     # deploy `GAUGE_COUNT` liquidity gauges and return them as a list
     gauges = []
     for i in range(GAUGE_COUNT):
-        contract = LiquidityGauge.deploy(mock_lp_token, minter, {'from': accounts[0]})
+        contract = LiquidityGauge.deploy(mock_lp_token, minter, accounts[0], {'from': accounts[0]})
         gauge_controller.add_gauge(contract, i % TYPE_COUNT, {'from': accounts[0]})
         gauges.append(contract)
 
