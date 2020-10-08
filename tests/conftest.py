@@ -58,7 +58,8 @@ def minter(Minter, accounts, gauge_controller, token):
 
 @pytest.fixture(scope="module")
 def registry(Registry, accounts):
-    yield Registry.deploy(["0x0000000000000000000000000000000000000000"] * 4, {'from': accounts[0]})
+    registry = Registry.deploy(["0x0000000000000000000000000000000000000000"] * 4, {'from': accounts[0]})
+    yield registry
 
 
 @pytest.fixture(scope="module")

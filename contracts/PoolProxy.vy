@@ -263,6 +263,7 @@ def apply_new_parameters(_pool: address):
     @notice Apply new parameters for `_pool` pool
     @param _pool Pool address
     """
+    _min_asymmetry: uint256 = self.min_asymmetry[_pool]
     Curve(_pool).apply_new_parameters()  # dev: if implemented by the pool
 
 
