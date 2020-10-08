@@ -92,7 +92,7 @@ def test_stop_ramp_A_no_access(accounts, pool_proxy, pool, idx):
 
 
 def test_commit_new_parameters(accounts, pool_proxy, param_pool):
-    pool_proxy.commit_new_parameters(param_pool, 1000, 31337, 42, {'from': accounts[1]})
+    pool_proxy.commit_new_parameters(param_pool, 1000, 31337, 42, 0, {'from': accounts[1]})
 
     assert param_pool.future_amp() == 1000
     assert param_pool.future_fee() == 31337
@@ -102,16 +102,16 @@ def test_commit_new_parameters(accounts, pool_proxy, param_pool):
 @pytest.mark.parametrize('idx', [0, 2, 3])
 def test_commit_new_parameters_no_access(accounts, pool_proxy, param_pool, idx):
     with brownie.reverts('Access denied'):
-        pool_proxy.commit_new_parameters(param_pool, 1000, 0, 0, {'from': accounts[idx]})
+        pool_proxy.commit_new_parameters(param_pool, 1000, 0, 0, 0, {'from': accounts[idx]})
 
 
 def test_commit_new_parameters_not_exist(accounts, pool_proxy, pool):
     with brownie.reverts('dev: if implemented by the pool'):
-        pool_proxy.commit_new_parameters(pool, 1000, 0, 0, {'from': accounts[1]})
+        pool_proxy.commit_new_parameters(pool, 1000, 0, 0, 0, {'from': accounts[1]})
 
 
 def test_apply_new_parameters(accounts, pool_proxy, param_pool):
-    pool_proxy.commit_new_parameters(param_pool, 1000, 31337, 42, {'from': accounts[1]})
+    pool_proxy.commit_new_parameters(param_pool, 1000, 31337, 42, 0, {'from': accounts[1]})
     pool_proxy.apply_new_parameters(param_pool, {'from': accounts[1]})
 
     assert param_pool.amp() == 1000
@@ -125,7 +125,7 @@ def test_apply_new_parameters_not_exist(accounts, pool_proxy, pool):
 
 
 def test_revert_new_parameters(accounts, pool_proxy, param_pool):
-    pool_proxy.commit_new_parameters(param_pool, 1000, 31337, 42, {'from': accounts[1]})
+    pool_proxy.commit_new_parameters(param_pool, 1000, 31337, 42, 0, {'from': accounts[1]})
     pool_proxy.revert_new_parameters(param_pool, {'from': accounts[1]})
 
     assert param_pool.future_amp() == 0
