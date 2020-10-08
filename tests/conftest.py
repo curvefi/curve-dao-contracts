@@ -57,8 +57,13 @@ def minter(Minter, accounts, gauge_controller, token):
 
 
 @pytest.fixture(scope="module")
-def pool_proxy(PoolProxy, accounts):
-    yield PoolProxy.deploy({'from': accounts[0]})
+def registry(Registry, accounts):
+    yield Registry.deploy(["0x0000000000000000000000000000000000000000"] * 4, {'from': accounts[0]})
+
+
+@pytest.fixture(scope="module")
+def pool_proxy(PoolProxy, accounts, registry):
+    yield PoolProxy.deploy(registry, {'from': accounts[0]})
 
 
 @pytest.fixture(scope="module")

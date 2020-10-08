@@ -43,15 +43,7 @@ struct PoolInfo:
     underlying_decimals: uint256[MAX_COINS]
     lp_token: address
     A: uint256
-    future_A: uint256
     fee: uint256
-    future_fee: uint256
-    future_admin_fee: uint256
-    future_owner: address
-    initial_A: uint256
-    initial_A_time: uint256
-    future_A_time: uint256
-
 
 event CommitAdmins:
     ownership_admin: address
@@ -79,12 +71,15 @@ min_asymmetries: public(HashMap[address, uint256])
 
 burners: public(HashMap[address, address])
 
+registry: Registry
+
 
 @external
-def __init__():
+def __init__(_registry: address):
     self.ownership_admin = msg.sender
     self.parameter_admin = msg.sender
     self.emergency_admin = msg.sender
+    self.registry = Registry(_registry)
 
 
 @external
