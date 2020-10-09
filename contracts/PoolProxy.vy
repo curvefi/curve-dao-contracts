@@ -264,6 +264,29 @@ def apply_new_parameters(_pool: address):
     @param _pool Pool address
     """
     min_asymmetry: uint256 = self.min_asymmetries[_pool]
+
+    if min_asymmetry > 0:
+        pool_info: PoolInfo = self.registry.get_pool_info(_pool)
+        # asymmetry = prod(x_i) / (sum(x_i) / N) ** N =
+        # = prod( (N * x_i) / sum(x_j) )
+        S: uint256 = 0
+        N: uint256 = 0
+        for i in range(MAX_COINS):
+            x: uint256 = pool_info.underlying_balances[i]
+            if x == 0:
+                N = convert(i, uint256)
+                break
+            S += x
+
+        asymmetry: uint256 = 10 ** 18
+        for i in range(MAX_COINS):
+            x: uint256 = pool_info.underlying_balances[i]
+            if x == 0:
+                break
+            asymmetry = asymmetry * N * x / S
+
+        assert asymmetry >= min_asymmetry, "Unsafe to apply"
+
     Curve(_pool).apply_new_parameters()  # dev: if implemented by the pool
 
 
