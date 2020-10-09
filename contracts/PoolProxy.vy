@@ -267,6 +267,7 @@ def apply_new_parameters(_pool: address):
 
     if min_asymmetry > 0:
         pool_info: PoolInfo = self.registry.get_pool_info(_pool)
+        balances: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
         # asymmetry = prod(x_i) / (sum(x_i) / N) ** N =
         # = prod( (N * x_i) / sum(x_j) )
         S: uint256 = 0
@@ -276,11 +277,13 @@ def apply_new_parameters(_pool: address):
             if x == 0:
                 N = convert(i, uint256)
                 break
+            x *= 10 ** (18 - pool_info.decimals[i])
+            balances[i] = x
             S += x
 
         asymmetry: uint256 = 10 ** 18
         for i in range(MAX_COINS):
-            x: uint256 = pool_info.underlying_balances[i]
+            x: uint256 = balances[i]
             if x == 0:
                 break
             asymmetry = asymmetry * N * x / S
