@@ -75,8 +75,13 @@ def registry(Registry, accounts, susd_pool, mock_lp_token_susd):
 
 
 @pytest.fixture(scope="module")
-def pool_proxy(PoolProxy, accounts, registry):
-    yield PoolProxy.deploy(registry, {'from': accounts[0]})
+def pool_proxy(PoolProxy, accounts, registry, susd_pool):
+    proxy = PoolProxy.deploy(registry, {'from': accounts[0]})
+
+    susd_pool.commit_transfer_ownership(proxy, {'from': accounts[0]})
+    susd_pool.apply_transfer_ownership({'from': accounts[0]})
+
+    return proxy
 
 
 @pytest.fixture(scope="module")
@@ -195,6 +200,6 @@ def susd_pool(StableSwapSUSD, accounts, mock_lp_token_susd, coin_a, coin_b):
     coin_a.approve(curve_pool, 10**21, {'from': accounts[0]})
     coin_b.approve(curve_pool, 10**21, {'from': accounts[0]})
     # Deposit with asymmetry
-    curve_pool.add_liquidity([10**21, 3 * 10*20], 0, {'from': accounts[0]})
+    curve_pool.add_liquidity([10**21, 3 * 10**20], 0, {'from': accounts[0]})
 
     yield curve_pool

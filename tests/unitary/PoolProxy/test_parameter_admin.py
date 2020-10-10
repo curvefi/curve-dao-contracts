@@ -119,6 +119,13 @@ def test_apply_new_parameters(accounts, pool_proxy, param_pool):
     assert param_pool.admin_fee() == 42
 
 
+def test_apply_new_parameters_asymmetry(accounts, pool_proxy, susd_pool):
+    # Pool asymmetry is 0.355 * 1e18
+    # min is 0.1 * 1e18
+    pool_proxy.commit_new_parameters(susd_pool, 1000, 4000000, 0, 10**17, {'from': accounts[1]})
+    pool_proxy.apply_new_parameters(susd_pool, {'from': accounts[1]})
+
+
 def test_apply_new_parameters_not_exist(accounts, pool_proxy, pool):
     with brownie.reverts('dev: if implemented by the pool'):
         pool_proxy.apply_new_parameters(pool, {'from': accounts[1]})

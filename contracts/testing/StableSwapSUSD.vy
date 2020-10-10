@@ -72,7 +72,7 @@ PRECISION_MUL: constant(uint256[N_COINS]) = [convert(1, uint256), convert(1, uin
 #     PRECISION / convert(10 ** 6, uint256)]   # USDT
 
 
-admin_actions_delay: constant(uint256) = 3 * 86400
+admin_actions_delay: constant(uint256) = 0  # For tests
 
 # Events
 TokenExchange: event({buyer: indexed(address), sold_id: int128, tokens_sold: uint256, bought_id: int128, tokens_bought: uint256})
@@ -557,6 +557,8 @@ def remove_liquidity_imbalance(amounts: uint256[N_COINS], max_burn_amount: uint2
 def commit_new_parameters(amplification: uint256,
                           new_fee: uint256,
                           new_admin_fee: uint256):
+    if True:
+        return
     assert msg.sender == self.owner
     assert self.admin_actions_deadline == 0
     assert new_admin_fee <= max_admin_fee
