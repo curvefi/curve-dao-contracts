@@ -76,7 +76,7 @@ def registry(Registry, accounts, susd_pool, mock_lp_token_susd):
 
 @pytest.fixture(scope="module")
 def pool_proxy(PoolProxy, accounts, registry, susd_pool):
-    proxy = PoolProxy.deploy(registry, {'from': accounts[0]})
+    proxy = PoolProxy.deploy(registry, accounts[0], accounts[0], accounts[0], {'from': accounts[0]})
 
     susd_pool.commit_transfer_ownership(proxy, {'from': accounts[0]})
     susd_pool.apply_transfer_ownership({'from': accounts[0]})

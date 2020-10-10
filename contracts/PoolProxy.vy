@@ -1,4 +1,4 @@
-# @version 0.2.5
+# @version 0.2.6
 """
 @title Curve StableSwap Proxy
 @author Curve Finance
@@ -75,10 +75,10 @@ registry: Registry
 
 
 @external
-def __init__(_registry: address):
-    self.ownership_admin = msg.sender
-    self.parameter_admin = msg.sender
-    self.emergency_admin = msg.sender
+def __init__(_registry: address, _ownership_admin: address, _parameter_admin: address, _emergency_admin: address):
+    self.ownership_admin = _ownership_admin
+    self.parameter_admin = _parameter_admin
+    self.emergency_admin = _emergency_admin
     self.registry = Registry(_registry)
 
 
