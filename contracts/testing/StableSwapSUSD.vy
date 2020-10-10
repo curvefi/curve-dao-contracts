@@ -557,8 +557,6 @@ def remove_liquidity_imbalance(amounts: uint256[N_COINS], max_burn_amount: uint2
 def commit_new_parameters(amplification: uint256,
                           new_fee: uint256,
                           new_admin_fee: uint256):
-    if True:
-        return
     assert msg.sender == self.owner
     assert self.admin_actions_deadline == 0
     assert new_admin_fee <= max_admin_fee

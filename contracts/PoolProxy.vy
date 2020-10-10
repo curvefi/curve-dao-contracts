@@ -281,12 +281,12 @@ def apply_new_parameters(_pool: address):
             balances[i] = x
             S += x
 
-        asymmetry: uint256 = 10 ** 18
+        asymmetry: uint256 = N * 10 ** 18
         for i in range(MAX_COINS):
             x: uint256 = balances[i]
             if x == 0:
                 break
-            asymmetry = asymmetry * N * x / S
+            asymmetry = asymmetry * x / S
 
         assert asymmetry >= min_asymmetry, "Unsafe to apply"
 
