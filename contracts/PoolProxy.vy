@@ -1,4 +1,4 @@
-# @version 0.2.4
+# @version 0.2.5
 """
 @title Curve StableSwap Proxy
 @author Curve Finance
@@ -30,6 +30,21 @@ interface Curve:
     def donate_admin_fees(): nonpayable
 
 
+interface Registry:
+    def get_pool_info(_pool: address) -> PoolInfo: view
+
+
+MAX_COINS: constant(int128) = 8
+
+struct PoolInfo:
+    balances: uint256[MAX_COINS]
+    underlying_balances: uint256[MAX_COINS]
+    decimals: uint256[MAX_COINS]
+    underlying_decimals: uint256[MAX_COINS]
+    lp_token: address
+    A: uint256
+    fee: uint256
+
 event CommitAdmins:
     ownership_admin: address
     parameter_admin: address
@@ -52,14 +67,19 @@ future_ownership_admin: public(address)
 future_parameter_admin: public(address)
 future_emergency_admin: public(address)
 
+min_asymmetries: public(HashMap[address, uint256])
+
 burners: public(HashMap[address, address])
+
+registry: Registry
 
 
 @external
-def __init__():
+def __init__(_registry: address):
     self.ownership_admin = msg.sender
     self.parameter_admin = msg.sender
     self.emergency_admin = msg.sender
+    self.registry = Registry(_registry)
 
 
 @external
@@ -219,15 +239,20 @@ def revert_transfer_ownership(_pool: address):
 def commit_new_parameters(_pool: address,
                           amplification: uint256,
                           new_fee: uint256,
-                          new_admin_fee: uint256):
+                          new_admin_fee: uint256,
+                          min_asymmetry: uint256):
     """
     @notice Commit new parameters for `_pool`, A: `amplification`, fee: `new_fee` and admin fee: `new_admin_fee`
     @param _pool Pool address
     @param amplification Amplification coefficient
     @param new_fee New fee
     @param new_admin_fee New admin fee
+    @param min_asymmetry Minimal asymmetry factor allowed.
+            Asymmetry factor is:
+            Prod(balances) / (Sum(balances) / N) ** N
     """
     assert msg.sender == self.parameter_admin, "Access denied"
+    self.min_asymmetries[_pool] = min_asymmetry
     Curve(_pool).commit_new_parameters(amplification, new_fee, new_admin_fee)  # dev: if implemented by the pool
 
 
@@ -238,6 +263,33 @@ def apply_new_parameters(_pool: address):
     @notice Apply new parameters for `_pool` pool
     @param _pool Pool address
     """
+    min_asymmetry: uint256 = self.min_asymmetries[_pool]
+
+    if min_asymmetry > 0:
+        pool_info: PoolInfo = self.registry.get_pool_info(_pool)
+        balances: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
+        # asymmetry = prod(x_i) / (sum(x_i) / N) ** N =
+        # = prod( (N * x_i) / sum(x_j) )
+        S: uint256 = 0
+        N: uint256 = 0
+        for i in range(MAX_COINS):
+            x: uint256 = pool_info.underlying_balances[i]
+            if x == 0:
+                N = convert(i, uint256)
+                break
+            x *= 10 ** (18 - pool_info.decimals[i])
+            balances[i] = x
+            S += x
+
+        asymmetry: uint256 = N * 10 ** 18
+        for i in range(MAX_COINS):
+            x: uint256 = balances[i]
+            if x == 0:
+                break
+            asymmetry = asymmetry * x / S
+
+        assert asymmetry >= min_asymmetry, "Unsafe to apply"
+
     Curve(_pool).apply_new_parameters()  # dev: if implemented by the pool
 
 
