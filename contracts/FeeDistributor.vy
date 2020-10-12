@@ -89,8 +89,7 @@ def checkpoint_token():
 
 
 @internal
-def find_timestamp_epoch(_timestamp: uint256) -> uint256:
-    ve: address = self.voting_escrow
+def find_timestamp_epoch(ve: address, _timestamp: uint256) -> uint256:
     _min: uint256 = 0
     _max: uint256 = VotingEscrow(ve).epoch()
     for i in range(128):  # Will be always enough for 128-bit numbers
@@ -107,7 +106,28 @@ def find_timestamp_epoch(_timestamp: uint256) -> uint256:
 
 @internal
 def _checkpoint_total_supply():
-    pass
+    ve: address = self.voting_escrow
+    t: uint256 = self.time_cursor
+    new_cursor: uint256 = 0
+
+    for i in range(20):
+        t += WEEK
+        if block.timestamp < t:
+            epoch: uint256 = self.find_timestamp_epoch(ve, t)
+            pt: Point = VotingEscrow(ve).point_history(epoch)
+            dt: int128 = convert(block.timestamp - pt.ts, int128)
+            self.ve_supply[t] = convert(pt.bias - pt.slope * dt, uint256)
+        else:
+            new_cursor = t
+        # Do checkpoint logic here
+
+    if new_cursor > 0:
+        self.time_cursor = new_cursor
+
+
+@external
+def checkpoint_total_supply():
+    self._checkpoint_total_supply()
 
 
 @external
@@ -115,5 +135,5 @@ def _checkpoint_total_supply():
 def claim(addr: address = msg.sender):
     if self.last_token_time + TOKEN_CHECKPOINT_DEADLINE > block.timestamp:
         self._checkpoint_token()
-    if block.timestamp/WEEK*WEEK > self.time_cursor:  # is it?
+    if block.timestamp < self.time_cursor + WEEK:
         self._checkpoint_total_supply()
