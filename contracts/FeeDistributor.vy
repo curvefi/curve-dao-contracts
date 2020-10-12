@@ -51,7 +51,7 @@ def __init__(_start_time: uint256, _token: address):
 
 
 @internal
-def checkpoint_token():
+def _checkpoint_token():
     token_balance: uint256 = ERC20(self.token).balanceOf(self)
     to_distribute: uint256 = token_balance - self.token_last_balance
     self.token_last_balance = token_balance
@@ -71,3 +71,8 @@ def checkpoint_token():
             self.tokens_per_week[this_week] += to_distribute * (next_week - t) / since_last
         t = next_week
         this_week = next_week
+
+
+@external
+def checkpoint_token():
+    self._checkpoint_token()
