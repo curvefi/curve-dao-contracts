@@ -9,6 +9,7 @@
 # * admin
 # * change token
 # * actual per-user distribution
+# * events
 # XXX TODO
 
 from vyper.interfaces import ERC20
@@ -30,6 +31,7 @@ struct Point:
 
 
 WEEK: constant(uint256) = 7 * 86400
+TOKEN_CHECKPOINT_DEADLINE: constant(uint256) = 86400
 
 start_time: public(uint256)
 time_cursor: public(uint256)
@@ -40,6 +42,7 @@ last_token_time: public(uint256)
 tokens_per_week: public(uint256[1000000000000000])
 last_distributed: public(HashMap[address, uint256])  # Distributed in the week of time_cursor_of
 
+voting_escrow: public(address)
 token: public(address)
 total_received: public(uint256)
 token_last_balance: public(uint256)
@@ -49,11 +52,12 @@ ve_balance_of: public(HashMap[address, uint256])
 
 
 @external
-def __init__(_start_time: uint256, _token: address):
+def __init__(_voting_escrow: address, _start_time: uint256, _token: address):
     t: uint256 = _start_time / WEEK * WEEK
     self.start_time = t
     self.time_cursor = t
     self.token = _token
+    self.voting_escrow = _voting_escrow
 
 
 @internal
@@ -82,3 +86,34 @@ def _checkpoint_token():
 @external
 def checkpoint_token():
     self._checkpoint_token()
+
+
+@internal
+def find_timestamp_epoch(_timestamp: uint256) -> uint256:
+    ve: address = self.voting_escrow
+    _min: uint256 = 0
+    _max: uint256 = VotingEscrow(ve).epoch()
+    for i in range(128):  # Will be always enough for 128-bit numbers
+        if _min >= _max:
+            break
+        _mid: uint256 = (_min + _max + 1) / 2
+        pt: Point = VotingEscrow(ve).point_history(_mid)
+        if pt.ts <= _timestamp:
+            _min = _mid
+        else:
+            _max = _mid - 1
+    return _min
+
+
+@internal
+def _checkpoint_total_supply():
+    pass
+
+
+@external
+@nonreentrant('lock')
+def claim(addr: address = msg.sender):
+    if self.last_token_time + TOKEN_CHECKPOINT_DEADLINE > block.timestamp:
+        self._checkpoint_token()
+    if block.timestamp/WEEK*WEEK > self.time_cursor:  # is it?
+        self._checkpoint_total_supply()
