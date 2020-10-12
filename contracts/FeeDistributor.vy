@@ -5,6 +5,12 @@
 @license MIT
 """
 
+# XXX TODO
+# * admin
+# * change token
+# * actual per-user distribution
+# XXX TODO
+
 from vyper.interfaces import ERC20
 
 
