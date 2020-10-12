@@ -35,6 +35,8 @@ tokens_per_week: public(uint256[1000000000000000])
 last_distributed: public(HashMap[address, uint256])  # Distributed in the week of time_cursor_of
 
 token: public(address)
+total_received: public(uint256)
+token_last_balance: public(uint256)
 
 ve_supply: public(uint256[1000000000000000])  # VE total supply at week bounds
 ve_balance_of: public(HashMap[address, uint256])
@@ -46,3 +48,26 @@ def __init__(_start_time: uint256, _token: address):
     self.start_time = t
     self.time_cursor = t
     self.token = _token
+
+
+@internal
+def checkpoint_token():
+    token_balance: uint256 = ERC20(self.token).balanceOf(self)
+    to_distribute: uint256 = token_balance - self.token_last_balance
+    self.token_last_balance = token_balance
+
+    t: uint256 = self.last_token_time
+    since_last: uint256 = block.timestamp - t
+    self.last_token_time = block.timestamp
+    this_week: uint256 = t / WEEK * WEEK
+    next_week: uint256 = 0
+
+    for i in range(20):
+        next_week = this_week + WEEK
+        if block.timestamp < next_week:
+            self.tokens_per_week[this_week] += to_distribute * (block.timestamp - t) / since_last
+            break
+        else:
+            self.tokens_per_week[this_week] += to_distribute * (next_week - t) / since_last
+        t = next_week
+        this_week = next_week
