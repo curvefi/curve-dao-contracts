@@ -116,7 +116,7 @@ def _checkpoint_total_supply():
             epoch: uint256 = self.find_timestamp_epoch(ve, t)
             pt: Point = VotingEscrow(ve).point_history(epoch)
             dt: int128 = convert(block.timestamp - pt.ts, int128)
-            self.ve_supply[t] = convert(pt.bias - pt.slope * dt, uint256)
+            self.ve_supply[t] = convert(max(pt.bias - pt.slope * dt, 0), uint256)
         else:
             new_cursor = t
         # Do checkpoint logic here
