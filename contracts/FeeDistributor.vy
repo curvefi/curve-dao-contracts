@@ -113,13 +113,13 @@ def _checkpoint_total_supply():
     for i in range(20):
         t += WEEK
         if block.timestamp < t:
+            break
+        else:
+            new_cursor = t
             epoch: uint256 = self.find_timestamp_epoch(ve, t)
             pt: Point = VotingEscrow(ve).point_history(epoch)
             dt: int128 = convert(block.timestamp - pt.ts, int128)
             self.ve_supply[t] = convert(max(pt.bias - pt.slope * dt, 0), uint256)
-        else:
-            new_cursor = t
-        # Do checkpoint logic here
 
     if new_cursor > 0:
         self.time_cursor = new_cursor
