@@ -133,7 +133,7 @@ def checkpoint_total_supply():
 @external
 @nonreentrant('lock')
 def claim(addr: address = msg.sender):
-    if self.last_token_time + TOKEN_CHECKPOINT_DEADLINE > block.timestamp:
+    if block.timestamp > self.last_token_time + TOKEN_CHECKPOINT_DEADLINE:
         self._checkpoint_token()
-    if block.timestamp < self.time_cursor + WEEK:
+    if block.timestamp >= self.time_cursor + WEEK:
         self._checkpoint_total_supply()
