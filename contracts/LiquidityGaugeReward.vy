@@ -262,14 +262,14 @@ def _checkpoint(addr: address, claim_rewards: bool):
 
 
 @external
-def user_checkpoint(addr: address) -> bool:
+def user_checkpoint(addr: address, claim_rewards: bool = False) -> bool:
     """
     @notice Record a checkpoint for `addr`
     @param addr User address
     @return bool success
     """
     assert (msg.sender == addr) or (msg.sender == self.minter)  # dev: unauthorized
-    self._checkpoint(addr, True)
+    self._checkpoint(addr, claim_rewards)
     self._update_liquidity_limit(addr, self.balanceOf[addr], self.totalSupply)
     return True
 
