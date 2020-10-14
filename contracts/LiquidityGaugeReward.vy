@@ -108,7 +108,7 @@ claimed_rewards_for: public(HashMap[address, uint256])
 admin: public(address)
 future_admin: public(address)  # Can and will be a smart contract
 is_killed: public(bool)
-claim_rewards_switch: public(bool)
+is_claiming_rewards: public(bool)
 
 @external
 def __init__(lp_addr: address, _minter: address, _reward_contract: address, _rewarded_token: address, _admin: address):
@@ -138,7 +138,7 @@ def __init__(lp_addr: address, _minter: address, _reward_contract: address, _rew
     assert ERC20(lp_addr).approve(_reward_contract, MAX_UINT256)
     self.rewarded_token = _rewarded_token
     self.admin = _admin
-    self.claim_rewards_switch = True
+    self.is_claiming_rewards = True
 
 
 @internal
@@ -271,7 +271,7 @@ def user_checkpoint(addr: address) -> bool:
     @return bool success
     """
     assert (msg.sender == addr) or (msg.sender == self.minter)  # dev: unauthorized
-    self._checkpoint(addr, self.claim_rewards_switch)
+    self._checkpoint(addr, self.is_claiming_rewards)
     self._update_liquidity_limit(addr, self.balanceOf[addr], self.totalSupply)
     return True
 
@@ -324,7 +324,7 @@ def kick(addr: address):
     assert ERC20(self.voting_escrow).balanceOf(addr) == 0 or t_ve > t_last # dev: kick not allowed
     assert self.working_balances[addr] > _balance * TOKENLESS_PRODUCTION / 100  # dev: kick not needed
 
-    self._checkpoint(addr, self.claim_rewards_switch)
+    self._checkpoint(addr, self.is_claiming_rewards)
     self._update_liquidity_limit(addr, self.balanceOf[addr], self.totalSupply)
 
 
@@ -433,10 +433,10 @@ def apply_transfer_ownership():
     log ApplyOwnership(_admin)
 
 @external
-def switch_claim_rewards(val: bool):
+def toggle_external_rewards_claim(val: bool):
     """
     @notice Switch claiming rewards on/off. 
             This is to prevent a malicious rewards contract from preventing CRV claiming
     """ 
     assert msg.sender == self.admin
-    self.claim_rewards_switch = val
+    self.is_claiming_rewards = val
