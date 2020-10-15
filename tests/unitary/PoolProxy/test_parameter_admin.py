@@ -153,16 +153,20 @@ def test_apply_new_parameters(accounts, pool_proxy, param_pool):
 
 
 def test_apply_new_parameters_asymmetry_works(accounts, pool_proxy, param_pool):
+    # Asymmetry is N * prod(balances) / sum(balances)**N (instead of N**N * ...)
+    # bal1 = 10, bal2 = 3, N = 2
     # Pool asymmetry is 0.355 * 1e18
     # min is 0.35 * 1e18
-    pool_proxy.commit_new_parameters(param_pool, 1000, 4000000, 0, int(0.35e18), {'from': accounts[1]})
+    asym = 2 * (3 * 10) / (3 + 10) ** 2 * 1e18
+    pool_proxy.commit_new_parameters(param_pool, 1000, 4000000, 0, int(asym * 0.99), {'from': accounts[1]})
     pool_proxy.apply_new_parameters(param_pool, {'from': accounts[1]})
 
 
 def test_apply_new_parameters_asymmetry_fails(accounts, pool_proxy, param_pool):
     # Pool asymmetry is 0.355 * 1e18
     # min is 0.36 * 1e18
-    pool_proxy.commit_new_parameters(param_pool, 1000, 4000000, 0, int(0.36e18), {'from': accounts[1]})
+    asym = 2 * (3 * 10) / (3 + 10) ** 2 * 1e18
+    pool_proxy.commit_new_parameters(param_pool, 1000, 4000000, 0, int(asym * 1.01), {'from': accounts[1]})
     with brownie.reverts('Unsafe to apply'):
         pool_proxy.apply_new_parameters(param_pool, {'from': accounts[1]})
 
