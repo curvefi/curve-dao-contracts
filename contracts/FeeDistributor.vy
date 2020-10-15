@@ -133,7 +133,30 @@ def checkpoint_total_supply():
 @external
 @nonreentrant('lock')
 def claim(addr: address = msg.sender):
+    ve: address = self.voting_escrow
+
     if block.timestamp > self.last_token_time + TOKEN_CHECKPOINT_DEADLINE:
         self._checkpoint_token()
     if block.timestamp >= self.time_cursor + WEEK:
         self._checkpoint_total_supply()
+
+    user_epoch: uint256 = 0
+    if self.time_cursor_of[addr] == 0:
+        # Need to do the initial binary search
+        _start_time: uint256 = self.start_time
+        _min: uint256 = 0
+        _max: uint256 = VotingEscrow(ve).user_point_epoch(addr)
+        for i in range(128):
+            if _min >= _max:
+                break
+            _mid: uint256 = (_min + _max + 1) / 2
+            pt: Point = VotingEscrow(ve).user_point_history(addr, _mid)
+            if pt.ts <= _start_time:
+                _min = _mid
+            else:
+                _max = _mid - 1
+        user_epoch = _min
+    else:
+        user_epoch = self.user_epoch_of[addr]
+    user_point = VotingEscrow(ve).user_point_epoch(user_epoch)
+    user_time: uint256 = (user_point.ts + WEEK - 1) / WEEK * WEEK
