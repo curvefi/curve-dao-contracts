@@ -186,7 +186,7 @@ def kill_me(_pool: address):
     @notice Pause the pool `_pool` - only remove_liquidity will be callable
     @param _pool Pool address to pause
     """
-    assert msg.sender == self.emergency_admin, "Access denied"
+    assert msg.sender == self.ownership_admin, "Access denied"
     Curve(_pool).kill_me()
 
 
