@@ -146,6 +146,9 @@ def withdraw_admin_fees(_pool: address):
     @notice Withdraw admin fees from `_pool`
     @param _pool Pool address to withdraw admin fees from
     """
+
+    assert msg.sender == self.emergency_admin, "Access denied"
+
     Curve(_pool).withdraw_admin_fees()
 
 
