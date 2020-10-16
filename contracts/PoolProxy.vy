@@ -124,7 +124,7 @@ def set_burner(_token: address, _burner: address):
     @param _token Token address
     @param _burner Burner contract address
     """
-    assert msg.sender == self.ownership_admin, "Access denied"
+    assert msg.sender == self.emergency_admin, "Access denied"
 
     _old_burner: address = self.burners[_token]
 
