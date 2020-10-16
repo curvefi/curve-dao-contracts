@@ -209,7 +209,7 @@ def commit_transfer_ownership(_pool: address, new_owner: address):
     @param _pool Pool which ownership is to be transferred
     @param new_owner New pool owner address
     """
-    assert msg.sender == self.ownership_admin, "Access denied"
+    assert msg.sender == self.emergency_admin, "Access denied"
     Curve(_pool).commit_transfer_ownership(new_owner)
 
 
