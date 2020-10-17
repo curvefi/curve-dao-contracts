@@ -36,7 +36,7 @@ TOKEN_CHECKPOINT_DEADLINE: constant(uint256) = 86400
 start_time: public(uint256)
 time_cursor: public(uint256)
 time_cursor_of: public(HashMap[address, uint256])
-user_epoch_of: public(HashMap[address, int128])
+user_epoch_of: public(HashMap[address, uint256])
 
 last_token_time: public(uint256)
 tokens_per_week: public(uint256[1000000000000000])
@@ -48,7 +48,6 @@ total_received: public(uint256)
 token_last_balance: public(uint256)
 
 ve_supply: public(uint256[1000000000000000])  # VE total supply at week bounds
-ve_balance_of: public(HashMap[address, uint256])
 
 
 @external
@@ -140,12 +139,19 @@ def claim(addr: address = msg.sender):
     if block.timestamp >= self.time_cursor + WEEK:
         self._checkpoint_total_supply()
 
+    # Minimal user_epoch is 0 (if user had no point)
     user_epoch: uint256 = 0
+    max_user_epoch: uint256 = VotingEscrow(ve).user_point_epoch(addr)
+    _start_time: uint256 = self.start_time
+
+    if max_user_epoch == 0:
+        # No lock = no fees
+        return
+
     if self.time_cursor_of[addr] == 0:
         # Need to do the initial binary search
-        _start_time: uint256 = self.start_time
         _min: uint256 = 0
-        _max: uint256 = VotingEscrow(ve).user_point_epoch(addr)
+        _max: uint256 = max_user_epoch
         for i in range(128):
             if _min >= _max:
                 break
@@ -158,5 +164,41 @@ def claim(addr: address = msg.sender):
         user_epoch = _min
     else:
         user_epoch = self.user_epoch_of[addr]
-    user_point = VotingEscrow(ve).user_point_epoch(user_epoch)
-    user_time: uint256 = (user_point.ts + WEEK - 1) / WEEK * WEEK
+
+    if user_epoch == 0:
+        user_epoch = 1
+
+    user_point: Point = VotingEscrow(ve).user_point_history(addr, user_epoch)
+    week_cursor: uint256 = (user_point.ts + WEEK - 1) / WEEK * WEEK
+    if week_cursor >= block.timestamp / WEEK * WEEK:
+        return
+    old_user_point: Point = empty(Point)
+    to_distribute: uint256 = 0
+
+    # Iterate over weeks
+    for i in range(50):
+        if week_cursor >= user_point.ts and user_epoch <= max_user_epoch:
+            user_epoch += 1
+            old_user_point = user_point
+            if user_epoch > max_user_epoch:
+                user_point = empty(Point)
+            else:
+                user_point = VotingEscrow(ve).user_point_history(addr, user_epoch)
+
+        else:
+            # Calc
+            dt: int128 = convert(week_cursor - old_user_point.ts, int128)
+            balance_of: uint256 = convert(max(old_user_point.bias - dt * old_user_point.slope, 0), uint256)
+            if balance_of == 0 and user_epoch > max_user_epoch:
+                break
+            to_distribute += balance_of * self.tokens_per_week[week_cursor] / self.ve_supply[week_cursor]
+
+            week_cursor += WEEK
+            if week_cursor >= block.timestamp / WEEK * WEEK:
+                break
+
+    self.user_epoch_of[addr] = min(max_user_epoch, user_epoch)
+    self.time_cursor_of[addr] = week_cursor  # XXX Check if correct!
+
+    if to_distribute > 0:
+        assert ERC20(self.token).transfer(addr, to_distribute)
