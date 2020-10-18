@@ -196,7 +196,7 @@ def claim(addr: address = msg.sender):
             week_cursor += WEEK
 
     self.user_epoch_of[addr] = min(max_user_epoch, user_epoch)
-    self.time_cursor_of[addr] = week_cursor  # XXX Check if correct!
+    self.time_cursor_of[addr] = week_cursor
 
     if to_distribute > 0:
         assert ERC20(self.token).transfer(addr, to_distribute)
