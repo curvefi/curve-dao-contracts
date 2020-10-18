@@ -127,7 +127,7 @@ def checkpoint_total_supply():
 
 @external
 @nonreentrant('lock')
-def claim(addr: address = msg.sender):
+def claim(addr: address = msg.sender) -> uint256:
     ve: address = self.voting_escrow
 
     if block.timestamp > self.last_token_time + TOKEN_CHECKPOINT_DEADLINE:
@@ -142,7 +142,7 @@ def claim(addr: address = msg.sender):
 
     if max_user_epoch == 0:
         # No lock = no fees
-        return
+        return 0
 
     if self.time_cursor_of[addr] == 0:
         # Need to do the initial binary search
@@ -169,7 +169,7 @@ def claim(addr: address = msg.sender):
     if week_cursor == 0:
         week_cursor = (user_point.ts + WEEK - 1) / WEEK * WEEK
     if week_cursor >= block.timestamp / WEEK * WEEK:
-        return
+        return 0
     old_user_point: Point = empty(Point)
     to_distribute: uint256 = 0
 
@@ -200,3 +200,5 @@ def claim(addr: address = msg.sender):
 
     if to_distribute > 0:
         assert ERC20(self.token).transfer(addr, to_distribute)
+
+    return to_distribute
