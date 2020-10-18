@@ -6,9 +6,6 @@
 """
 
 # XXX TODO
-# * admin
-# * change token
-# * actual per-user distribution
 # * events
 # XXX TODO
 
@@ -40,7 +37,6 @@ user_epoch_of: public(HashMap[address, uint256])
 
 last_token_time: public(uint256)
 tokens_per_week: public(uint256[1000000000000000])
-last_distributed: public(HashMap[address, uint256])  # Distributed in the week of time_cursor_of
 
 voting_escrow: public(address)
 token: public(address)
@@ -91,7 +87,7 @@ def checkpoint_token():
 def find_timestamp_epoch(ve: address, _timestamp: uint256) -> uint256:
     _min: uint256 = 0
     _max: uint256 = VotingEscrow(ve).epoch()
-    for i in range(128):  # Will be always enough for 128-bit numbers
+    for i in range(128):
         if _min >= _max:
             break
         _mid: uint256 = (_min + _max + 1) / 2
@@ -169,7 +165,9 @@ def claim(addr: address = msg.sender):
         user_epoch = 1
 
     user_point: Point = VotingEscrow(ve).user_point_history(addr, user_epoch)
-    week_cursor: uint256 = (user_point.ts + WEEK - 1) / WEEK * WEEK
+    week_cursor: uint256 = self.time_cursor_of[addr]
+    if week_cursor == 0:
+        week_cursor = (user_point.ts + WEEK - 1) / WEEK * WEEK
     if week_cursor >= block.timestamp / WEEK * WEEK:
         return
     old_user_point: Point = empty(Point)
@@ -187,6 +185,8 @@ def claim(addr: address = msg.sender):
 
         else:
             # Calc
+            if week_cursor >= block.timestamp / WEEK * WEEK:
+                break
             dt: int128 = convert(week_cursor - old_user_point.ts, int128)
             balance_of: uint256 = convert(max(old_user_point.bias - dt * old_user_point.slope, 0), uint256)
             if balance_of == 0 and user_epoch > max_user_epoch:
@@ -194,8 +194,6 @@ def claim(addr: address = msg.sender):
             to_distribute += balance_of * self.tokens_per_week[week_cursor] / self.ve_supply[week_cursor]
 
             week_cursor += WEEK
-            if week_cursor >= block.timestamp / WEEK * WEEK:
-                break
 
     self.user_epoch_of[addr] = min(max_user_epoch, user_epoch)
     self.time_cursor_of[addr] = week_cursor  # XXX Check if correct!
