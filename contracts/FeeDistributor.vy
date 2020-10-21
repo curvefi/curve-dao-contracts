@@ -70,10 +70,16 @@ def _checkpoint_token():
     for i in range(20):
         next_week = this_week + WEEK
         if block.timestamp < next_week:
-            self.tokens_per_week[this_week] += to_distribute * (block.timestamp - t) / since_last
+            if since_last == 0 and block.timestamp == t:
+                self.tokens_per_week[this_week] += to_distribute
+            else:
+                self.tokens_per_week[this_week] += to_distribute * (block.timestamp - t) / since_last
             break
         else:
-            self.tokens_per_week[this_week] += to_distribute * (next_week - t) / since_last
+            if since_last == 0 and next_week == t:
+                self.tokens_per_week[this_week] += to_distribute
+            else:
+                self.tokens_per_week[this_week] += to_distribute * (next_week - t) / since_last
         t = next_week
         this_week = next_week
 
@@ -103,21 +109,19 @@ def find_timestamp_epoch(ve: address, _timestamp: uint256) -> uint256:
 def _checkpoint_total_supply():
     ve: address = self.voting_escrow
     t: uint256 = self.time_cursor
-    new_cursor: uint256 = 0
+    rounded_timestamp: uint256 = block.timestamp / WEEK * WEEK
 
     for i in range(20):
-        t += WEEK
-        if block.timestamp < t:
-            break
+        if t > rounded_timestamp:
+            return
         else:
-            new_cursor = t
             epoch: uint256 = self.find_timestamp_epoch(ve, t)
             pt: Point = VotingEscrow(ve).point_history(epoch)
-            dt: int128 = convert(block.timestamp - pt.ts, int128)
+            dt: int128 = convert(t - pt.ts, int128)
             self.ve_supply[t] = convert(max(pt.bias - pt.slope * dt, 0), uint256)
+        t += WEEK
 
-    if new_cursor > 0:
-        self.time_cursor = new_cursor
+    self.time_cursor = t
 
 
 @external
@@ -132,7 +136,7 @@ def claim(addr: address = msg.sender) -> uint256:
 
     if block.timestamp > self.last_token_time + TOKEN_CHECKPOINT_DEADLINE:
         self._checkpoint_token()
-    if block.timestamp >= self.time_cursor + WEEK:
+    if block.timestamp >= self.time_cursor:
         self._checkpoint_total_supply()
 
     # Minimal user_epoch is 0 (if user had no point)
@@ -191,7 +195,8 @@ def claim(addr: address = msg.sender) -> uint256:
             balance_of: uint256 = convert(max(old_user_point.bias - dt * old_user_point.slope, 0), uint256)
             if balance_of == 0 and user_epoch > max_user_epoch:
                 break
-            to_distribute += balance_of * self.tokens_per_week[week_cursor] / self.ve_supply[week_cursor]
+            if balance_of > 0:
+                to_distribute += balance_of * self.tokens_per_week[week_cursor] / self.ve_supply[week_cursor]
 
             week_cursor += WEEK
 

@@ -196,3 +196,8 @@ def pool(CurvePool, accounts, mock_lp_token, coin_a, coin_b):
     mock_lp_token.set_minter(curve_pool, {'from': accounts[0]})
 
     yield curve_pool
+
+
+@pytest.fixture(scope="module")
+def fee_distributor(FeeDistributor, voting_escrow, accounts, coin_a, rpc):
+    yield (lambda: FeeDistributor.deploy(voting_escrow, rpc.time(), coin_a, {'from': accounts[0]}))
