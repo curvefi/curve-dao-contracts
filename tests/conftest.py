@@ -203,3 +203,8 @@ def susd_pool(StableSwapSUSD, accounts, mock_lp_token_susd, coin_a, coin_b):
     curve_pool.add_liquidity([10**21, 3 * 10**20], 0, {'from': accounts[0]})
 
     yield curve_pool
+
+
+@pytest.fixture(scope="module")
+def fee_distributor(FeeDistributor, voting_escrow, accounts, coin_a, rpc):
+    yield (lambda: FeeDistributor.deploy(voting_escrow, rpc.time(), coin_a, {'from': accounts[0]}))
