@@ -86,6 +86,7 @@ def _checkpoint_token():
 
 @external
 def checkpoint_token():
+    # XXX this should only be allowed to one who distributes the token
     self._checkpoint_token()
 
 
@@ -133,11 +134,15 @@ def checkpoint_total_supply():
 @nonreentrant('lock')
 def claim(addr: address = msg.sender) -> uint256:
     ve: address = self.voting_escrow
+    last_token_time: uint256 = self.last_token_time
 
-    if block.timestamp > self.last_token_time + TOKEN_CHECKPOINT_DEADLINE:
+    if block.timestamp > last_token_time + TOKEN_CHECKPOINT_DEADLINE:
+        # XXX don't do it at claim - do it only for distribution
         self._checkpoint_token()
     if block.timestamp >= self.time_cursor:
         self._checkpoint_total_supply()
+
+    last_token_time = last_token_time / WEEK * WEEK
 
     # Minimal user_epoch is 0 (if user had no point)
     user_epoch: uint256 = 0
@@ -172,7 +177,7 @@ def claim(addr: address = msg.sender) -> uint256:
     week_cursor: uint256 = self.time_cursor_of[addr]
     if week_cursor == 0:
         week_cursor = (user_point.ts + WEEK - 1) / WEEK * WEEK
-    if week_cursor >= block.timestamp / WEEK * WEEK:
+    if week_cursor >= last_token_time:
         return 0
     old_user_point: Point = empty(Point)
     to_distribute: uint256 = 0
@@ -189,7 +194,7 @@ def claim(addr: address = msg.sender) -> uint256:
 
         else:
             # Calc
-            if week_cursor >= block.timestamp / WEEK * WEEK:
+            if week_cursor >= last_token_time:
                 break
             dt: int128 = convert(week_cursor - old_user_point.ts, int128)
             balance_of: uint256 = convert(max(old_user_point.bias - dt * old_user_point.slope, 0), uint256)
