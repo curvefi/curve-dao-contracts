@@ -188,6 +188,9 @@ def claim(addr: address = msg.sender) -> uint256:
 
     # Iterate over weeks
     for i in range(50):
+        if week_cursor >= last_token_time:
+            break
+
         if week_cursor >= user_point.ts and user_epoch <= max_user_epoch:
             user_epoch += 1
             old_user_point = user_point
@@ -198,8 +201,6 @@ def claim(addr: address = msg.sender) -> uint256:
 
         else:
             # Calc
-            if week_cursor >= last_token_time:
-                break
             dt: int128 = convert(week_cursor - old_user_point.ts, int128)
             balance_of: uint256 = convert(max(old_user_point.bias - dt * old_user_point.slope, 0), uint256)
             if balance_of == 0 and user_epoch > max_user_epoch:
