@@ -55,3 +55,7 @@ def test_deposited_during(web3, chain, accounts, voting_escrow, fee_distributor,
     fee_distributor.claim({'from': alice})
 
     assert abs(coin_a.balanceOf(alice) - 21 * 10**18) < 10
+
+
+def test_deposited_before(web3, chain, accounts, voting_escrow, fee_distributor, coin_a, token):
+    pass
