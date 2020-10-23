@@ -54,8 +54,8 @@ def test_deposited_during(web3, chain, accounts, voting_escrow, fee_distributor,
             chain.sleep(DAY)
             chain.mine()
 
-    chain.sleep(WEEK)
-    chain.mine()
+    chain.sleep(2*WEEK)
+    fee_distributor.checkpoint_token()
 
     fee_distributor.claim({'from': alice})
 

@@ -140,9 +140,6 @@ def claim(addr: address = msg.sender) -> uint256:
     ve: address = self.voting_escrow
     last_token_time: uint256 = self.last_token_time
 
-    if block.timestamp > last_token_time + TOKEN_CHECKPOINT_DEADLINE:
-        # XXX don't do it at claim - do it only for distribution
-        self._checkpoint_token()
     if block.timestamp >= self.time_cursor:
         self._checkpoint_total_supply()
 
