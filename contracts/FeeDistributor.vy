@@ -1,4 +1,4 @@
-# @version 0.2.5
+# @version 0.2.7
 """
 @title Curve Fee Distribution
 @author Curve Finance
@@ -118,7 +118,11 @@ def _checkpoint_total_supply():
         else:
             epoch: uint256 = self.find_timestamp_epoch(ve, t)
             pt: Point = VotingEscrow(ve).point_history(epoch)
-            dt: int128 = convert(t - pt.ts, int128)
+            dt: int128 = 0
+            if t > pt.ts:
+                # If the point is at 0 epoch, it can actually be earlier than the first deposit
+                # Then make dt 0
+                dt = convert(t - pt.ts, int128)
             self.ve_supply[t] = convert(max(pt.bias - pt.slope * dt, 0), uint256)
         t += WEEK
 
