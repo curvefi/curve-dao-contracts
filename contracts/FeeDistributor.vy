@@ -50,6 +50,7 @@ ve_supply: public(uint256[1000000000000000])  # VE total supply at week bounds
 def __init__(_voting_escrow: address, _start_time: uint256, _token: address):
     t: uint256 = _start_time / WEEK * WEEK
     self.start_time = t
+    self.last_token_time = t
     self.time_cursor = t
     self.token = _token
     self.voting_escrow = _voting_escrow

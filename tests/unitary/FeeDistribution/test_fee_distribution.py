@@ -41,11 +41,6 @@ def test_deposited_during(web3, chain, accounts, voting_escrow, fee_distributor,
     chain.sleep(WEEK)
     fee_distributor = fee_distributor()
 
-    # XXX to fix - these should not be needed
-    fee_distributor.checkpoint_token()
-    fee_distributor.checkpoint_total_supply()
-    # XXX
-
     for i in range(3):
         for j in range(7):
             coin_a.transfer(fee_distributor, 10**18, {'from': bob})
