@@ -11,7 +11,7 @@ def test_deposited_after(web3, chain, accounts, voting_escrow, fee_distributor, 
     coin_a._mint_for_testing(100 * 10 ** 18, {'from': bob})
 
     for i in range(5):
-        for _ in range(7):
+        for j in range(7):
             coin_a.transfer(fee_distributor, 10**18, {'from': bob})
             fee_distributor.checkpoint_token()
             fee_distributor.checkpoint_total_supply()
