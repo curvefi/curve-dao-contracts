@@ -45,19 +45,38 @@ token_last_balance: public(uint256)
 
 ve_supply: public(uint256[1000000000000000])  # VE total supply at week bounds
 
+admin: public(address)
+future_admin: public(address)
+
 
 @external
-def __init__(_voting_escrow: address, _start_time: uint256, _token: address):
+def __init__(_voting_escrow: address, _start_time: uint256, _token: address, _admin: address):
     t: uint256 = _start_time / WEEK * WEEK
     self.start_time = t
     self.last_token_time = t
     self.time_cursor = t
     self.token = _token
     self.voting_escrow = _voting_escrow
+    self.admin = _admin
 
 
-@internal
-def _checkpoint_token():
+@external
+def set_admin(addr: address):
+    assert msg.sender == self.admin  # dev: access denied
+    self.future_admin = addr
+
+
+@external
+def apply_admin():
+    assert msg.sender == self.admin
+    assert self.future_admin != ZERO_ADDRESS
+    self.admin = self.future_admin
+
+
+@external
+def checkpoint_token():
+    assert msg.sender == self.admin
+
     token_balance: uint256 = ERC20(self.token).balanceOf(self)
     to_distribute: uint256 = token_balance - self.token_last_balance
     self.token_last_balance = token_balance
@@ -83,12 +102,6 @@ def _checkpoint_token():
                 self.tokens_per_week[this_week] += to_distribute * (next_week - t) / since_last
         t = next_week
         this_week = next_week
-
-
-@external
-def checkpoint_token():
-    # XXX this should only be allowed to one who distributes the token
-    self._checkpoint_token()
 
 
 @internal
