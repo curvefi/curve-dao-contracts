@@ -200,6 +200,8 @@ def pool(CurvePool, accounts, mock_lp_token, coin_a, coin_b):
 
 @pytest.fixture(scope="module")
 def fee_distributor(FeeDistributor, voting_escrow, accounts, coin_a, chain):
-    def f(t=chain.time()):
-        return FeeDistributor.deploy(voting_escrow, chain.time(), coin_a, accounts[0], {'from': accounts[0]})
+    def f(t=None):
+        if not t:
+            t = chain.time()
+        return FeeDistributor.deploy(voting_escrow, t, coin_a, accounts[0], {'from': accounts[0]})
     yield f

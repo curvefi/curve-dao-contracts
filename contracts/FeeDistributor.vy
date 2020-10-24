@@ -7,6 +7,7 @@
 
 # XXX TODO
 # * events
+# * multiple funding addresses
 # XXX TODO
 
 from vyper.interfaces import ERC20
@@ -128,7 +129,7 @@ def _checkpoint_total_supply():
 
     for i in range(20):
         if t > rounded_timestamp:
-            return
+            break
         else:
             epoch: uint256 = self.find_timestamp_epoch(ve, t)
             pt: Point = VotingEscrow(ve).point_history(epoch)
@@ -194,6 +195,8 @@ def claim(addr: address = msg.sender) -> uint256:
         week_cursor = (user_point.ts + WEEK - 1) / WEEK * WEEK
     if week_cursor >= last_token_time:
         return 0
+    if week_cursor < _start_time:
+        week_cursor = _start_time
     old_user_point: Point = empty(Point)
     to_distribute: uint256 = 0
 
@@ -225,6 +228,8 @@ def claim(addr: address = msg.sender) -> uint256:
     self.time_cursor_of[addr] = week_cursor
 
     if to_distribute > 0:
-        assert ERC20(self.token).transfer(addr, to_distribute)
+        token: address = self.token
+        assert ERC20(token).transfer(addr, to_distribute)
+        self.token_last_balance = ERC20(token).balanceOf(self)
 
     return to_distribute

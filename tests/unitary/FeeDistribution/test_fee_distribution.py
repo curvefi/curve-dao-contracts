@@ -37,7 +37,7 @@ def test_deposited_during(web3, chain, accounts, voting_escrow, fee_distributor,
     coin_a._mint_for_testing(100 * 10 ** 18, {'from': bob})
 
     chain.sleep(WEEK)
-    voting_escrow.create_lock(amount, chain[-1].timestamp + 8*WEEK, {'from': alice})  # 5
+    voting_escrow.create_lock(amount, chain[-1].timestamp + 8*WEEK, {'from': alice})
     chain.sleep(WEEK)
     fee_distributor = fee_distributor()
 
@@ -49,7 +49,7 @@ def test_deposited_during(web3, chain, accounts, voting_escrow, fee_distributor,
             chain.sleep(DAY)
             chain.mine()
 
-    chain.sleep(2*WEEK)
+    chain.sleep(WEEK)
     fee_distributor.checkpoint_token()
 
     fee_distributor.claim({'from': alice})
@@ -58,4 +58,24 @@ def test_deposited_during(web3, chain, accounts, voting_escrow, fee_distributor,
 
 
 def test_deposited_before(web3, chain, accounts, voting_escrow, fee_distributor, coin_a, token):
-    pass
+    alice, bob = accounts[0:2]
+    amount = 1000 * 10 ** 18
+
+    token.approve(voting_escrow.address, amount * 10, {'from': alice})
+    coin_a._mint_for_testing(100 * 10 ** 18, {'from': bob})
+
+    voting_escrow.create_lock(amount, chain[-1].timestamp + 8*WEEK, {'from': alice})
+    chain.sleep(WEEK)
+    chain.mine()
+    start_time = int(chain.time())
+    chain.sleep(WEEK*5)
+
+    fee_distributor = fee_distributor(t=start_time)
+    coin_a.transfer(fee_distributor, 10**19, {'from': bob})
+    fee_distributor.checkpoint_token()
+    chain.sleep(WEEK)
+    fee_distributor.checkpoint_token()
+
+    fee_distributor.claim({'from': alice})
+
+    assert abs(coin_a.balanceOf(alice) - 10**19) < 10
