@@ -79,3 +79,7 @@ def test_deposited_before(web3, chain, accounts, voting_escrow, fee_distributor,
     fee_distributor.claim({'from': alice})
 
     assert abs(coin_a.balanceOf(alice) - 10**19) < 10
+
+
+# TODO: sequential deposits
+# TODO: parallel deposits by 2 LPs
