@@ -81,5 +81,32 @@ def test_deposited_before(web3, chain, accounts, voting_escrow, fee_distributor,
     assert abs(coin_a.balanceOf(alice) - 10**19) < 10
 
 
-# TODO: sequential deposits
+def test_deposited_twice(web3, chain, accounts, voting_escrow, fee_distributor, coin_a, token):
+    alice, bob = accounts[0:2]
+    amount = 1000 * 10 ** 18
+
+    token.approve(voting_escrow.address, amount * 10, {'from': alice})
+    coin_a._mint_for_testing(100 * 10 ** 18, {'from': bob})
+
+    voting_escrow.create_lock(amount, chain[-1].timestamp + 4*WEEK, {'from': alice})
+    chain.sleep(WEEK)
+    chain.mine()
+    start_time = int(chain.time())
+    chain.sleep(WEEK*3)
+    voting_escrow.withdraw({'from': alice})
+    exclude_time = chain[-1].timestamp // WEEK * WEEK  # Alice had 0 here
+    voting_escrow.create_lock(amount, chain[-1].timestamp + 4*WEEK, {'from': alice})
+    chain.sleep(WEEK*2)
+
+    fee_distributor = fee_distributor(t=start_time)
+    coin_a.transfer(fee_distributor, 10**19, {'from': bob})
+    fee_distributor.checkpoint_token()
+    chain.sleep(WEEK)
+    fee_distributor.checkpoint_token()
+
+    fee_distributor.claim({'from': alice})
+
+    tokens_to_exclude = fee_distributor.tokens_per_week(exclude_time)
+    assert abs(10**19 - coin_a.balanceOf(alice) - tokens_to_exclude) < 10
+
 # TODO: parallel deposits by 2 LPs
