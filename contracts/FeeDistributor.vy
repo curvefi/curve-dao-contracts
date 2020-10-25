@@ -48,6 +48,7 @@ ve_supply: public(uint256[1000000000000000])  # VE total supply at week bounds
 
 admin: public(address)
 future_admin: public(address)
+can_checkpoint_token: public(bool)
 
 
 @external
@@ -75,9 +76,13 @@ def apply_admin():
 
 
 @external
-def checkpoint_token():
+def toggle_allow_checkpoint_token():
     assert msg.sender == self.admin
+    self.can_checkpoint_token = not self.can_checkpoint_token
 
+
+@internal
+def _checkpoint_token():
     token_balance: uint256 = ERC20(self.token).balanceOf(self)
     to_distribute: uint256 = token_balance - self.token_last_balance
     self.token_last_balance = token_balance
@@ -103,6 +108,13 @@ def checkpoint_token():
                 self.tokens_per_week[this_week] += to_distribute * (next_week - t) / since_last
         t = next_week
         this_week = next_week
+
+
+@external
+def checkpoint_token():
+    assert (msg.sender == self.admin) or\
+           (self.can_checkpoint_token and (block.timestamp > self.last_token_time + TOKEN_CHECKPOINT_DEADLINE))
+    self._checkpoint_token()
 
 
 @internal
@@ -157,6 +169,9 @@ def claim(addr: address = msg.sender) -> uint256:
 
     if block.timestamp >= self.time_cursor:
         self._checkpoint_total_supply()
+
+    if self.can_checkpoint_token and (block.timestamp > self.last_token_time + TOKEN_CHECKPOINT_DEADLINE):
+        self._checkpoint_token()
 
     last_token_time = last_token_time / WEEK * WEEK
 

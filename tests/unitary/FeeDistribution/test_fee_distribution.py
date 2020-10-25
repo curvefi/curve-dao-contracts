@@ -138,4 +138,4 @@ def test_deposited_parallel(web3, chain, accounts, voting_escrow, fee_distributo
     balance_alice = coin_a.balanceOf(alice)
     balance_bob = coin_a.balanceOf(bob)
     assert balance_alice == balance_bob
-    assert abs(balance_alice + balance_bob - 10**19) < 10
+    assert abs(balance_alice + balance_bob - 10**19) < 20
