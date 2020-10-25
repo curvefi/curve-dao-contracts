@@ -68,10 +68,12 @@ ve_supply: public(uint256[1000000000000000])  # VE total supply at week bounds
 admin: public(address)
 future_admin: public(address)
 can_checkpoint_token: public(bool)
+emergency_return: public(address)
+is_killed: public(bool)
 
 
 @external
-def __init__(_voting_escrow: address, _start_time: uint256, _token: address, _admin: address):
+def __init__(_voting_escrow: address, _start_time: uint256, _token: address, _admin: address, _emergency_return: address):
     t: uint256 = _start_time / WEEK * WEEK
     self.start_time = t
     self.last_token_time = t
@@ -79,6 +81,7 @@ def __init__(_voting_escrow: address, _start_time: uint256, _token: address, _ad
     self.token = _token
     self.voting_escrow = _voting_escrow
     self.admin = _admin
+    self.emergency_return = _emergency_return
 
 
 @external
@@ -103,6 +106,15 @@ def toggle_allow_checkpoint_token():
     flag: bool = not self.can_checkpoint_token
     self.can_checkpoint_token = flag
     log ToggleAllowCheckpointToken(flag)
+
+
+@external
+def kill_me():
+    assert msg.sender == self.admin
+    self.is_killed = True
+
+    token: address = self.token
+    assert ERC20(token).transfer(self.emergency_return, ERC20(token).balanceOf(self))
 
 
 @internal
@@ -190,6 +202,8 @@ def checkpoint_total_supply():
 @external
 @nonreentrant('lock')
 def claim(addr: address = msg.sender) -> uint256:
+    assert not self.is_killed
+
     ve: address = self.voting_escrow
     last_token_time: uint256 = self.last_token_time
 
