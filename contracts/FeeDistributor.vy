@@ -4,13 +4,10 @@
 @author Curve Finance
 @license MIT
 """
-
-# XXX TODO
-# * events
-# * multiple funding addresses
-# XXX TODO
-
 from vyper.interfaces import ERC20
+
+
+# TODO: recover undistributed tokens back
 
 
 interface VotingEscrow:
@@ -19,6 +16,28 @@ interface VotingEscrow:
     def user_point_history(addr: address, loc: uint256) -> Point: view
     def point_history(loc: uint256) -> Point: view
     def checkpoint(): nonpayable
+
+
+event CommitAdmin:
+    admin: address
+
+
+event ApplyAdmin:
+    admin: address
+
+
+event ToggleAllowCheckpointToken:
+    toggle_flag: bool
+
+
+event CheckpointToken:
+    time: uint256
+    tokens: uint256
+
+
+event Claimed:
+    recipient: address
+    amount: uint256
 
 
 struct Point:
@@ -63,22 +82,27 @@ def __init__(_voting_escrow: address, _start_time: uint256, _token: address, _ad
 
 
 @external
-def set_admin(addr: address):
+def commit_admin(addr: address):
     assert msg.sender == self.admin  # dev: access denied
     self.future_admin = addr
+    log CommitAdmin(addr)
 
 
 @external
 def apply_admin():
     assert msg.sender == self.admin
     assert self.future_admin != ZERO_ADDRESS
-    self.admin = self.future_admin
+    future_admin: address = self.future_admin
+    self.admin = future_admin
+    log ApplyAdmin(future_admin)
 
 
 @external
 def toggle_allow_checkpoint_token():
     assert msg.sender == self.admin
-    self.can_checkpoint_token = not self.can_checkpoint_token
+    flag: bool = not self.can_checkpoint_token
+    self.can_checkpoint_token = flag
+    log ToggleAllowCheckpointToken(flag)
 
 
 @internal
@@ -108,6 +132,8 @@ def _checkpoint_token():
                 self.tokens_per_week[this_week] += to_distribute * (next_week - t) / since_last
         t = next_week
         this_week = next_week
+
+    log CheckpointToken(block.timestamp, to_distribute)
 
 
 @external
@@ -182,6 +208,7 @@ def claim(addr: address = msg.sender) -> uint256:
 
     if max_user_epoch == 0:
         # No lock = no fees
+        log Claimed(addr, 0)
         return 0
 
     if self.time_cursor_of[addr] == 0:
@@ -209,6 +236,7 @@ def claim(addr: address = msg.sender) -> uint256:
     if week_cursor == 0:
         week_cursor = (user_point.ts + WEEK - 1) / WEEK * WEEK
     if week_cursor >= last_token_time:
+        log Claimed(addr, 0)
         return 0
     if week_cursor < _start_time:
         week_cursor = _start_time
@@ -247,4 +275,5 @@ def claim(addr: address = msg.sender) -> uint256:
         assert ERC20(token).transfer(addr, to_distribute)
         self.token_last_balance = ERC20(token).balanceOf(self)
 
+    log Claimed(addr, to_distribute)
     return to_distribute
