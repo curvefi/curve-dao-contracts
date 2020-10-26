@@ -124,7 +124,7 @@ def set_burner(_token: address, _burner: address):
     @param _token Token address
     @param _burner Burner contract address
     """
-    assert msg.sender == self.ownership_admin, "Access denied"
+    assert msg.sender == self.emergency_admin, "Access denied"
 
     _old_burner: address = self.burners[_token]
 
@@ -186,7 +186,7 @@ def kill_me(_pool: address):
     @notice Pause the pool `_pool` - only remove_liquidity will be callable
     @param _pool Pool address to pause
     """
-    assert msg.sender == self.emergency_admin, "Access denied"
+    assert msg.sender == self.ownership_admin, "Access denied"
     Curve(_pool).kill_me()
 
 
@@ -209,7 +209,7 @@ def commit_transfer_ownership(_pool: address, new_owner: address):
     @param _pool Pool which ownership is to be transferred
     @param new_owner New pool owner address
     """
-    assert msg.sender == self.ownership_admin, "Access denied"
+    assert msg.sender == self.emergency_admin, "Access denied"
     Curve(_pool).commit_transfer_ownership(new_owner)
 
 
