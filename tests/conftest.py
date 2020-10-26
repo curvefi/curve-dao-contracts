@@ -203,3 +203,7 @@ def susd_pool(StableSwapSUSD, accounts, mock_lp_token_susd, coin_a, coin_b):
     curve_pool.add_liquidity([10**21, 3 * 10**20], 0, {'from': accounts[0]})
 
     yield curve_pool
+
+@pytest.fixture(scope="module")
+def staking_burner(StakingBurner, accounts, pool_proxy, liquidity_gauge):
+    yield StakingBurner.deploy(pool_proxy, liquidity_gauge, {'from': accounts[0]})
