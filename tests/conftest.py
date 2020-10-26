@@ -34,7 +34,8 @@ def theoretical_supply(chain, token):
         S = INITIAL_SUPPLY * 10 ** 18
         if epoch > 0:
             S += int(YEAR_1_SUPPLY * (1 - q ** epoch) / (1 - q))
-        S += int(YEAR_1_SUPPLY // YEAR * q ** epoch) * (chain[-1].timestamp - token.start_epoch_time())
+        S += int(YEAR_1_SUPPLY // YEAR * q ** epoch) * \
+            (chain[-1].timestamp - token.start_epoch_time())
         return S
 
     yield _fn
@@ -64,7 +65,8 @@ def minter(Minter, accounts, gauge_controller, token):
 
 @pytest.fixture(scope="module")
 def registry(Registry, accounts, susd_pool, mock_lp_token_susd):
-    registry = Registry.deploy(["0x0000000000000000000000000000000000000000"] * 4, {'from': accounts[0]})
+    registry = Registry.deploy(
+        ["0x0000000000000000000000000000000000000000"] * 4, {'from': accounts[0]})
     registry.add_pool(
         susd_pool, 2, mock_lp_token_susd,
         "0x0000000000000000000000000000000000000000", "0x00",
@@ -76,7 +78,8 @@ def registry(Registry, accounts, susd_pool, mock_lp_token_susd):
 
 @pytest.fixture(scope="module")
 def pool_proxy(PoolProxy, accounts, registry, susd_pool):
-    proxy = PoolProxy.deploy(registry, accounts[0], accounts[0], accounts[0], {'from': accounts[0]})
+    proxy = PoolProxy.deploy(registry, accounts[0], accounts[0], accounts[0], {
+                             'from': accounts[0]})
 
     susd_pool.commit_transfer_ownership(proxy, {'from': accounts[0]})
     susd_pool.apply_transfer_ownership({'from': accounts[0]})
@@ -91,7 +94,8 @@ def coin_reward(ERC20, accounts):
 
 @pytest.fixture(scope="module")
 def reward_contract(CurveRewards, mock_lp_token, accounts, coin_reward):
-    contract = CurveRewards.deploy(mock_lp_token, coin_reward, {'from': accounts[0]})
+    contract = CurveRewards.deploy(
+        mock_lp_token, coin_reward, {'from': accounts[0]})
     contract.setRewardDistribution(accounts[0], {'from': accounts[0]})
     yield contract
 
@@ -109,7 +113,8 @@ def liquidity_gauge_reward(LiquidityGaugeReward, accounts, mock_lp_token, minter
 @pytest.fixture(scope="module")
 def three_gauges(LiquidityGauge, accounts, mock_lp_token, minter):
     contracts = [
-        LiquidityGauge.deploy(mock_lp_token, minter, accounts[0], {'from': accounts[0]})
+        LiquidityGauge.deploy(mock_lp_token, minter,
+                              accounts[0], {'from': accounts[0]})
         for _ in range(3)
     ]
 
@@ -130,7 +135,8 @@ def end_time(start_time):
 
 @pytest.fixture(scope="module")
 def vesting(VestingEscrow, accounts, coin_a, start_time, end_time):
-    contract = VestingEscrow.deploy(coin_a, start_time, end_time, True, accounts[1:5], {'from': accounts[0]})
+    contract = VestingEscrow.deploy(
+        coin_a, start_time, end_time, True, accounts[1:5], {'from': accounts[0]})
     coin_a._mint_for_testing(10**21, {'from': accounts[0]})
     coin_a.approve(contract, 10**21, {'from': accounts[0]})
     yield contract
@@ -151,7 +157,8 @@ def vesting_simple(VestingEscrowSimple, accounts, vesting_factory, coin_a, start
     coin_a._mint_for_testing(10**21, {'from': accounts[0]})
     coin_a.transfer(vesting_factory, 10**21, {'from': accounts[0]})
     tx = vesting_factory.deploy_vesting_contract(
-        coin_a, accounts[1], 10**20, True, 100000000, start_time, {'from': accounts[0]}
+        coin_a, accounts[1], 10**20, True, 100000000, start_time, {
+            'from': accounts[0]}
     )
     yield VestingEscrowSimple.at(tx.new_contracts[0])
 
@@ -176,7 +183,8 @@ def mock_lp_token(ERC20LP, accounts):  # Not using the actual Curve contract
 @pytest.fixture(scope="module")
 def pool(CurvePool, accounts, mock_lp_token, coin_a, coin_b):
     curve_pool = CurvePool.deploy(
-        [coin_a, coin_b], mock_lp_token, 100, 4 * 10 ** 6, {'from': accounts[0]}
+        [coin_a, coin_b], mock_lp_token, 100, 4 *
+        10 ** 6, {'from': accounts[0]}
     )
     mock_lp_token.set_minter(curve_pool, {'from': accounts[0]})
 
@@ -191,7 +199,8 @@ def mock_lp_token_susd(ERC20LP, accounts):
 @pytest.fixture(scope="module")
 def susd_pool(StableSwapSUSD, accounts, mock_lp_token_susd, coin_a, coin_b):
     curve_pool = StableSwapSUSD.deploy(
-        [coin_a, coin_b], [coin_a, coin_b], mock_lp_token_susd, 100, 4 * 10 ** 6, {'from': accounts[0]}
+        [coin_a, coin_b], [coin_a, coin_b], mock_lp_token_susd, 100, 4 *
+        10 ** 6, {'from': accounts[0]}
     )
     mock_lp_token_susd.set_minter(curve_pool, {'from': accounts[0]})
 
@@ -203,6 +212,7 @@ def susd_pool(StableSwapSUSD, accounts, mock_lp_token_susd, coin_a, coin_b):
     curve_pool.add_liquidity([10**21, 3 * 10**20], 0, {'from': accounts[0]})
 
     yield curve_pool
+
 
 @pytest.fixture(scope="module")
 def staking_burner(StakingBurner, accounts, pool_proxy, liquidity_gauge):

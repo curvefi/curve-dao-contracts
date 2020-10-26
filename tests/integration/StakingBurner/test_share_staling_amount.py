@@ -4,39 +4,56 @@ def pack_values(values):
     return padded
 
 
-def test_share_staking(accounts, ERC20, ERC20LP, CurvePool, Registry):
+def test_share_staking(web3, chain, accounts, ERC20, ERC20Staking, ERC20LP, CurvePool, PoolProxy, StakingBurner, LiquidityGauge, Minter, ERC20CRV, VotingEscrow, GaugeController):
     alice, bob = accounts[:2]
 
-    coin_a = ERC20.deploy("Stable coin", "USDT", 18, {'from': alice})
-    coin_b = ERC20.deploy("Staking coin", "USDN", 18, {'from': alice})
+    usdt = ERC20.deploy("Stable coin", "USDT", 18, {'from': alice})
+    usdn = ERC20Staking.deploy("Staking coin", "USDN", 18, {'from': alice})
     lp = ERC20LP.deploy("Curve share LP token", "shareCrv", 18,
-                        1000 * 10 ** 18, {'from': alice})
+                        0, {'from': alice})
 
     pool = CurvePool.deploy(
-        [coin_a, coin_b], lp, 100, 4 * 10 ** 6, {'from': alice}
+        [usdt, usdn], lp, 100, 4 * 10 ** 6, {'from': alice}
     )
     lp.set_minter(pool)
 
-    registry = Registry.deploy(
-        ["0x0000000000000000000000000000000000000000"] * 4, {'from': alice})
-    registry.add_pool(
-        pool, 2, lp,
-        "0x0000000000000000000000000000000000000000", "0x00",
-        pack_values([18, 18]), pack_values([18, 18]),
-        {'from': alice})
+    proxy = PoolProxy.deploy(
+        "0x0000000000000000000000000000000000000000", alice, alice, alice, {'from': alice})
+    pool.commit_transfer_ownership(proxy, {'from': alice})
+    pool.apply_transfer_ownership({'from': alice})
 
-    # coin_a._mint_for_testing(10 ** 18)
-    # coin_b._mint_for_testing(10 ** 18)
-    # pool.add_liquidity([10 ** 18, 10 ** 18], 1, {'from': accounts[0]})
+    usdt._mint_for_testing(10 ** 18)
+    usdn.approve(pool, 2**256-1, {'from': alice})
+    usdn._mint_for_testing(10 ** 18)
+    usdt.approve(pool, 2**256-1, {'from': alice})
+    assert usdt.balanceOf(alice) == 10 ** 18
+    assert usdn.balanceOf(alice) == 10 ** 18
 
-    # pool_proxy.burn_coin(coin_a, {'from': accounts[0]})
-    # pool_proxy.burn_coin(coin_a, {'from': accounts[1]})
+    crv = ERC20CRV.deploy("Curve DAO Token", "CRV", 18, {'from': alice})
+    voting_escrow = VotingEscrow.deploy(
+        crv, 'Voting-escrowed CRV', 'veCRV', 'veCRV_0.99', {'from': alice})
+    controller = GaugeController.deploy(crv, voting_escrow, {'from': alice})
+    minter = Minter.deploy(crv, controller, {'from': alice})
+    gauge = LiquidityGauge.deploy(lp, minter, alice, {'from': alice})
+    burner = StakingBurner.deploy(proxy, gauge, {'from': alice})
 
-    # assert coin_a.balanceOf(accounts[0]) == 1000/2/2  # wrong value
-    # assert coin_a.balanceOf(accounts[1]) == 1000/2/2 # wrong value
+    pool.add_liquidity([10 ** 18, 10 ** 18], 0, {'from': alice})
+    lp.approve(gauge, 2**256-1, {'from': alice})
+    proxy.set_burner(usdn, burner)
+    chain.sleep(1000)
+    chain.mine(1000)
+    gauge.deposit(lp.balanceOf(alice), {'from': alice})
 
-    # pool_proxy.set_burner(coin_a, staking_burner)
-    # liquidity_gauge.deposit(10 ** 18, {'from': accounts[0]})
-    # liquidity_gauge.deposit(10 ** 18, {'from': accounts[1]})
-    # assert liquidity_gauge.balanceOf(accounts[0]) == 10 ** 18
-    # assert liquidity_gauge.balanceOf(accounts[0]) == 10 ** 18
+    usdn._set_interest('2.0')
+    proxy.withdraw_admin_fees(pool)
+    chain.sleep(1000)
+    chain.mine(1000)
+    print(gauge.user_checkpoint(alice))
+    chain.sleep(1000)
+    chain.mine(1000)
+
+    print('balance_proxy', usdn.balanceOf(proxy))
+    print('integrate_fraction', gauge.integrate_fraction(alice))
+
+    print(proxy.burn_coin(usdn, {'from': alice}))
+    assert usdn.balanceOf(alice) == 1000/2/2  # wrong value
