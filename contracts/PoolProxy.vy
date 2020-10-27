@@ -281,8 +281,11 @@ def commit_new_parameters(_pool: address,
 def apply_new_parameters(_pool: address):
     """
     @notice Apply new parameters for `_pool` pool
+    @dev Only callable by an EOA
     @param _pool Pool address
     """
+    assert msg.sender == tx.origin
+
     min_asymmetry: uint256 = self.min_asymmetries[_pool]
 
     if min_asymmetry > 0:
