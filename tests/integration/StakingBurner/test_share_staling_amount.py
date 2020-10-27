@@ -4,7 +4,7 @@ def pack_values(values):
     return padded
 
 
-def test_share_staking(web3, chain, accounts, ERC20, ERC20Staking, ERC20LP, CurvePool, PoolProxy, StakingBurner, LiquidityGauge, Minter, ERC20CRV, VotingEscrow, GaugeController):
+def test_share_staking(web3, chain, accounts, ERC20, ERC20Staking, ERC20LP, CurvePool, PoolProxy, StakingBurner, LiquidityGauge, Minter, ERC20CRV, VotingEscrow, GaugeController, token):
     alice, bob = accounts[:2]
 
     usdt = ERC20.deploy("Stable coin", "USDT", 18, {'from': alice})
@@ -29,29 +29,35 @@ def test_share_staking(web3, chain, accounts, ERC20, ERC20Staking, ERC20LP, Curv
     assert usdt.balanceOf(alice) == 10 ** 18
     assert usdn.balanceOf(alice) == 10 ** 18
 
-    crv = ERC20CRV.deploy("Curve DAO Token", "CRV", 18, {'from': alice})
     voting_escrow = VotingEscrow.deploy(
-        crv, 'Voting-escrowed CRV', 'veCRV', 'veCRV_0.99', {'from': alice})
-    controller = GaugeController.deploy(crv, voting_escrow, {'from': alice})
-    minter = Minter.deploy(crv, controller, {'from': alice})
+        token, 'Voting-escrowed CRV', 'veCRV', 'veCRV_0.99', {'from': alice})
+    controller = GaugeController.deploy(token, voting_escrow, {'from': alice})
+    minter = Minter.deploy(token, controller, {'from': alice})
     gauge = LiquidityGauge.deploy(lp, minter, alice, {'from': alice})
     burner = StakingBurner.deploy(proxy, gauge, {'from': alice})
 
     pool.add_liquidity([10 ** 18, 10 ** 18], 0, {'from': alice})
     lp.approve(gauge, 2**256-1, {'from': alice})
     proxy.set_burner(usdn, burner)
-    chain.sleep(1000)
-    chain.mine(1000)
+    # chain.mine(86400)
+    chain.sleep(86400)
+    chain.sleep(86400)
     gauge.deposit(lp.balanceOf(alice), {'from': alice})
+    # chain.mine(86400)
+    chain.sleep(86400)
+    chain.sleep(86400)
 
     usdn._set_interest('2.0')
-    proxy.withdraw_admin_fees(pool)
-    chain.sleep(1000)
-    chain.mine(1000)
     print(gauge.user_checkpoint(alice))
-    chain.sleep(1000)
-    chain.mine(1000)
+    # chain.mine(86400)
+    chain.sleep(86400)
+    chain.sleep(86400)
+    proxy.withdraw_admin_fees(pool)
+    # chain.mine(86400)
+    chain.sleep(86400)
+    chain.sleep(86400)
 
+    print('rate', token.rate())
     print('balance_proxy', usdn.balanceOf(proxy))
     print('integrate_fraction', gauge.integrate_fraction(alice))
 
