@@ -1,11 +1,10 @@
-# @version 0.2.5
+# @version 0.2.7
 """
 @title Curve StableSwap Proxy
+@dev Adjusted ownership requirements for metapools
 @author Curve Finance
 @license MIT
 """
-
-from vyper.interfaces import ERC20
 
 interface Burner:
     def burn() -> bool: nonpayable
@@ -124,15 +123,37 @@ def set_burner(_token: address, _burner: address):
     @param _token Token address
     @param _burner Burner contract address
     """
-    assert msg.sender == self.emergency_admin, "Access denied"
+    assert msg.sender == self.ownership_admin, "Access denied"
 
-    _old_burner: address = self.burners[_token]
-
+    old_burner: address = self.burners[_token]
     if _token != ZERO_ADDRESS:
-        if _old_burner != ZERO_ADDRESS:
-            ERC20(_token).approve(_old_burner, 0)
+        if old_burner != ZERO_ADDRESS:
+            # revoke approval on previous burner
+            response: Bytes[32] = raw_call(
+                _token,
+                concat(
+                    method_id("approve(address,uint256)"),
+                    convert(old_burner, bytes32),
+                    convert(0, bytes32),
+                ),
+                max_outsize=32,
+            )
+            if len(response) != 0:
+                assert convert(response, bool)
+
         if _burner != ZERO_ADDRESS:
-            ERC20(_token).approve(_burner, MAX_UINT256)
+            # infinite approval for current burner
+            response: Bytes[32] = raw_call(
+                _token,
+                concat(
+                    method_id("approve(address,uint256)"),
+                    convert(_burner, bytes32),
+                    convert(MAX_UINT256, bytes32),
+                ),
+                max_outsize=32,
+            )
+            if len(response) != 0:
+                assert convert(response, bool)
 
     self.burners[_token] = _burner
 
