@@ -7,6 +7,7 @@ name: gas efficiency workflow
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  NODE_OPTIONS: --max_old_space_size=4096
 
 jobs:
 
@@ -14,16 +15,24 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
+
+    - name: Cache Compiler Installations
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/.solcx
+          ~/.vvm
+        key: compiler-cache
 
     - name: Setup Node.js
       uses: actions/setup-node@v1
 
     - name: Install Ganache
-      run: npm install -g ganache-cli@6.10.1
+      run: npm install
 
     - name: Setup Python 3.8
-      uses: actions/setup-python@v1
+      uses: actions/setup-python@v2
       with:
         python-version: 3.8
 
