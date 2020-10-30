@@ -11,6 +11,7 @@ from vyper.interfaces import ERC20
 
 
 interface Pool:
+    def coins(i: uint256) -> address: view
     def exchange(i: int128, j: int128, dx: uint256, min_dy: uint256): nonpayable
 
 
@@ -22,8 +23,9 @@ interface Gauge:
 SHARE: constant(decimal) = 0.5
 
 
-pool_proxy: public(address)
 pool: public(address)
+pool_proxy: public(address)
+ve_holder: public(address)
 burned: public(uint256)
 burned_of: public(HashMap[address, uint256])
 gauge: public(address)
@@ -32,7 +34,8 @@ integrate_inv_supply_of: public(HashMap[address, uint256])
 
 
 @external
-def __init__(_pool: address, _pool_proxy: address, _gauge: address):
+def __init__(_ve_holder: address, _pool: address, _pool_proxy: address, _gauge: address):
+    self.ve_holder = _ve_holder
     self.pool = _pool
     self.pool_proxy = _pool_proxy
     self.gauge = _gauge
@@ -60,12 +63,23 @@ def burn_coin(_coin: address) -> bool:
     self.integrate_fraction[msg.sender] = last_fraction
     self.integrate_inv_supply_of[msg.sender] = last_integrate_inv
 
-    ve_profit -= self.burned_of[self.pool]
+    ve_profit -= self.burned_of[self.ve_holder]
     if ve_profit > 0:
         self.burned += ve_profit
-        self.burned_of[self.pool] += ve_profit
-        # SHOULD SEND REWARD FOR veCRV holders
-        # Pool(self.pool).exchange(0, 1, ve_profit, 0)
+        self.burned_of[self.ve_holder] += ve_profit
+
+        if Pool(self.pool).coins(0) == _coin:
+            # Pool(self.pool).exchange(0, 1, ve_profit, 0)
+            second_coin: address =  Pool(self.pool).coins(1)
+            second_coin_balance: uint256 = ERC20(second_coin).balanceOf(self)
+            ERC20(second_coin).transfer(self.ve_holder, second_coin_balance)
+        else:
+            second_coin: address =  Pool(self.pool).coins(0)
+            second_coin_balance: uint256 = ERC20(second_coin).balanceOf(self)
+            ERC20(_coin).approve(self.pool, 2**128 - 1)
+            ERC20(second_coin).approve(self.pool, 2**128 - 1)
+            Pool(self.pool).exchange(1, 0, ve_profit, 0)
+            ERC20(second_coin).transfer(self.ve_holder, second_coin_balance)
 
     return True
 

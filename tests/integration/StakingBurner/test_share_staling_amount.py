@@ -8,7 +8,7 @@ def pack_values(values):
 
 
 def test_share_staking(web3, chain, accounts, ERC20, ERC20Staking, ERC20LP, CurvePool, PoolProxy, StakingBurner, LiquidityGauge, Minter, ERC20CRV, VotingEscrow, GaugeController, token):
-    alice, bob = accounts[:2]
+    alice, bob, ve = accounts[:3]
 
     usdt = ERC20.deploy("Stable coin", "USDT", 18, {'from': alice})
     usdn = ERC20Staking.deploy("Staking coin", "USDN", 18, {'from': alice})
@@ -37,7 +37,7 @@ def test_share_staking(web3, chain, accounts, ERC20, ERC20Staking, ERC20LP, Curv
     controller = GaugeController.deploy(token, voting_escrow, {'from': alice})
     minter = Minter.deploy(token, controller, {'from': alice})
     gauge = LiquidityGauge.deploy(lp, minter, alice, {'from': alice})
-    burner = StakingBurner.deploy(pool, proxy, gauge, {'from': alice})
+    burner = StakingBurner.deploy(ve, pool, proxy, gauge, {'from': alice})
     proxy.set_burner(usdn, burner)
 
     controller.add_type("simple", 10)
@@ -67,6 +67,7 @@ def test_share_staking(web3, chain, accounts, ERC20, ERC20Staking, ERC20LP, Curv
 
     alice_burn = burner.claim_tokens(usdn)
     burner.burn_coin(usdn, {'from': alice})
+    assert usdt.balanceOf(ve) == 1
     assert usdn.balanceOf(alice) == alice_burn
     assert usdn.balanceOf(proxy) == 10 ** 18 - alice_burn
 
