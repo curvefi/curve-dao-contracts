@@ -65,21 +65,30 @@ def burn_coin(_coin: address) -> bool:
 
     ve_profit -= self.burned_of[self.ve_holder]
     if ve_profit > 0:
+        assert ERC20(_coin).balanceOf(self.pool_proxy) >= ve_profit
+        ERC20(_coin).transferFrom(self.pool_proxy, self, ve_profit)
+        assert ERC20(_coin).balanceOf(self) >= ve_profit
+
         self.burned += ve_profit
         self.burned_of[self.ve_holder] += ve_profit
 
         if Pool(self.pool).coins(0) == _coin:
+            pass
             # Pool(self.pool).exchange(0, 1, ve_profit, 0)
-            second_coin: address =  Pool(self.pool).coins(1)
-            second_coin_balance: uint256 = ERC20(second_coin).balanceOf(self)
-            ERC20(second_coin).transfer(self.ve_holder, second_coin_balance)
+            # second_coin: address =  Pool(self.pool).coins(1)
+            # second_coin_balance: uint256 = ERC20(second_coin).balanceOf(self)
+            # ERC20(second_coin).transfer(self.ve_holder, second_coin_balance)
         else:
             second_coin: address =  Pool(self.pool).coins(0)
-            second_coin_balance: uint256 = ERC20(second_coin).balanceOf(self)
             ERC20(_coin).approve(self.pool, 2**128 - 1)
             ERC20(second_coin).approve(self.pool, 2**128 - 1)
-            Pool(self.pool).exchange(1, 0, ve_profit, 0)
-            ERC20(second_coin).transfer(self.ve_holder, second_coin_balance)
+            Pool(self.pool).exchange(0, 1, ve_profit, 0)
+
+
+            # second_coin_balance: uint256 = ERC20(second_coin).balanceOf(self)
+
+
+            # ERC20(second_coin).transfer(self.ve_holder, second_coin_balance)
 
     return True
 
