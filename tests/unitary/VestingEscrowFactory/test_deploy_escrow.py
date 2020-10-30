@@ -86,7 +86,7 @@ def test_init_vars(vesting_simple, accounts, coin_a, start_time, end_time):
 
 
 def test_cannot_call_init(vesting_simple, accounts, coin_a, start_time, end_time):
-    with brownie.reverts("dev: can only initialize once"):
+    with brownie.reverts():
         vesting_simple.initialize(
             accounts[0],
             coin_a,

@@ -4,12 +4,12 @@ ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
 
 def test_toggle_admin_only(vesting_simple, accounts):
-    with brownie.reverts("dev: admin only"):
+    with brownie.reverts():
         vesting_simple.toggle_disable(accounts[2], {'from': accounts[1]})
 
 
 def test_disable_can_disable_admin_only(vesting_simple, accounts):
-    with brownie.reverts("dev: admin only"):
+    with brownie.reverts():
         vesting_simple.disable_can_disable({'from': accounts[1]})
 
 
@@ -34,7 +34,7 @@ def test_disable_can_disable(vesting_simple, accounts):
     vesting_simple.disable_can_disable({'from': accounts[0]})
     assert vesting_simple.can_disable() is False
 
-    with brownie.reverts("Cannot disable"):
+    with brownie.reverts():
         vesting_simple.toggle_disable(accounts[1], {'from': accounts[0]})
 
 
