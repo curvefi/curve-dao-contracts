@@ -4,6 +4,8 @@ name: main workflow
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  NODE_OPTIONS: --max_old_space_size=4096
+
 
 jobs:
 
@@ -25,7 +27,7 @@ jobs:
       uses: actions/setup-node@v1
 
     - name: Install Ganache
-      run: npm install -g ganache-cli@6.10.1
+      run: npm install
 
     - name: Setup Python 3.8
       uses: actions/setup-python@v2
@@ -56,7 +58,7 @@ jobs:
       uses: actions/setup-node@v1
 
     - name: Install Ganache
-      run: npm install -g ganache-cli@6.10.1
+      run: npm install
 
     - name: Setup Python 3.8
       uses: actions/setup-python@v2
@@ -87,7 +89,7 @@ jobs:
       uses: actions/setup-node@v1
 
     - name: Install Ganache
-      run: npm install -g ganache-cli@6.10.1
+      run: npm install
 
     - name: Setup Python 3.8
       uses: actions/setup-python@v2
