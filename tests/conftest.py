@@ -63,25 +63,8 @@ def minter(Minter, accounts, gauge_controller, token):
 
 
 @pytest.fixture(scope="module")
-def registry(Registry, accounts, susd_pool, mock_lp_token_susd):
-    registry = Registry.deploy(["0x0000000000000000000000000000000000000000"] * 4, {'from': accounts[0]})
-    registry.add_pool(
-        susd_pool, 2, mock_lp_token_susd,
-        "0x0000000000000000000000000000000000000000", "0x00",
-        pack_values([18, 18]), pack_values([18, 18]),
-        {'from': accounts[0]})
-
-    yield registry
-
-
-@pytest.fixture(scope="module")
-def pool_proxy(PoolProxy, accounts, registry, susd_pool):
-    proxy = PoolProxy.deploy(registry, accounts[0], accounts[0], accounts[0], {'from': accounts[0]})
-
-    susd_pool.commit_transfer_ownership(proxy, {'from': accounts[0]})
-    susd_pool.apply_transfer_ownership({'from': accounts[0]})
-
-    return proxy
+def pool_proxy(PoolProxy, accounts):
+    yield PoolProxy.deploy(accounts[0], accounts[0], accounts[0], {'from': accounts[0]})
 
 
 @pytest.fixture(scope="module")
@@ -179,27 +162,5 @@ def pool(CurvePool, accounts, mock_lp_token, coin_a, coin_b):
         [coin_a, coin_b], mock_lp_token, 100, 4 * 10 ** 6, {'from': accounts[0]}
     )
     mock_lp_token.set_minter(curve_pool, {'from': accounts[0]})
-
-    yield curve_pool
-
-
-@pytest.fixture(scope="module")
-def mock_lp_token_susd(ERC20LP, accounts):
-    yield ERC20LP.deploy("Curve LP token S", "susdCrv", 18, 0, {'from': accounts[0]})
-
-
-@pytest.fixture(scope="module")
-def susd_pool(StableSwapSUSD, accounts, mock_lp_token_susd, coin_a, coin_b):
-    curve_pool = StableSwapSUSD.deploy(
-        [coin_a, coin_b], [coin_a, coin_b], mock_lp_token_susd, 100, 4 * 10 ** 6, {'from': accounts[0]}
-    )
-    mock_lp_token_susd.set_minter(curve_pool, {'from': accounts[0]})
-
-    coin_a._mint_for_testing(10**21, {'from': accounts[0]})
-    coin_b._mint_for_testing(3 * 10**20, {'from': accounts[0]})
-    coin_a.approve(curve_pool, 10**21, {'from': accounts[0]})
-    coin_b.approve(curve_pool, 10**21, {'from': accounts[0]})
-    # Deposit with asymmetry
-    curve_pool.add_liquidity([10**21, 3 * 10**20], 0, {'from': accounts[0]})
 
     yield curve_pool
