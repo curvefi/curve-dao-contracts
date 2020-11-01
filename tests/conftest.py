@@ -85,6 +85,11 @@ def liquidity_gauge(LiquidityGauge, accounts, mock_lp_token, minter):
 
 
 @pytest.fixture(scope="module")
+def gauge_wrapper(LiquidityGaugeWrapper, accounts, liquidity_gauge):
+    yield LiquidityGaugeWrapper.deploy("Tokenized Gauge", "TG", liquidity_gauge, accounts[0], {'from': accounts[0]})
+
+
+@pytest.fixture(scope="module")
 def liquidity_gauge_reward(LiquidityGaugeReward, accounts, mock_lp_token, minter, reward_contract, coin_reward):
     yield LiquidityGaugeReward.deploy(mock_lp_token, minter, reward_contract, coin_reward, accounts[0], {'from': accounts[0]})
 
