@@ -1,11 +1,9 @@
-# @version 0.2.5
+# @version 0.2.7
 """
 @title Curve StableSwap Proxy
 @author Curve Finance
 @license MIT
 """
-
-from vyper.interfaces import ERC20
 
 interface Burner:
     def burn() -> bool: nonpayable
@@ -30,11 +28,16 @@ interface Curve:
     def donate_admin_fees(): nonpayable
 
 
+interface AddressProvider:
+    def get_registry() -> address: view
+
 interface Registry:
-    def get_pool_info(_pool: address) -> PoolInfo: view
+    def get_decimals(_pool: address) -> uint256[8]: view
+    def get_underlying_balances(_pool: address) -> uint256[8]: view
 
 
 MAX_COINS: constant(int128) = 8
+ADDRESS_PROVIDER: constant(address) = 0x0000000022D53366457F9d5E68Ec105046FC4383
 
 struct PoolInfo:
     balances: uint256[MAX_COINS]
@@ -71,15 +74,16 @@ min_asymmetries: public(HashMap[address, uint256])
 
 burners: public(HashMap[address, address])
 
-registry: Registry
-
 
 @external
-def __init__(_registry: address, _ownership_admin: address, _parameter_admin: address, _emergency_admin: address):
+def __init__(
+    _ownership_admin: address,
+    _parameter_admin: address,
+    _emergency_admin: address
+):
     self.ownership_admin = _ownership_admin
     self.parameter_admin = _parameter_admin
     self.emergency_admin = _emergency_admin
-    self.registry = Registry(_registry)
 
 
 @external
@@ -126,13 +130,35 @@ def set_burner(_token: address, _burner: address):
     """
     assert msg.sender == self.ownership_admin, "Access denied"
 
-    _old_burner: address = self.burners[_token]
-
+    old_burner: address = self.burners[_token]
     if _token != ZERO_ADDRESS:
-        if _old_burner != ZERO_ADDRESS:
-            ERC20(_token).approve(_old_burner, 0)
+        if old_burner != ZERO_ADDRESS:
+            # revoke approval on previous burner
+            response: Bytes[32] = raw_call(
+                _token,
+                concat(
+                    method_id("approve(address,uint256)"),
+                    convert(old_burner, bytes32),
+                    convert(0, bytes32),
+                ),
+                max_outsize=32,
+            )
+            if len(response) != 0:
+                assert convert(response, bool)
+
         if _burner != ZERO_ADDRESS:
-            ERC20(_token).approve(_burner, MAX_UINT256)
+            # infinite approval for current burner
+            response: Bytes[32] = raw_call(
+                _token,
+                concat(
+                    method_id("approve(address,uint256)"),
+                    convert(_burner, bytes32),
+                    convert(MAX_UINT256, bytes32),
+                ),
+                max_outsize=32,
+            )
+            if len(response) != 0:
+                assert convert(response, bool)
 
     self.burners[_token] = _burner
 
@@ -261,23 +287,29 @@ def commit_new_parameters(_pool: address,
 def apply_new_parameters(_pool: address):
     """
     @notice Apply new parameters for `_pool` pool
+    @dev Only callable by an EOA
     @param _pool Pool address
     """
+    assert msg.sender == tx.origin
+
     min_asymmetry: uint256 = self.min_asymmetries[_pool]
 
     if min_asymmetry > 0:
-        pool_info: PoolInfo = self.registry.get_pool_info(_pool)
+        registry: address = AddressProvider(ADDRESS_PROVIDER).get_registry()
+        underlying_balances: uint256[8] = Registry(registry).get_underlying_balances(_pool)
+        decimals: uint256[8] = Registry(registry).get_decimals(_pool)
+
         balances: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
         # asymmetry = prod(x_i) / (sum(x_i) / N) ** N =
         # = prod( (N * x_i) / sum(x_j) )
         S: uint256 = 0
         N: uint256 = 0
         for i in range(MAX_COINS):
-            x: uint256 = pool_info.underlying_balances[i]
+            x: uint256 = underlying_balances[i]
             if x == 0:
-                N = convert(i, uint256)
+                N = i
                 break
-            x *= 10 ** (18 - pool_info.decimals[i])
+            x *= 10 ** (18 - decimals[i])
             balances[i] = x
             S += x
 

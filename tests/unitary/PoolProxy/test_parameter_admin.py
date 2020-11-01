@@ -3,7 +3,10 @@ import pytest
 
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
-pool_parameters_mock = """
+
+@pytest.fixture(scope="module")
+def param_pool(accounts):
+    pool_parameters_mock = """
 
 amp: public(uint256)
 fee: public(uint256)
@@ -33,12 +36,42 @@ def revert_new_parameters():
     self.future_amp = 0
     self.future_fee = 0
     self.future_admin_fee = 0
-"""
+    """
+
+    yield brownie.compile_source(pool_parameters_mock).Vyper.deploy({'from': accounts[0]})
 
 
 @pytest.fixture(scope="module")
-def param_pool(accounts):
-    yield brownie.compile_source(pool_parameters_mock).Vyper.deploy({'from': accounts[0]})
+def registry(accounts):
+    registry_mock = """
+# @version 0.2.7
+
+@view
+@external
+def get_decimals(pool: address) -> uint256[8]:
+    decimals: uint256[8] = [18, 18, 0, 0, 0, 0, 0, 0]
+    return decimals
+
+@view
+@external
+def get_underlying_balances(pool: address) -> uint256[8]:
+    # makes the pool appear imbalanced, which we use for testing assymetry checks
+    balances: uint256[8] = [10**21, 3 * 10**20, 0, 0, 0, 0, 0, 0]
+    return balances
+    """
+    yield brownie.compile_source(registry_mock).Vyper.deploy({'from': accounts[0]})
+
+
+@pytest.fixture(scope="module", autouse=True)
+def provider(registry):
+    provider_mock = f"""
+# @version 0.2.7
+@view
+@external
+def get_registry() -> address:
+    return {registry.address}
+    """
+    yield brownie.compile_source(provider_mock).Vyper.deploy({'from': "0x07A3458AD662FBCDD4FcA0b1b37BE6A5b1Bcd7ac"})
 
 
 def test_commit_new_fee(accounts, pool_proxy, pool):
@@ -119,19 +152,19 @@ def test_apply_new_parameters(accounts, pool_proxy, param_pool):
     assert param_pool.admin_fee() == 42
 
 
-def test_apply_new_parameters_asymmetry_works(accounts, pool_proxy, susd_pool):
+def test_apply_new_parameters_asymmetry_works(accounts, pool_proxy, param_pool):
     # Pool asymmetry is 0.355 * 1e18
     # min is 0.35 * 1e18
-    pool_proxy.commit_new_parameters(susd_pool, 1000, 4000000, 0, int(0.35e18), {'from': accounts[1]})
-    pool_proxy.apply_new_parameters(susd_pool, {'from': accounts[1]})
+    pool_proxy.commit_new_parameters(param_pool, 1000, 4000000, 0, int(0.35e18), {'from': accounts[1]})
+    pool_proxy.apply_new_parameters(param_pool, {'from': accounts[1]})
 
 
-def test_apply_new_parameters_asymmetry_fails(accounts, pool_proxy, susd_pool):
+def test_apply_new_parameters_asymmetry_fails(accounts, pool_proxy, param_pool):
     # Pool asymmetry is 0.355 * 1e18
     # min is 0.36 * 1e18
-    pool_proxy.commit_new_parameters(susd_pool, 1000, 4000000, 0, int(0.36e18), {'from': accounts[1]})
+    pool_proxy.commit_new_parameters(param_pool, 1000, 4000000, 0, int(0.36e18), {'from': accounts[1]})
     with brownie.reverts('Unsafe to apply'):
-        pool_proxy.apply_new_parameters(susd_pool, {'from': accounts[1]})
+        pool_proxy.apply_new_parameters(param_pool, {'from': accounts[1]})
 
 
 def test_apply_new_parameters_not_exist(accounts, pool_proxy, pool):
