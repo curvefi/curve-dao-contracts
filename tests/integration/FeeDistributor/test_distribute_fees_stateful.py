@@ -19,6 +19,8 @@ class StateMachine:
 
     def setup(self):
         self.locked_until = {self.accounts[0]: self.voting_escrow.locked__end(self.accounts[0])}
+        self.fees = {chain[-2].timestamp: 10**18}
+        self.total_fees = 10**18
 
     def _check_active_lock(self, st_acct):
         # check if `st_acct` has an active lock
@@ -114,7 +116,10 @@ class StateMachine:
         st_amount : decimal
             Amount of fee tokens to add to the distributor.
         """
-        self.fee_coin._mint_for_testing(int(st_amount * 10**18), {'from': self.distributor.address})
+        amount = int(st_amount * 10**18)
+        tx = self.fee_coin._mint_for_testing(amount, {'from': self.distributor.address})
+        self.total_fees += amount
+        self.fees[tx.timestamp] = amount
         self.distributor.checkpoint_token()
 
     def invariant_advance_time(self):
