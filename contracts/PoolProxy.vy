@@ -184,10 +184,23 @@ def withdraw_admin_fees(_pool: address):
 
 @external
 @nonreentrant('lock')
+def withdraw_many(_pools: address[20]):
+    """
+    @notice Withdraw admin fees from multiple pools
+    @param _pools List of pool address to withdraw admin fees from
+    """
+    for pool in _pools:
+        if pool == ZERO_ADDRESS:
+            break
+        Curve(pool).withdraw_admin_fees()
+
+
+@external
+@nonreentrant('lock')
 def burn(_burner: address):
     """
-    @notice Burn CRV tokens using `_burner` contract
-    @param _burner Burner contract
+    @notice Burn accrued admin fees using `_burner`
+    @param _burner Burner contract address
     """
     Burner(_burner).burn()  # dev: should implement burn()
 
@@ -196,7 +209,7 @@ def burn(_burner: address):
 @nonreentrant('lock')
 def burn_coin(_coin: address):
     """
-    @notice Burn CRV tokens and buy `_coin`
+    @notice Burn accrued `_coin` via a preset burner
     @param _coin Coin address
     """
     Burner(self.burners[_coin]).burn_coin(_coin)  # dev: should implement burn_coin()
@@ -209,6 +222,22 @@ def burn_eth():
     @notice Burn the full ETH balance of this contract
     """
     Burner(self.burners[0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE]).burn_eth(value=self.balance)  # dev: should implement burn_eth()
+
+
+@external
+@nonreentrant('lock')
+def burn_many(_coins: address[20]):
+    """
+    @notice Burn accrued admin fees from multiple coins
+    @param _coins List of coin addresses
+    """
+    for coin in _coins:
+        if coin == ZERO_ADDRESS:
+            break
+        if coin == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+            Burner(self.burners[0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE]).burn_eth(value=self.balance)
+        else:
+            Burner(self.burners[coin]).burn_coin(coin)
 
 
 @external
