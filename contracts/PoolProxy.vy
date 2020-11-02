@@ -6,9 +6,7 @@
 """
 
 interface Burner:
-    def burn() -> bool: nonpayable
-    def burn_eth() -> bool: payable
-    def burn_coin(_coin: address)-> bool: nonpayable
+    def burn(_coin: address) -> bool: payable
 
 interface Curve:
     def withdraw_admin_fees(): nonpayable
@@ -26,7 +24,6 @@ interface Curve:
     def stop_ramp_A(): nonpayable
     def set_aave_referral(referral_code: uint256): nonpayable
     def donate_admin_fees(): nonpayable
-
 
 interface AddressProvider:
     def get_registry() -> address: view
@@ -197,31 +194,16 @@ def withdraw_many(_pools: address[20]):
 
 @external
 @nonreentrant('lock')
-def burn(_burner: address):
-    """
-    @notice Burn accrued admin fees using `_burner`
-    @param _burner Burner contract address
-    """
-    Burner(_burner).burn()  # dev: should implement burn()
-
-
-@external
-@nonreentrant('lock')
-def burn_coin(_coin: address):
+def burn(_coin: address):
     """
     @notice Burn accrued `_coin` via a preset burner
     @param _coin Coin address
     """
-    Burner(self.burners[_coin]).burn_coin(_coin)  # dev: should implement burn_coin()
+    _value: uint256 = 0
+    if _coin == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+        _value = self.balance
 
-
-@external
-@nonreentrant('lock')
-def burn_eth():
-    """
-    @notice Burn the full ETH balance of this contract
-    """
-    Burner(self.burners[0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE]).burn_eth(value=self.balance)  # dev: should implement burn_eth()
+    Burner(self.burners[_coin]).burn(_coin, value=_value)  # dev: should implement burn()
 
 
 @external
@@ -234,10 +216,12 @@ def burn_many(_coins: address[20]):
     for coin in _coins:
         if coin == ZERO_ADDRESS:
             break
+
+        _value: uint256 = 0
         if coin == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
-            Burner(self.burners[0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE]).burn_eth(value=self.balance)
-        else:
-            Burner(self.burners[coin]).burn_coin(coin)
+            _value = self.balance
+
+        Burner(self.burners[coin]).burn(coin, value=_value)  # dev: should implement burn()
 
 
 @external
