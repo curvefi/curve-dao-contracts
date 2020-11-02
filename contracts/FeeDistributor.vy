@@ -210,8 +210,9 @@ def claim(addr: address = msg.sender) -> uint256:
     if block.timestamp >= self.time_cursor:
         self._checkpoint_total_supply()
 
-    if self.can_checkpoint_token and (block.timestamp > self.last_token_time + TOKEN_CHECKPOINT_DEADLINE):
+    if self.can_checkpoint_token and (block.timestamp > last_token_time + TOKEN_CHECKPOINT_DEADLINE):
         self._checkpoint_token()
+        last_token_time = block.timestamp
 
     last_token_time = last_token_time / WEEK * WEEK
 
