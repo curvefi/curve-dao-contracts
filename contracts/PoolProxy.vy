@@ -86,6 +86,13 @@ def __init__(
     self.emergency_admin = _emergency_admin
 
 
+@payable
+@external
+def __default__():
+    # required to receive ETH fees
+    pass
+
+
 @external
 def commit_set_admins(_o_admin: address, _p_admin: address, _e_admin: address):
     """
@@ -131,7 +138,7 @@ def set_burner(_token: address, _burner: address):
     assert msg.sender == self.ownership_admin, "Access denied"
 
     old_burner: address = self.burners[_token]
-    if _token != ZERO_ADDRESS:
+    if _token != 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
         if old_burner != ZERO_ADDRESS:
             # revoke approval on previous burner
             response: Bytes[32] = raw_call(
@@ -196,13 +203,12 @@ def burn_coin(_coin: address):
 
 
 @external
-@payable
 @nonreentrant('lock')
 def burn_eth():
     """
     @notice Burn the full ETH balance of this contract
     """
-    Burner(self.burners[ZERO_ADDRESS]).burn_eth(value=self.balance)  # dev: should implement burn_eth()
+    Burner(self.burners[0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE]).burn_eth(value=self.balance)  # dev: should implement burn_eth()
 
 
 @external
