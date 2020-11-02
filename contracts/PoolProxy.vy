@@ -126,20 +126,20 @@ def apply_set_admins():
 
 @external
 @nonreentrant('lock')
-def set_burner(_token: address, _burner: address):
+def set_burner(_coin: address, _burner: address):
     """
-    @notice Set burner of `_token` to `_burner` address
-    @param _token Token address
+    @notice Set burner of `_coin` to `_burner` address
+    @param _coin Token address
     @param _burner Burner contract address
     """
     assert msg.sender == self.ownership_admin, "Access denied"
 
-    old_burner: address = self.burners[_token]
-    if _token != 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+    old_burner: address = self.burners[_coin]
+    if _coin != 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
         if old_burner != ZERO_ADDRESS:
             # revoke approval on previous burner
             response: Bytes[32] = raw_call(
-                _token,
+                _coin,
                 concat(
                     method_id("approve(address,uint256)"),
                     convert(old_burner, bytes32),
@@ -153,7 +153,7 @@ def set_burner(_token: address, _burner: address):
         if _burner != ZERO_ADDRESS:
             # infinite approval for current burner
             response: Bytes[32] = raw_call(
-                _token,
+                _coin,
                 concat(
                     method_id("approve(address,uint256)"),
                     convert(_burner, bytes32),
@@ -164,7 +164,7 @@ def set_burner(_token: address, _burner: address):
             if len(response) != 0:
                 assert convert(response, bool)
 
-    self.burners[_token] = _burner
+    self.burners[_coin] = _burner
 
     log AddBurner(_burner)
 
