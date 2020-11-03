@@ -5,10 +5,16 @@ ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
 
 owner_functions_mock = """
+# @version 0.2.7
 
 aave: public(uint256)
 donated: public(bool)
-withdrawn: public(bool)
+withdrawn: public(uint256)
+
+@payable
+@external
+def __default__():
+    pass
 
 @external
 def set_aave_referral(referral_code: uint256):
@@ -20,7 +26,9 @@ def donate_admin_fees():
 
 @external
 def withdraw_admin_fees():
-    self.withdrawn = True
+    if self.balance > 0:
+        send(msg.sender, self.balance)
+    self.withdrawn += 1
 """
 
 
@@ -101,7 +109,23 @@ def test_donate_fees_no_access(accounts, pool_proxy, owner_pool, idx):
 def test_withdraw_admin_fees(accounts, pool_proxy, owner_pool, idx):
     pool_proxy.withdraw_admin_fees(owner_pool, {'from': accounts[idx]})
 
-    assert owner_pool.withdrawn() is True
+    assert owner_pool.withdrawn() == 1
+
+
+def test_withdraw_admin_fees_receive_eth(accounts, pool_proxy, owner_pool):
+    accounts[0].transfer(owner_pool, 31337)
+    pool_proxy.withdraw_admin_fees(owner_pool, {'from': accounts[0]})
+
+    assert owner_pool.withdrawn() == 1
+    assert pool_proxy.balance() == 31337
+
+
+def test_withdraw_many(accounts, pool_proxy, owner_pool):
+    accounts[0].transfer(owner_pool, 31337)
+    pool_proxy.withdraw_many([owner_pool] * 5 + [ZERO_ADDRESS] * 15, {'from': accounts[0]})
+
+    assert owner_pool.withdrawn() == 5
+    assert pool_proxy.balance() == 31337
 
 
 @pytest.mark.parametrize('idx', range(1, 4))

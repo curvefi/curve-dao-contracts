@@ -47,7 +47,7 @@ def test_burn_eth(accounts, pool_proxy, burner, idx):
 
 @pytest.mark.parametrize('idx', range(2))
 def test_burn_many(accounts, pool_proxy, burner, coin_a, idx):
-    pool_proxy.burn_many([coin_a, ETH_ADDRESS] + [ZERO_ADDRESS] * 8, {'from': accounts[0]})
+    pool_proxy.burn_many([coin_a, ETH_ADDRESS] + [ZERO_ADDRESS] * 18, {'from': accounts[0]})
 
     assert burner.is_burned(coin_a)
     assert burner.is_burned(ETH_ADDRESS)
@@ -64,6 +64,6 @@ def test_burn_not_exists(accounts, pool_proxy):
 def test_burn_many_not_exists(accounts, pool_proxy, burner, coin_a):
     with brownie.reverts('dev: should implement burn()'):
         pool_proxy.burn_many(
-            [coin_a, ETH_ADDRESS, accounts[1]] + [ZERO_ADDRESS] * 7,
+            [coin_a, ETH_ADDRESS, accounts[1]] + [ZERO_ADDRESS] * 17,
             {'from': accounts[0]}
         )
