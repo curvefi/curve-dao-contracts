@@ -6,9 +6,7 @@
 """
 
 interface Burner:
-    def burn() -> bool: nonpayable
-    def burn_eth() -> bool: payable
-    def burn_coin(_coin: address)-> bool: nonpayable
+    def burn(_coin: address) -> bool: payable
 
 interface Curve:
     def withdraw_admin_fees(): nonpayable
@@ -26,7 +24,6 @@ interface Curve:
     def stop_ramp_A(): nonpayable
     def set_aave_referral(referral_code: uint256): nonpayable
     def donate_admin_fees(): nonpayable
-
 
 interface AddressProvider:
     def get_registry() -> address: view
@@ -86,6 +83,13 @@ def __init__(
     self.emergency_admin = _emergency_admin
 
 
+@payable
+@external
+def __default__():
+    # required to receive ETH fees
+    pass
+
+
 @external
 def commit_set_admins(_o_admin: address, _p_admin: address, _e_admin: address):
     """
@@ -122,20 +126,20 @@ def apply_set_admins():
 
 @external
 @nonreentrant('lock')
-def set_burner(_token: address, _burner: address):
+def set_burner(_coin: address, _burner: address):
     """
-    @notice Set burner of `_token` to `_burner` address
-    @param _token Token address
+    @notice Set burner of `_coin` to `_burner` address
+    @param _coin Token address
     @param _burner Burner contract address
     """
     assert msg.sender == self.ownership_admin, "Access denied"
 
-    old_burner: address = self.burners[_token]
-    if _token != ZERO_ADDRESS:
+    old_burner: address = self.burners[_coin]
+    if _coin != 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
         if old_burner != ZERO_ADDRESS:
             # revoke approval on previous burner
             response: Bytes[32] = raw_call(
-                _token,
+                _coin,
                 concat(
                     method_id("approve(address,uint256)"),
                     convert(old_burner, bytes32),
@@ -149,7 +153,7 @@ def set_burner(_token: address, _burner: address):
         if _burner != ZERO_ADDRESS:
             # infinite approval for current burner
             response: Bytes[32] = raw_call(
-                _token,
+                _coin,
                 concat(
                     method_id("approve(address,uint256)"),
                     convert(_burner, bytes32),
@@ -160,7 +164,7 @@ def set_burner(_token: address, _burner: address):
             if len(response) != 0:
                 assert convert(response, bool)
 
-    self.burners[_token] = _burner
+    self.burners[_coin] = _burner
 
     log AddBurner(_burner)
 
@@ -177,32 +181,47 @@ def withdraw_admin_fees(_pool: address):
 
 @external
 @nonreentrant('lock')
-def burn(_burner: address):
+def withdraw_many(_pools: address[20]):
     """
-    @notice Burn CRV tokens using `_burner` contract
-    @param _burner Burner contract
+    @notice Withdraw admin fees from multiple pools
+    @param _pools List of pool address to withdraw admin fees from
     """
-    Burner(_burner).burn()  # dev: should implement burn()
+    for pool in _pools:
+        if pool == ZERO_ADDRESS:
+            break
+        Curve(pool).withdraw_admin_fees()
 
 
 @external
 @nonreentrant('lock')
-def burn_coin(_coin: address):
+def burn(_coin: address):
     """
-    @notice Burn CRV tokens and buy `_coin`
+    @notice Burn accrued `_coin` via a preset burner
     @param _coin Coin address
     """
-    Burner(self.burners[_coin]).burn_coin(_coin)  # dev: should implement burn_coin()
+    _value: uint256 = 0
+    if _coin == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+        _value = self.balance
+
+    Burner(self.burners[_coin]).burn(_coin, value=_value)  # dev: should implement burn()
 
 
 @external
-@payable
 @nonreentrant('lock')
-def burn_eth():
+def burn_many(_coins: address[20]):
     """
-    @notice Burn the full ETH balance of this contract
+    @notice Burn accrued admin fees from multiple coins
+    @param _coins List of coin addresses
     """
-    Burner(self.burners[ZERO_ADDRESS]).burn_eth(value=self.balance)  # dev: should implement burn_eth()
+    for coin in _coins:
+        if coin == ZERO_ADDRESS:
+            break
+
+        _value: uint256 = 0
+        if coin == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+            _value = self.balance
+
+        Burner(self.burners[coin]).burn(coin, value=_value)  # dev: should implement burn()
 
 
 @external
