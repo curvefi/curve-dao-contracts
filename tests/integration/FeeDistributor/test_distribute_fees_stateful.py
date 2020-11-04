@@ -137,7 +137,7 @@ class StateMachine:
         for acct in self.accounts:
             self.distributor.claim({'from': acct})
 
-        assert self.fee_coin.balanceOf(self.distributor) < 100
+        assert self.fee_coin.balanceOf(self.distributor) < 10e-6 * self.total_fees
 
 
 def test_stateful(state_machine, accounts, voting_escrow, fee_distributor, coin_a, token):

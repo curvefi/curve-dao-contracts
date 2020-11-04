@@ -162,7 +162,7 @@ def find_timestamp_epoch(ve: address, _timestamp: uint256) -> uint256:
     for i in range(128):
         if _min >= _max:
             break
-        _mid: uint256 = (_min + _max + 1) / 2
+        _mid: uint256 = (_min + _max + 2) / 2
         pt: Point = VotingEscrow(ve).point_history(_mid)
         if pt.ts <= _timestamp:
             _min = _mid
@@ -273,12 +273,15 @@ def claim(addr: address = msg.sender) -> uint256:
 
         else:
             # Calc
-            dt: int128 = convert(week_cursor - old_user_point.ts, int128)
+            # + i * 2 is for rounding errors
+            dt: int128 = convert(week_cursor - old_user_point.ts + 10, int128)
             balance_of: uint256 = convert(max(old_user_point.bias - dt * old_user_point.slope, 0), uint256)
             if balance_of == 0 and user_epoch > max_user_epoch:
                 break
             if balance_of > 0:
                 to_distribute += balance_of * self.tokens_per_week[week_cursor] / self.ve_supply[week_cursor]
+                assert week_cursor == week_cursor  # XXX
+                assert balance_of <= self.ve_supply[week_cursor]  # XXX
 
             week_cursor += WEEK
 
