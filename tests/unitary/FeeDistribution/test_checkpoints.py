@@ -16,7 +16,7 @@ def test_checkpoint_total_supply(accounts, chain, distributor, voting_escrow):
     start_time = distributor.time_cursor()
     chain.time() + WEEK // WEEK * WEEK
 
-    next_week = ((chain.time() + WEEK) // WEEK * WEEK)
+    next_week = (chain.time() + WEEK) // WEEK * WEEK
     chain.mine(timestamp=next_week)
     distributor.checkpoint_total_supply({'from': accounts[0]})
 
@@ -60,7 +60,7 @@ def test_toggle_allow_checkpoint(accounts, chain, distributor):
     distributor.claim({'from': accounts[0]})
     assert distributor.last_token_time() == last_token_time
 
-    distributor.toggle_allow_checkpoint_token({'from': accounts[0]})
-    tx = distributor.claim({'from': accounts[0]})
+    assert fee_distributor.ve_supply(start_time) == 0
+    assert fee_distributor.ve_supply(start_time + WEEK) == voting_escrow.totalSupplyAt(chain[-1].number)
 
     assert distributor.last_token_time() == tx.timestamp
