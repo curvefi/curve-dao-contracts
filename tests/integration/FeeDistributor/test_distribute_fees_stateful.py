@@ -10,6 +10,7 @@ class StateMachine:
     st_acct = strategy('address', length=5)
     st_weeks = strategy('uint256', min_value=1, max_value=12)
     st_amount = strategy('decimal', min_value=1, max_value=100, places=3)
+    st_time = strategy('uint256', min_value=0, max_value=86400 * 3)
 
     def __init__(cls, distributor, accounts, voting_escrow, fee_coin):
         cls.distributor = distributor
@@ -34,16 +35,16 @@ class StateMachine:
 
         return True
 
-    def initialize_new_lock(self, st_acct, st_amount, st_weeks):
+    def initialize_new_lock(self, st_acct, st_amount, st_weeks, st_time):
         """
         Initialize-only rule to make a new lock.
 
         This is equivalent to `rule_new_lock` to make it more likely we have at
         least 2 accounts locked at the start of the test run.
         """
-        self.rule_new_lock(st_acct, st_amount, st_weeks)
+        self.rule_new_lock(st_acct, st_amount, st_weeks, st_time)
 
-    def rule_new_lock(self, st_acct, st_amount, st_weeks):
+    def rule_new_lock(self, st_acct, st_amount, st_weeks, st_time):
         """
         Add a new user lock.
 
@@ -56,13 +57,17 @@ class StateMachine:
             Amount of tokens to lock.
         st_weeks : int
             Duration of lock, given in weeks.
+        st_time : int
+            Duration to sleep before action, in seconds.
         """
+        chain.sleep(st_time)
+
         if not self._check_active_lock(st_acct):
             until = ((chain.time() // WEEK) + st_weeks) * WEEK
             self.voting_escrow.create_lock(int(st_amount * 10**18), until, {'from': st_acct})
             self.locked_until[st_acct] = until
 
-    def rule_extend_lock(self, st_acct, st_weeks):
+    def rule_extend_lock(self, st_acct, st_weeks, st_time):
         """
         Extend an existing user lock.
 
@@ -73,7 +78,11 @@ class StateMachine:
             lock, the rule is skipped.
         st_weeks : int
             Duration to extend the lock, given in weeks.
+        st_time : int
+            Duration to sleep before action, in seconds.
         """
+        chain.sleep(st_time)
+
         if self._check_active_lock(st_acct):
             until = ((self.locked_until[st_acct] // WEEK) + st_weeks) * WEEK
             until = min(until, (chain.time() + YEAR * 4) // WEEK * WEEK)
@@ -81,7 +90,7 @@ class StateMachine:
             self.voting_escrow.increase_unlock_time(until, {'from': st_acct})
             self.locked_until[st_acct] = until
 
-    def rule_increase_lock_amount(self, st_acct, st_amount):
+    def rule_increase_lock_amount(self, st_acct, st_amount, st_time):
         """
         Increase the amount of an existing user lock.
 
@@ -92,11 +101,15 @@ class StateMachine:
             active lock, the rule is skipped.
         st_amount : decimal
             Amount of tokens to add to lock.
+        st_time : int
+            Duration to sleep before action, in seconds.
         """
+        chain.sleep(st_time)
+
         if self._check_active_lock(st_acct):
             self.voting_escrow.increase_amount(int(st_amount * 10**18), {'from': st_acct})
 
-    def rule_claim_fees(self, st_acct):
+    def rule_claim_fees(self, st_acct, st_time):
         """
         Claim fees for a user.
 
@@ -104,10 +117,14 @@ class StateMachine:
         ---------
         st_acct : Account
             Account to claim fees for.
+        st_time : int
+            Duration to sleep before action, in seconds.
         """
+        chain.sleep(st_time)
+
         self.distributor.claim({'from': st_acct})
 
-    def rule_increase_available_fees(self, st_amount):
+    def rule_increase_available_fees(self, st_amount, st_time):
         """
         Transfer additional fees into the distributor and make a checkpoint.
 
@@ -115,25 +132,22 @@ class StateMachine:
         ---------
         st_amount : decimal
             Amount of fee tokens to add to the distributor.
+        st_time : int
+            Duration to sleep before action, in seconds.
         """
+        chain.sleep(st_time)
+
         amount = int(st_amount * 10**18)
         tx = self.fee_coin._mint_for_testing(amount, {'from': self.distributor.address})
         self.total_fees += amount
         self.fees[tx.timestamp] = amount
         self.distributor.checkpoint_token()
 
-    def invariant_advance_time(self):
-        """
-        Advance time by one week and checkpoint the total supply.
-        """
-        chain.sleep(WEEK)
-        self.distributor.checkpoint_total_supply()
-
     def teardown(self):
         """
         Claim fees for all accounts and verify that only dust remains.
         """
-        chain.sleep(WEEK)
+        chain.sleep(WEEK*2)
         for acct in self.accounts:
             self.distributor.claim({'from': acct})
 
