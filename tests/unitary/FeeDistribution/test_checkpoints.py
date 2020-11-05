@@ -22,7 +22,7 @@ def test_checkpoint_total_supply(accounts, chain, distributor, voting_escrow):
     distributor.checkpoint_total_supply({'from': accounts[0]})
 
     assert distributor.ve_supply(start_time) == 0
-    assert distributor.ve_supply(start_time + WEEK) == voting_escrow.totalSupplyAt(chain[-2].number)
+    assert distributor.ve_supply(start_time + WEEK) == voting_escrow.totalSupplyAt(chain[-1].number)
 
 
 def test_advance_time_cursor(accounts, chain, distributor):
