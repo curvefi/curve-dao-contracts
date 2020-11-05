@@ -2,6 +2,7 @@ import pytest
 
 WEEK = 86400 * 7
 
+
 @pytest.fixture(scope="module")
 def distributor(accounts, chain, fee_distributor, voting_escrow, token):
     distributor = fee_distributor()
@@ -60,7 +61,7 @@ def test_toggle_allow_checkpoint(accounts, chain, distributor):
     distributor.claim({'from': accounts[0]})
     assert distributor.last_token_time() == last_token_time
 
-    assert fee_distributor.ve_supply(start_time) == 0
-    assert fee_distributor.ve_supply(start_time + WEEK) == voting_escrow.totalSupplyAt(chain[-1].number)
+    distributor.toggle_allow_checkpoint_token({'from': accounts[0]})
+    tx = distributor.claim({'from': accounts[0]})
 
     assert distributor.last_token_time() == tx.timestamp
