@@ -36,6 +36,9 @@ def test_checkpoint_total_supply(accounts, chain, distributor, voting_escrow, st
         week_block = chain[-1].number
         chain.sleep(1)
 
-        distributor.checkpoint_total_supply({'from': accounts[0]})
+        # Max: 42 weeks
+        # doing checkpoint 3 times is enough
+        for i in range(3):
+            distributor.checkpoint_total_supply({'from': accounts[0]})
 
         assert distributor.ve_supply(week_epoch) == voting_escrow.totalSupplyAt(week_block)
