@@ -15,14 +15,17 @@ def distributor(accounts, chain, fee_distributor, voting_escrow, token):
 
 def test_checkpoint_total_supply(accounts, chain, distributor, voting_escrow):
     start_time = distributor.time_cursor()
-    chain.time() + WEEK // WEEK * WEEK
 
-    next_week = (chain.time() + WEEK) // WEEK * WEEK
-    chain.mine(timestamp=next_week)
+    week_epoch = (chain.time() + WEEK) // WEEK * WEEK
+    chain.mine(timestamp=week_epoch)
+    week_block = chain[-1].number
+
+    # sleep for 1 second to ensure the total suppply checkpoint happens in the new period
+    chain.sleep(1)
     distributor.checkpoint_total_supply({'from': accounts[0]})
 
     assert distributor.ve_supply(start_time) == 0
-    assert distributor.ve_supply(start_time + WEEK) == voting_escrow.totalSupplyAt(chain[-1].number)
+    assert distributor.ve_supply(week_epoch) == voting_escrow.totalSupplyAt(week_block)
 
 
 def test_advance_time_cursor(accounts, chain, distributor):
