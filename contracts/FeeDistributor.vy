@@ -172,6 +172,31 @@ def find_timestamp_epoch(ve: address, _timestamp: uint256) -> uint256:
 
 
 @internal
+@view
+def _find_timestamp_user_epoch(ve: address, user: address, _timestamp: uint256, max_user_epoch: uint256) -> uint256:
+    _min: uint256 = 0
+    _max: uint256 = max_user_epoch
+    for i in range(128):
+        if _min >= _max:
+            break
+        _mid: uint256 = (_min + _max + 2) / 2
+        pt: Point = VotingEscrow(ve).user_point_history(user, _mid)
+        if pt.ts <= _timestamp:
+            _min = _mid
+        else:
+            _max = _mid - 1
+    return _min
+
+
+@external
+@view
+def find_timestamp_user_epoch(user: address, _timestamp: uint256) -> uint256:
+    ve: address = self.voting_escrow
+    max_user_epoch: uint256 = VotingEscrow(ve).user_point_epoch(user)
+    return self._find_timestamp_user_epoch(ve, user, _timestamp, max_user_epoch)
+
+
+@internal
 def _checkpoint_total_supply():
     ve: address = self.voting_escrow
     t: uint256 = self.time_cursor
@@ -229,18 +254,7 @@ def claim(addr: address = msg.sender) -> uint256:
 
     if self.time_cursor_of[addr] == 0:
         # Need to do the initial binary search
-        _min: uint256 = 0
-        _max: uint256 = max_user_epoch
-        for i in range(128):
-            if _min >= _max:
-                break
-            _mid: uint256 = (_min + _max + 2) / 2
-            pt: Point = VotingEscrow(ve).user_point_history(addr, _mid)
-            if pt.ts <= _start_time:
-                _min = _mid
-            else:
-                _max = _mid - 1
-        user_epoch = _min
+        user_epoch = self._find_timestamp_user_epoch(ve, addr, _start_time, max_user_epoch)
     else:
         user_epoch = self.user_epoch_of[addr]
 
