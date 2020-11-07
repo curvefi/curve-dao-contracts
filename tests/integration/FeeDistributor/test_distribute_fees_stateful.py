@@ -1,3 +1,4 @@
+from collections import defaultdict
 from brownie import chain
 from brownie.test import strategy
 
@@ -21,6 +22,7 @@ class StateMachine:
     def setup(self):
         self.locked_until = {self.accounts[0]: self.voting_escrow.locked__end(self.accounts[0])}
         self.fees = {chain[-2].timestamp: 10**18}
+        self.user_claims = defaultdict(dict)
         self.total_fees = 10**18
 
     def _check_active_lock(self, st_acct):
@@ -122,7 +124,12 @@ class StateMachine:
         """
         chain.sleep(st_time)
 
+        claimed = self.fee_coin.balanceOf(st_acct)
+
         self.distributor.claim({'from': st_acct})
+
+        claimed = self.fee_coin.balanceOf(st_acct) - claimed
+        self.user_claims[st_acct][chain[-1].timestamp] = (claimed, self.distributor.time_cursor_of(st_acct))
 
     def rule_increase_available_fees(self, st_amount, st_time):
         """

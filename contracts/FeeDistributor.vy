@@ -300,7 +300,7 @@ def claim(addr: address = msg.sender) -> uint256:
 
             week_cursor += WEEK
 
-    self.user_epoch_of[addr] = min(max_user_epoch, user_epoch)
+    self.user_epoch_of[addr] = min(max_user_epoch, user_epoch - 1)
     self.time_cursor_of[addr] = week_cursor
 
     if to_distribute > 0:
