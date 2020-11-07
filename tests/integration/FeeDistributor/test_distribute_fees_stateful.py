@@ -151,6 +151,18 @@ class StateMachine:
         for acct in self.accounts:
             self.distributor.claim({'from': acct})
 
+        t0 = self.distributor.start_time()
+        t1 = chain[-1].timestamp // WEEK * WEEK
+        tokens_per_user_per_week = {
+            acct: [
+                self.distributor.tokens_per_week(w) * self.distributor.ve_for_at(acct, w) // self.distributor.ve_supply(w)
+                for w in range(t0, t1+WEEK, WEEK)]
+            for acct in self.accounts[:5]
+        }
+
+        for acct in self.accounts:
+            assert sum(tokens_per_user_per_week[acct]) == self.fee_coin.balanceOf(acct)
+
         assert self.fee_coin.balanceOf(self.distributor) < 100
 
 

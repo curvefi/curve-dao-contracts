@@ -190,10 +190,12 @@ def _find_timestamp_user_epoch(ve: address, user: address, _timestamp: uint256, 
 
 @external
 @view
-def find_timestamp_user_epoch(user: address, _timestamp: uint256) -> uint256:
+def ve_for_at(user: address, _timestamp: uint256) -> uint256:
     ve: address = self.voting_escrow
     max_user_epoch: uint256 = VotingEscrow(ve).user_point_epoch(user)
-    return self._find_timestamp_user_epoch(ve, user, _timestamp, max_user_epoch)
+    epoch: uint256 = self._find_timestamp_user_epoch(ve, user, _timestamp, max_user_epoch)
+    pt: Point = VotingEscrow(ve).user_point_history(user, epoch)
+    return convert(max(pt.bias - pt.slope * convert(_timestamp - pt.ts, int128), 0), uint256)
 
 
 @internal
