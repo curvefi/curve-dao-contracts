@@ -198,8 +198,10 @@ def withdraw_many(_pools: address[20]):
 def burn(_coin: address):
     """
     @notice Burn accrued `_coin` via a preset burner
+    @dev Only callable by an EOA to prevent flashloan exploits
     @param _coin Coin address
     """
+    assert tx.origin == msg.sender
     assert not self.burner_kill
 
     _value: uint256 = 0
@@ -214,8 +216,10 @@ def burn(_coin: address):
 def burn_many(_coins: address[20]):
     """
     @notice Burn accrued admin fees from multiple coins
+    @dev Only callable by an EOA to prevent flashloan exploits
     @param _coins List of coin addresses
     """
+    assert tx.origin == msg.sender
     assert not self.burner_kill
 
     for coin in _coins:
