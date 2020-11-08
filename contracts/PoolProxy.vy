@@ -125,16 +125,8 @@ def apply_set_admins():
     log ApplyAdmins(_o_admin, _p_admin, _e_admin)
 
 
-@external
-@nonreentrant('lock')
-def set_burner(_coin: address, _burner: address):
-    """
-    @notice Set burner of `_coin` to `_burner` address
-    @param _coin Token address
-    @param _burner Burner contract address
-    """
-    assert msg.sender == self.ownership_admin, "Access denied"
-
+@internal
+def _set_burner(_coin: address, _burner: address):
     old_burner: address = self.burners[_coin]
     if _coin != 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
         if old_burner != ZERO_ADDRESS:
@@ -168,6 +160,36 @@ def set_burner(_coin: address, _burner: address):
     self.burners[_coin] = _burner
 
     log AddBurner(_burner)
+
+
+@external
+@nonreentrant('lock')
+def set_burner(_coin: address, _burner: address):
+    """
+    @notice Set burner of `_coin` to `_burner` address
+    @param _coin Token address
+    @param _burner Burner contract address
+    """
+    assert msg.sender == self.ownership_admin, "Access denied"
+
+    self._set_burner(_coin, _burner)
+
+
+@external
+@nonreentrant('lock')
+def set_many_burners(_coins: address[20], _burners: address[20]):
+    """
+    @notice Set burner of `_coin` to `_burner` address
+    @param _coins Token address
+    @param _burners Burner contract address
+    """
+    assert msg.sender == self.ownership_admin, "Access denied"
+
+    for i in range(20):
+        coin: address = _coins[i]
+        if coin == ZERO_ADDRESS:
+            break
+        self._set_burner(coin, _burners[i])
 
 
 @external
