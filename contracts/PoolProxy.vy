@@ -70,6 +70,7 @@ future_emergency_admin: public(address)
 min_asymmetries: public(HashMap[address, uint256])
 
 burners: public(HashMap[address, address])
+burner_kill: public(bool)
 
 
 @external
@@ -199,6 +200,8 @@ def burn(_coin: address):
     @notice Burn accrued `_coin` via a preset burner
     @param _coin Coin address
     """
+    assert not self.burner_kill
+
     _value: uint256 = 0
     if _coin == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
         _value = self.balance
@@ -213,6 +216,8 @@ def burn_many(_coins: address[20]):
     @notice Burn accrued admin fees from multiple coins
     @param _coins List of coin addresses
     """
+    assert not self.burner_kill
+
     for coin in _coins:
         if coin == ZERO_ADDRESS:
             break
@@ -244,6 +249,17 @@ def unkill_me(_pool: address):
     """
     assert msg.sender == self.emergency_admin or msg.sender == self.ownership_admin, "Access denied"
     Curve(_pool).unkill_me()
+
+
+@external
+@nonreentrant('lock')
+def set_burner_kill(_is_killed: bool):
+    """
+    @notice Kill or unkill `burn` functionality
+    @param _is_killed Burner kill status
+    """
+    assert msg.sender == self.emergency_admin or msg.sender == self.ownership_admin, "Access denied"
+    self.burner_kill = _is_killed
 
 
 @external
