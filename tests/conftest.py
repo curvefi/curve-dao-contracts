@@ -1,4 +1,5 @@
 import pytest
+from brownie import BTCBurner, CBurner, ETHBurner, LPBurner, MetaBurner, UnderlyingBurner, YBurner
 
 
 YEAR = 365 * 86400
@@ -169,6 +170,20 @@ def vesting_simple(VestingEscrowSimple, accounts, vesting_factory, coin_a, start
         coin_a, accounts[1], 10**20, True, 100000000, start_time, {'from': accounts[0]}
     )
     yield VestingEscrowSimple.at(tx.new_contracts[0])
+
+
+# parametrized burner fixture
+
+@pytest.fixture(
+    scope="module",
+    params=[BTCBurner, CBurner, ETHBurner, LPBurner, MetaBurner, UnderlyingBurner, YBurner]
+)
+def burner(alice, bob, receiver, request):
+    Burner = request.param
+    if len(Burner.deploy.abi['inputs']) == 4:
+        yield Burner.deploy(receiver, receiver, alice, bob, {'from': alice})
+    else:
+        yield Burner.deploy(receiver, alice, bob, {'from': alice})
 
 
 # testing contracts
