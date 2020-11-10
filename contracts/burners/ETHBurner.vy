@@ -27,11 +27,9 @@ interface Synthetix:
     def exchange(
         sourceCurrencyKey: bytes32,
         sourceAmount: uint256,
-        destinationCurrencyKey: bytes32
+        destinationCurrencyKey: bytes32,
     ): nonpayable
-
-interface Synth:
-    def currencyKey() -> bytes32: view
+    def settle(currencyKey: bytes32) -> uint256[3]: nonpayable
 
 
 ADDRESS_PROVIDER: constant(address) = 0x0000000022D53366457F9d5E68Ec105046FC4383
@@ -188,7 +186,7 @@ def burn(_coin: address) -> bool:
 def execute() -> bool:
     """
     @notice Convert sUSD to USDC and transfer to the underlying burner
-    @dev Synths are locked for 5 minutes after they are exchanged, so
+    @dev Synths are locked for 3 minutes after they are exchanged, so
          this call will revert unless sufficient time has passed since
          the last `burn`
     @return bool success
@@ -196,7 +194,9 @@ def execute() -> bool:
     assert not self.is_killed  # dev: is killed
 
     amount: uint256 = ERC20(SUSD).balanceOf(self)
+
     if amount != 0:
+        Synthetix(SNX).settle(SUSD_CURRENCY_KEY)
         registry_swap: address = AddressProvider(ADDRESS_PROVIDER).get_address(2)
         self._swap(registry_swap, SUSD, USDC, amount, self.receiver)
 
