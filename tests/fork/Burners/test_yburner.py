@@ -25,52 +25,58 @@ y_swap = (
 
 
 @pytest.mark.parametrize("token", [i[0] for i in y_unwrap], ids=[i[1] for i in y_unwrap])
-@pytest.mark.parametrize("has_balance", (True, False))
-def test_unwrap(MintableTestToken, alice, receiver, burner, token, has_balance):
+@pytest.mark.parametrize("burner_balance", (True, False))
+@pytest.mark.parametrize("caller_balance", (True, False))
+def test_unwrap(MintableTestToken, alice, receiver, burner, token, burner_balance, caller_balance):
     wrapped = MintableTestToken(token)
     amount = 10**wrapped.decimals()
     underlying = Contract(wrapped.token())
 
-    wrapped._mint_for_testing(alice, amount, {'from': alice})
-    wrapped.approve(burner, 2**256-1, {'from': alice})
+    if caller_balance:
+        wrapped._mint_for_testing(alice, amount, {'from': alice})
+        wrapped.approve(burner, 2**256-1, {'from': alice})
 
-    if has_balance:
+    if burner_balance:
         wrapped._mint_for_testing(burner, amount, {'from': alice})
 
     burner.burn(wrapped, {'from': alice})
 
-    assert wrapped.balanceOf(alice) == 0
-    assert wrapped.balanceOf(receiver) == 0
-    assert wrapped.balanceOf(burner) == 0
+    if burner_balance or caller_balance:
+        assert wrapped.balanceOf(alice) == 0
+        assert wrapped.balanceOf(receiver) == 0
+        assert wrapped.balanceOf(burner) == 0
 
-    assert underlying.balanceOf(alice) == 0
-    assert underlying.balanceOf(receiver) > 0
-    assert underlying.balanceOf(burner) == 0
+        assert underlying.balanceOf(alice) == 0
+        assert underlying.balanceOf(receiver) > 0
+        assert underlying.balanceOf(burner) == 0
 
 
 @pytest.mark.parametrize("token", [i[0] for i in y_swap], ids=[i[1] for i in y_swap])
-@pytest.mark.parametrize("has_balance", (True, False))
-def test_swap_and_unwrap(MintableTestToken, USDC, alice, receiver, burner, token, has_balance):
+@pytest.mark.parametrize("burner_balance", (True, False))
+@pytest.mark.parametrize("caller_balance", (True, False))
+def test_swap_and_unwrap(MintableTestToken, USDC, alice, receiver, burner, token, burner_balance, caller_balance):
     wrapped = MintableTestToken(token)
     amount = 10**wrapped.decimals()
     underlying = Contract(wrapped.token())
 
-    wrapped._mint_for_testing(alice, amount, {'from': alice})
-    wrapped.approve(burner, 2**256-1, {'from': alice})
+    if caller_balance:
+        wrapped._mint_for_testing(alice, amount, {'from': alice})
+        wrapped.approve(burner, 2**256-1, {'from': alice})
 
-    if has_balance:
+    if burner_balance:
         wrapped._mint_for_testing(burner, amount, {'from': alice})
 
     burner.burn(wrapped, {'from': alice})
 
-    assert wrapped.balanceOf(alice) == 0
-    assert wrapped.balanceOf(receiver) == 0
-    assert wrapped.balanceOf(burner) == 0
+    if burner_balance or caller_balance:
+        assert wrapped.balanceOf(alice) == 0
+        assert wrapped.balanceOf(receiver) == 0
+        assert wrapped.balanceOf(burner) == 0
 
-    assert underlying.balanceOf(alice) == 0
-    assert underlying.balanceOf(receiver) == 0
-    assert underlying.balanceOf(burner) == 0
+        assert underlying.balanceOf(alice) == 0
+        assert underlying.balanceOf(receiver) == 0
+        assert underlying.balanceOf(burner) == 0
 
-    assert USDC.balanceOf(alice) == 0
-    assert USDC.balanceOf(receiver) > 0
-    assert USDC.balanceOf(burner) == 0
+        assert USDC.balanceOf(alice) == 0
+        assert USDC.balanceOf(receiver) > 0
+        assert USDC.balanceOf(burner) == 0

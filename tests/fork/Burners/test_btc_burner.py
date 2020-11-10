@@ -32,13 +32,14 @@ def test_swap(MintableTestToken, SUSD, alice, receiver, burner, token, burner_ba
 
     burner.burn(coin, {'from': alice})
 
-    assert coin.balanceOf(alice) == 0
-    assert coin.balanceOf(burner) == 0
-    assert coin.balanceOf(receiver) == 0
+    if burner_balance or caller_balance:
+        assert coin.balanceOf(alice) == 0
+        assert coin.balanceOf(burner) == 0
+        assert coin.balanceOf(receiver) == 0
 
-    assert SUSD.balanceOf(alice) == 0
-    assert SUSD.balanceOf(burner) > 0
-    assert SUSD.balanceOf(receiver) == 0
+        assert SUSD.balanceOf(alice) == 0
+        assert SUSD.balanceOf(burner) > 0
+        assert SUSD.balanceOf(receiver) == 0
 
 
 def test_execute(SUSD, USDC, alice, burner, receiver):
