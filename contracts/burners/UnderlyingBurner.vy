@@ -93,25 +93,26 @@ def burn(_coin: address) -> bool:
 
     # transfer coins from caller
     amount: uint256 = ERC20(_coin).balanceOf(msg.sender)
-    response: Bytes[32] = raw_call(
-        _coin,
-        concat(
-            method_id("transferFrom(address,address,uint256)"),
-            convert(msg.sender, bytes32),
-            convert(self, bytes32),
-            convert(amount, bytes32),
-        ),
-        max_outsize=32,
-    )
-    if len(response) != 0:
-        assert convert(response, bool)
+    if amount != 0:
+        response: Bytes[32] = raw_call(
+            _coin,
+            concat(
+                method_id("transferFrom(address,address,uint256)"),
+                convert(msg.sender, bytes32),
+                convert(self, bytes32),
+                convert(amount, bytes32),
+            ),
+            max_outsize=32,
+        )
+        if len(response) != 0:
+            assert convert(response, bool)
 
     # if coin is not in 3pool, swap it for USDC
     if not _coin in TRIPOOL_COINS:
         registry_swap: address = AddressProvider(ADDRESS_PROVIDER).get_address(2)
 
         if not self.is_approved[registry_swap][_coin]:
-            response = raw_call(
+            response: Bytes[32] = raw_call(
                 _coin,
                 concat(
                     method_id("approve(address,uint256)"),
@@ -126,7 +127,8 @@ def burn(_coin: address) -> bool:
 
         # get actual balance in case of transfer fee or pre-existing balance
         amount = ERC20(_coin).balanceOf(self)
-        RegistrySwap(registry_swap).exchange_with_best_rate(_coin, USDC, amount, 0)
+        if amount != 0:
+            RegistrySwap(registry_swap).exchange_with_best_rate(_coin, USDC, amount, 0)
 
     return True
 
@@ -144,8 +146,12 @@ def execute() -> bool:
         ERC20(TRIPOOL_COINS[1]).balanceOf(self),
         ERC20(TRIPOOL_COINS[2]).balanceOf(self),
     ]
-    StableSwap(TRIPOOL).add_liquidity(amounts, 0)
-    ERC20(TRIPOOL_LP).transfer(self.receiver, ERC20(TRIPOOL_LP).balanceOf(self))
+    if amounts[0] != 0 and amounts[1] != 0 and amounts[2] != 0:
+        StableSwap(TRIPOOL).add_liquidity(amounts, 0)
+
+    amount: uint256 = ERC20(TRIPOOL_LP).balanceOf(self)
+    if amount != 0:
+        ERC20(TRIPOOL_LP).transfer(self.receiver, amount)
 
     return True
 

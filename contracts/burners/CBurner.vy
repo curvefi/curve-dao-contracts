@@ -52,28 +52,30 @@ def burn(_coin: address) -> bool:
 
     # transfer coins from caller
     amount: uint256 = ERC20(_coin).balanceOf(msg.sender)
-    ERC20(_coin).transferFrom(msg.sender, self, amount)
+    if amount != 0:
+        ERC20(_coin).transferFrom(msg.sender, self, amount)
 
     # get actual balance in case of transfer fee or pre-existing balance
     amount = ERC20(_coin).balanceOf(self)
 
-    # unwrap cTokens for underlying asset
-    assert cERC20(_coin).redeem(amount) == 0
-    underlying: address = cERC20(_coin).underlying()
-    amount = ERC20(underlying).balanceOf(self)
+    if amount != 0:
+        # unwrap cTokens for underlying asset
+        assert cERC20(_coin).redeem(amount) == 0
+        underlying: address = cERC20(_coin).underlying()
+        amount = ERC20(underlying).balanceOf(self)
 
-    # transfer underlying to underlying burner
-    response: Bytes[32] = raw_call(
-        underlying,
-        concat(
-            method_id("transfer(address,uint256)"),
-            convert(self.receiver, bytes32),
-            convert(amount, bytes32),
-        ),
-        max_outsize=32,
-    )
-    if len(response) != 0:
-        assert convert(response, bool)
+        # transfer underlying to underlying burner
+        response: Bytes[32] = raw_call(
+            underlying,
+            concat(
+                method_id("transfer(address,uint256)"),
+                convert(self.receiver, bytes32),
+                convert(amount, bytes32),
+            ),
+            max_outsize=32,
+        )
+        if len(response) != 0:
+            assert convert(response, bool)
 
     return True
 

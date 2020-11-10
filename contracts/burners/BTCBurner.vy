@@ -30,9 +30,6 @@ interface Synthetix:
         destinationCurrencyKey: bytes32
     ): nonpayable
 
-interface Synth:
-    def currencyKey() -> bytes32: view
-
 
 ADDRESS_PROVIDER: constant(address) = 0x0000000022D53366457F9d5E68Ec105046FC4383
 
@@ -140,40 +137,42 @@ def burn(_coin: address) -> bool:
 
     # transfer coins from caller
     amount: uint256 = ERC20(coin).balanceOf(msg.sender)
-    response: Bytes[32] = raw_call(
-        coin,
-        concat(
-            method_id("transferFrom(address,address,uint256)"),
-            convert(msg.sender, bytes32),
-            convert(self, bytes32),
-            convert(amount, bytes32),
-        ),
-        max_outsize=32,
-    )
-    if len(response) != 0:
-        assert convert(response, bool)
+    if amount != 0:
+        response: Bytes[32] = raw_call(
+            coin,
+            concat(
+                method_id("transferFrom(address,address,uint256)"),
+                convert(msg.sender, bytes32),
+                convert(self, bytes32),
+                convert(amount, bytes32),
+            ),
+            max_outsize=32,
+        )
+        if len(response) != 0:
+            assert convert(response, bool)
 
     # get actual balance in case of transfer fee or pre-existing balance
     amount = ERC20(coin).balanceOf(self)
 
-    if coin != SBTC:
-        registry_swap: address = AddressProvider(ADDRESS_PROVIDER).get_address(2)
-        swap_for: address = self.swap_for[coin]
-        if swap_for != ZERO_ADDRESS:
-            # sometimes an intermediate swap is required to get to sBTC
-            self._swap(registry_swap, coin, swap_for, amount, self)
-            coin = swap_for
-            amount = ERC20(coin).balanceOf(self)
+    if amount != 0:
+        if coin != SBTC:
+            registry_swap: address = AddressProvider(ADDRESS_PROVIDER).get_address(2)
+            swap_for: address = self.swap_for[coin]
+            if swap_for != ZERO_ADDRESS:
+                # sometimes an intermediate swap is required to get to sBTC
+                self._swap(registry_swap, coin, swap_for, amount, self)
+                coin = swap_for
+                amount = ERC20(coin).balanceOf(self)
 
-        # swap to sBTC
-        self._swap(registry_swap, coin, SBTC, amount, self)
+            # swap to sBTC
+            self._swap(registry_swap, coin, SBTC, amount, self)
 
-    # convert sBTC to sUSD
-    Synthetix(SNX).exchange(
-        SBTC_CURRENCY_KEY,
-        ERC20(SBTC).balanceOf(self),
-        SUSD_CURRENCY_KEY,
-    )
+        # convert sBTC to sUSD
+        Synthetix(SNX).exchange(
+            SBTC_CURRENCY_KEY,
+            ERC20(SBTC).balanceOf(self),
+            SUSD_CURRENCY_KEY,
+        )
 
     return True
 
@@ -182,7 +181,7 @@ def burn(_coin: address) -> bool:
 def execute() -> bool:
     """
     @notice Convert sUSD to USDC and transfer to the underlying burner
-    @dev Synths are locked for 5 minutes after they are exchanged, so
+    @dev Synths are locked for 3 minutes after they are exchanged, so
          this call will revert unless sufficient time has passed since
          the last `burn`
     @return bool success
@@ -190,8 +189,9 @@ def execute() -> bool:
     assert not self.is_killed  # dev: is killed
 
     amount: uint256 = ERC20(SUSD).balanceOf(self)
-    registry_swap: address = AddressProvider(ADDRESS_PROVIDER).get_address(2)
-    self._swap(registry_swap, SUSD, USDC, amount, self.receiver)
+    if amount != 0:
+        registry_swap: address = AddressProvider(ADDRESS_PROVIDER).get_address(2)
+        self._swap(registry_swap, SUSD, USDC, amount, self.receiver)
 
     return True
 

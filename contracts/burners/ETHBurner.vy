@@ -145,39 +145,41 @@ def burn(_coin: address) -> bool:
         amount = self.balance
     else:
         amount = ERC20(coin).balanceOf(msg.sender)
-        response: Bytes[32] = raw_call(
-            coin,
-            concat(
-                method_id("transferFrom(address,address,uint256)"),
-                convert(msg.sender, bytes32),
-                convert(self, bytes32),
-                convert(amount, bytes32),
-            ),
-            max_outsize=32,
-        )
-        if len(response) != 0:
-            assert convert(response, bool)
-        # get actual balance in case of transfer fee or pre-existing balance
-        amount = ERC20(coin).balanceOf(self)
-
-    if coin != SETH:
-        registry_swap: address = AddressProvider(ADDRESS_PROVIDER).get_address(2)
-        swap_for: address = self.swap_for[coin]
-        if swap_for != ZERO_ADDRESS:
-            # sometimes an intermediate swap is required to get to sETH
-            self._swap(registry_swap, coin, swap_for, amount, self)
-            coin = swap_for
+        if amount != 0:
+            response: Bytes[32] = raw_call(
+                coin,
+                concat(
+                    method_id("transferFrom(address,address,uint256)"),
+                    convert(msg.sender, bytes32),
+                    convert(self, bytes32),
+                    convert(amount, bytes32),
+                ),
+                max_outsize=32,
+            )
+            if len(response) != 0:
+                assert convert(response, bool)
+            # get actual balance in case of transfer fee or pre-existing balance
             amount = ERC20(coin).balanceOf(self)
 
-        # swap to sETH
-        self._swap(registry_swap, coin, SETH, amount, self)
+    if amount != 0:
+        if coin != SETH:
+            registry_swap: address = AddressProvider(ADDRESS_PROVIDER).get_address(2)
+            swap_for: address = self.swap_for[coin]
+            if swap_for != ZERO_ADDRESS:
+                # sometimes an intermediate swap is required to get to sETH
+                self._swap(registry_swap, coin, swap_for, amount, self)
+                coin = swap_for
+                amount = ERC20(coin).balanceOf(self)
 
-    # convert sETH to sUSD
-    Synthetix(SNX).exchange(
-        SETH_CURRENCY_KEY,
-        ERC20(SETH).balanceOf(self),
-        SUSD_CURRENCY_KEY,
-    )
+            # swap to sETH
+            self._swap(registry_swap, coin, SETH, amount, self)
+
+        # convert sETH to sUSD
+        Synthetix(SNX).exchange(
+            SETH_CURRENCY_KEY,
+            ERC20(SETH).balanceOf(self),
+            SUSD_CURRENCY_KEY,
+        )
 
     return True
 
@@ -194,8 +196,9 @@ def execute() -> bool:
     assert not self.is_killed  # dev: is killed
 
     amount: uint256 = ERC20(SUSD).balanceOf(self)
-    registry_swap: address = AddressProvider(ADDRESS_PROVIDER).get_address(2)
-    self._swap(registry_swap, SUSD, USDC, amount, self.receiver)
+    if amount != 0:
+        registry_swap: address = AddressProvider(ADDRESS_PROVIDER).get_address(2)
+        self._swap(registry_swap, SUSD, USDC, amount, self.receiver)
 
     return True
 

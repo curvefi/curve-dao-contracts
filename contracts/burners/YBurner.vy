@@ -87,40 +87,42 @@ def burn(_coin: address) -> bool:
     # transfer coins from caller
     coin: address = _coin
     amount: uint256 = ERC20(coin).balanceOf(msg.sender)
-    ERC20(coin).transferFrom(msg.sender, self, amount)
+    if amount != 0:
+        ERC20(coin).transferFrom(msg.sender, self, amount)
 
     # get actual balance in case of transfer fee or pre-existing balance
     amount = ERC20(coin).balanceOf(self)
 
-    # if underlying asset is not DAI/USDC/USDT, swap yUSDC prior to unwrap
-    swap_for: address = self.swap_for[coin]
-    if swap_for != ZERO_ADDRESS:
-        registry_swap: address = AddressProvider(ADDRESS_PROVIDER).get_address(2)
+    if amount != 0:
+        # if underlying asset is not DAI/USDC/USDT, swap yUSDC prior to unwrap
+        swap_for: address = self.swap_for[coin]
+        if swap_for != ZERO_ADDRESS:
+            registry_swap: address = AddressProvider(ADDRESS_PROVIDER).get_address(2)
 
-        if not self.is_approved[registry_swap][coin]:
-            ERC20(coin).approve(registry_swap, MAX_UINT256)
-            self.is_approved[registry_swap][coin] = True
+            if not self.is_approved[registry_swap][coin]:
+                ERC20(coin).approve(registry_swap, MAX_UINT256)
+                self.is_approved[registry_swap][coin] = True
 
-        amount = RegistrySwap(registry_swap).exchange_with_best_rate(coin, swap_for, amount, 0)
-        coin = swap_for
+            amount = RegistrySwap(registry_swap).exchange_with_best_rate(coin, swap_for, amount, 0)
+            coin = swap_for
 
-    # unwrap yTokens for underlying asset
-    yERC20(coin).withdraw(amount)
-    underlying: address = yERC20(coin).token()
+        # unwrap yTokens for underlying asset
+        yERC20(coin).withdraw(amount)
+        underlying: address = yERC20(coin).token()
 
-    # transfer underlying to underlying burner
-    amount = ERC20(underlying).balanceOf(self)
-    response: Bytes[32] = raw_call(
-        underlying,
-        concat(
-            method_id("transfer(address,uint256)"),
-            convert(self.receiver, bytes32),
-            convert(amount, bytes32),
-        ),
-        max_outsize=32,
-    )
-    if len(response) != 0:
-        assert convert(response, bool)
+        # transfer underlying to underlying burner
+        amount = ERC20(underlying).balanceOf(self)
+        response: Bytes[32] = raw_call(
+            underlying,
+            concat(
+                method_id("transfer(address,uint256)"),
+                convert(self.receiver, bytes32),
+                convert(amount, bytes32),
+            ),
+            max_outsize=32,
+        )
+        if len(response) != 0:
+            assert convert(response, bool)
 
     return True
 

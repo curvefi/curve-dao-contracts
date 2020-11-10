@@ -67,18 +67,19 @@ def burn(_coin: address) -> bool:
 
     # transfer coins from caller
     amount: uint256 = ERC20(_coin).balanceOf(msg.sender)
-    response: Bytes[32] = raw_call(
-        _coin,
-        concat(
-            method_id("transferFrom(address,address,uint256)"),
-            convert(msg.sender, bytes32),
-            convert(self, bytes32),
-            convert(amount, bytes32),
-        ),
-        max_outsize=32,
-    )
-    if len(response) != 0:
-        assert convert(response, bool)
+    if amount != 0:
+        response: Bytes[32] = raw_call(
+            _coin,
+            concat(
+                method_id("transferFrom(address,address,uint256)"),
+                convert(msg.sender, bytes32),
+                convert(self, bytes32),
+                convert(amount, bytes32),
+            ),
+            max_outsize=32,
+        )
+        if len(response) != 0:
+            assert convert(response, bool)
 
     # get actual balance in case of transfer fee or pre-existing balance
     amount = ERC20(_coin).balanceOf(self)
@@ -86,7 +87,7 @@ def burn(_coin: address) -> bool:
     # swap coin for 3CRV and transfer to fee distributor
     registry_swap: address = AddressProvider(ADDRESS_PROVIDER).get_address(2)
     if not self.is_approved[registry_swap][_coin]:
-        response = raw_call(
+        response: Bytes[32] = raw_call(
             _coin,
             concat(
                 method_id("approve(address,uint256)"),
@@ -98,7 +99,9 @@ def burn(_coin: address) -> bool:
         if len(response) != 0:
             assert convert(response, bool)
         self.is_approved[registry_swap][_coin] = True
-    RegistrySwap(registry_swap).exchange_with_best_rate(_coin, TRIPOOL_LP, amount, 0, self.receiver)
+
+    if amount != 0:
+        RegistrySwap(registry_swap).exchange_with_best_rate(_coin, TRIPOOL_LP, amount, 0, self.receiver)
 
     return True
 

@@ -70,27 +70,29 @@ def burn(_coin: address) -> bool:
 
     # transfer coins from caller
     amount: uint256 = ERC20(_coin).balanceOf(msg.sender)
-    ERC20(_coin).transferFrom(msg.sender, self, amount)
+    if amount != 0:
+        ERC20(_coin).transferFrom(msg.sender, self, amount)
 
     # get actual balance in case of transfer fee or pre-existing balance
     amount = ERC20(_coin).balanceOf(self)
 
-    # remove liquidity and pass to the next burner
-    swap_data: SwapData = self.swap_data[_coin]
-    StableSwap(swap_data.pool).remove_liquidity_one_coin(amount, swap_data.i, 0)
+    if amount != 0:
+        # remove liquidity and pass to the next burner
+        swap_data: SwapData = self.swap_data[_coin]
+        StableSwap(swap_data.pool).remove_liquidity_one_coin(amount, swap_data.i, 0)
 
-    amount = ERC20(swap_data.coin).balanceOf(self)
-    response: Bytes[32] = raw_call(
-        swap_data.coin,
-        concat(
-            method_id("transfer(address,uint256)"),
-            convert(swap_data.burner, bytes32),
-            convert(amount, bytes32),
-        ),
-        max_outsize=32,
-    )
-    if len(response) != 0:
-        assert convert(response, bool)
+        amount = ERC20(swap_data.coin).balanceOf(self)
+        response: Bytes[32] = raw_call(
+            swap_data.coin,
+            concat(
+                method_id("transfer(address,uint256)"),
+                convert(swap_data.burner, bytes32),
+                convert(amount, bytes32),
+            ),
+            max_outsize=32,
+        )
+        if len(response) != 0:
+            assert convert(response, bool)
 
     return True
 
