@@ -155,6 +155,19 @@ def checkpoint_token():
     self._checkpoint_token()
 
 
+@external
+def burn(_coin: address) -> bool:
+    assert _coin == self.token
+
+    amount: uint256 = ERC20(_coin).balanceOf(msg.sender)
+    if amount != 0:
+        ERC20(_coin).transferFrom(msg.sender, self, amount)
+        if self.can_checkpoint_token and (block.timestamp > self.last_token_time + TOKEN_CHECKPOINT_DEADLINE):
+            self._checkpoint_token()
+
+    return True
+
+
 @internal
 def find_timestamp_epoch(ve: address, _timestamp: uint256) -> uint256:
     _min: uint256 = 0
