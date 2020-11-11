@@ -319,7 +319,7 @@ def claim(addr: address = msg.sender) -> uint256:
     if to_distribute > 0:
         token: address = self.token
         assert ERC20(token).transfer(addr, to_distribute)
-        self.token_last_balance = ERC20(token).balanceOf(self)
+        self.token_last_balance -= to_distribute
 
     log Claimed(addr, to_distribute)
     return to_distribute
