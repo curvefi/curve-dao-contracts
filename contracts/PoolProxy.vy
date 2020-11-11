@@ -70,6 +70,7 @@ future_emergency_admin: public(address)
 min_asymmetries: public(HashMap[address, uint256])
 
 burners: public(HashMap[address, address])
+burner_kill: public(bool)
 
 
 @external
@@ -124,16 +125,8 @@ def apply_set_admins():
     log ApplyAdmins(_o_admin, _p_admin, _e_admin)
 
 
-@external
-@nonreentrant('lock')
-def set_burner(_coin: address, _burner: address):
-    """
-    @notice Set burner of `_coin` to `_burner` address
-    @param _coin Token address
-    @param _burner Burner contract address
-    """
-    assert msg.sender == self.ownership_admin, "Access denied"
-
+@internal
+def _set_burner(_coin: address, _burner: address):
     old_burner: address = self.burners[_coin]
     if _coin != 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
         if old_burner != ZERO_ADDRESS:
@@ -171,6 +164,36 @@ def set_burner(_coin: address, _burner: address):
 
 @external
 @nonreentrant('lock')
+def set_burner(_coin: address, _burner: address):
+    """
+    @notice Set burner of `_coin` to `_burner` address
+    @param _coin Token address
+    @param _burner Burner contract address
+    """
+    assert msg.sender == self.ownership_admin, "Access denied"
+
+    self._set_burner(_coin, _burner)
+
+
+@external
+@nonreentrant('lock')
+def set_many_burners(_coins: address[20], _burners: address[20]):
+    """
+    @notice Set burner of `_coin` to `_burner` address
+    @param _coins Token address
+    @param _burners Burner contract address
+    """
+    assert msg.sender == self.ownership_admin, "Access denied"
+
+    for i in range(20):
+        coin: address = _coins[i]
+        if coin == ZERO_ADDRESS:
+            break
+        self._set_burner(coin, _burners[i])
+
+
+@external
+@nonreentrant('lock')
 def withdraw_admin_fees(_pool: address):
     """
     @notice Withdraw admin fees from `_pool`
@@ -197,8 +220,12 @@ def withdraw_many(_pools: address[20]):
 def burn(_coin: address):
     """
     @notice Burn accrued `_coin` via a preset burner
+    @dev Only callable by an EOA to prevent flashloan exploits
     @param _coin Coin address
     """
+    assert tx.origin == msg.sender
+    assert not self.burner_kill
+
     _value: uint256 = 0
     if _coin == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
         _value = self.balance
@@ -211,8 +238,12 @@ def burn(_coin: address):
 def burn_many(_coins: address[20]):
     """
     @notice Burn accrued admin fees from multiple coins
+    @dev Only callable by an EOA to prevent flashloan exploits
     @param _coins List of coin addresses
     """
+    assert tx.origin == msg.sender
+    assert not self.burner_kill
+
     for coin in _coins:
         if coin == ZERO_ADDRESS:
             break
@@ -244,6 +275,17 @@ def unkill_me(_pool: address):
     """
     assert msg.sender == self.emergency_admin or msg.sender == self.ownership_admin, "Access denied"
     Curve(_pool).unkill_me()
+
+
+@external
+@nonreentrant('lock')
+def set_burner_kill(_is_killed: bool):
+    """
+    @notice Kill or unkill `burn` functionality
+    @param _is_killed Burner kill status
+    """
+    assert msg.sender == self.emergency_admin or msg.sender == self.ownership_admin, "Access denied"
+    self.burner_kill = _is_killed
 
 
 @external
