@@ -240,34 +240,21 @@ def checkpoint_total_supply():
     self._checkpoint_total_supply()
 
 
-@external
-@nonreentrant('lock')
-def claim(addr: address = msg.sender) -> uint256:
-    assert not self.is_killed
-
-    ve: address = self.voting_escrow
-    last_token_time: uint256 = self.last_token_time
-
-    if block.timestamp >= self.time_cursor:
-        self._checkpoint_total_supply()
-
-    if self.can_checkpoint_token and (block.timestamp > last_token_time + TOKEN_CHECKPOINT_DEADLINE):
-        self._checkpoint_token()
-        last_token_time = block.timestamp
-
-    last_token_time = last_token_time / WEEK * WEEK
-
+@internal
+def _claim(addr: address, ve: address, _last_token_time: uint256) -> uint256:
     # Minimal user_epoch is 0 (if user had no point)
     user_epoch: uint256 = 0
+    to_distribute: uint256 = 0
+
     max_user_epoch: uint256 = VotingEscrow(ve).user_point_epoch(addr)
     _start_time: uint256 = self.start_time
 
     if max_user_epoch == 0:
         # No lock = no fees
-        log Claimed(addr, 0)
         return 0
 
-    if self.time_cursor_of[addr] == 0:
+    week_cursor: uint256 = self.time_cursor_of[addr]
+    if week_cursor == 0:
         # Need to do the initial binary search
         user_epoch = self._find_timestamp_user_epoch(ve, addr, _start_time, max_user_epoch)
     else:
@@ -277,20 +264,20 @@ def claim(addr: address = msg.sender) -> uint256:
         user_epoch = 1
 
     user_point: Point = VotingEscrow(ve).user_point_history(addr, user_epoch)
-    week_cursor: uint256 = self.time_cursor_of[addr]
+
     if week_cursor == 0:
         week_cursor = (user_point.ts + WEEK - 1) / WEEK * WEEK
-    if week_cursor >= last_token_time:
-        log Claimed(addr, 0)
+
+    if week_cursor >= _last_token_time:
         return 0
+
     if week_cursor < _start_time:
         week_cursor = _start_time
     old_user_point: Point = empty(Point)
-    to_distribute: uint256 = 0
 
     # Iterate over weeks
     for i in range(50):
-        if week_cursor >= last_token_time:
+        if week_cursor >= _last_token_time:
             break
 
         if week_cursor >= user_point.ts and user_epoch <= max_user_epoch:
@@ -316,10 +303,67 @@ def claim(addr: address = msg.sender) -> uint256:
     self.user_epoch_of[addr] = min(max_user_epoch, user_epoch - 1)
     self.time_cursor_of[addr] = week_cursor
 
-    if to_distribute > 0:
-        token: address = self.token
-        assert ERC20(token).transfer(addr, to_distribute)
-        self.token_last_balance -= to_distribute
-
-    log Claimed(addr, to_distribute)
     return to_distribute
+
+
+@external
+@nonreentrant('lock')
+def claim(addr: address = msg.sender) -> uint256:
+    assert not self.is_killed
+
+    if block.timestamp >= self.time_cursor:
+        self._checkpoint_total_supply()
+
+    last_token_time: uint256 = self.last_token_time
+
+    if self.can_checkpoint_token and (block.timestamp > last_token_time + TOKEN_CHECKPOINT_DEADLINE):
+        self._checkpoint_token()
+        last_token_time = block.timestamp
+
+    last_token_time = last_token_time / WEEK * WEEK
+
+    amount: uint256 = self._claim(addr, self.voting_escrow, last_token_time)
+    if amount != 0:
+        token: address = self.token
+        assert ERC20(token).transfer(addr, amount)
+        self.token_last_balance -= amount
+
+    log Claimed(addr, amount)
+
+    return amount
+
+
+@external
+@nonreentrant('lock')
+def claim_many(_receivers: address[20]) -> bool:
+    assert not self.is_killed
+
+    if block.timestamp >= self.time_cursor:
+        self._checkpoint_total_supply()
+
+    last_token_time: uint256 = self.last_token_time
+
+    if self.can_checkpoint_token and (block.timestamp > last_token_time + TOKEN_CHECKPOINT_DEADLINE):
+        self._checkpoint_token()
+        last_token_time = block.timestamp
+
+    last_token_time = last_token_time / WEEK * WEEK
+    voting_escrow: address = self.voting_escrow
+    token: address = self.token
+    total: uint256 = 0
+
+    for addr in _receivers:
+        if addr == ZERO_ADDRESS:
+            break
+
+        amount: uint256 = self._claim(addr, voting_escrow, last_token_time)
+        if amount != 0:
+            assert ERC20(token).transfer(addr, amount)
+            total += amount
+
+        log Claimed(addr, amount)
+
+    if total != 0:
+        self.token_last_balance -= total
+
+    return True
