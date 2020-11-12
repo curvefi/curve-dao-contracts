@@ -21,7 +21,7 @@ class StateMachine:
 
     def setup(self):
         self.locked_until = {self.accounts[0]: self.voting_escrow.locked__end(self.accounts[0])}
-        self.fees = {chain[-2].timestamp: 10**18}
+        self.fees = {}
         self.user_claims = defaultdict(dict)
         self.total_fees = 10**18
 
@@ -45,6 +45,15 @@ class StateMachine:
         least 2 accounts locked at the start of the test run.
         """
         self.rule_new_lock(st_acct, st_amount, st_weeks, st_time)
+
+    def initialize_transfer_fees(self, st_amount, st_time):
+        """
+        Initialize-only rule to transfer fees.
+
+        This is equivalent to `rule_transfer_fees` to make it more likely
+        that claimable fees are available from the start of the test.
+        """
+        self.rule_transfer_fees(st_amount, st_time)
 
     def rule_new_lock(self, st_acct, st_amount, st_weeks, st_time):
         """
@@ -126,14 +135,17 @@ class StateMachine:
 
         claimed = self.fee_coin.balanceOf(st_acct)
 
-        self.distributor.claim({'from': st_acct})
+        tx = self.distributor.claim({'from': st_acct})
 
         claimed = self.fee_coin.balanceOf(st_acct) - claimed
-        self.user_claims[st_acct][chain[-1].timestamp] = (claimed, self.distributor.time_cursor_of(st_acct))
+        self.user_claims[st_acct][tx.timestamp] = (claimed, self.distributor.time_cursor_of(st_acct))
 
-    def rule_increase_available_fees(self, st_amount, st_time):
+    def rule_transfer_fees(self, st_amount, st_time):
         """
-        Transfer additional fees into the distributor and make a checkpoint.
+        Transfer fees into the distributor and make a checkpoint.
+
+        If this is the first checkpoint, `can_checkpoint_token` is also
+        enabled.
 
         Arguments
         ---------
@@ -146,14 +158,41 @@ class StateMachine:
 
         amount = int(st_amount * 10**18)
         tx = self.fee_coin._mint_for_testing(amount, {'from': self.distributor.address})
-        self.total_fees += amount
+
+        if not self.distributor.can_checkpoint_token():
+            self.distributor.toggle_allow_checkpoint_token()
+            self.distributor.checkpoint_token()
+
         self.fees[tx.timestamp] = amount
-        self.distributor.checkpoint_token()
+        self.total_fees += amount
+
+    def rule_transfer_fees_without_checkpoint(self, st_amount, st_time):
+        """
+        Transfer fees into the distributor without checkpointing.
+
+        Arguments
+        ---------
+        st_amount : decimal
+            Amount of fee tokens to add to the distributor.
+        st_time : int
+            Duration to sleep before action, in seconds.
+        """
+        chain.sleep(st_time)
+
+        amount = int(st_amount * 10**18)
+        tx = self.fee_coin._mint_for_testing(amount, {'from': self.distributor.address})
+
+        self.fees[tx.timestamp] = amount
+        self.total_fees += amount
 
     def teardown(self):
         """
         Claim fees for all accounts and verify that only dust remains.
         """
+        if not self.distributor.can_checkpoint_token():
+            # if no token checkpoint occured, add 100,000 tokens prior to teardown
+            self.rule_transfer_fees(100000, 0)
+
         chain.sleep(WEEK*2)
         for acct in self.accounts:
             self.distributor.claim({'from': acct})
@@ -179,15 +218,12 @@ def test_stateful(state_machine, accounts, voting_escrow, fee_distributor, coin_
         token.approve(voting_escrow, 2**256-1, {'from': accounts[i]})
         token.transfer(accounts[i], 10**18 * 10000000, {'from': accounts[0]})
 
-    # accounts[0] locks 10000000 tokens for 2 years - longer than the maximum duration of the test
+    # accounts[0] locks 10,000,000 tokens for 2 years - longer than the maximum duration of the test
     voting_escrow.create_lock(10**18 * 10000000, chain.time() + YEAR * 2, {'from': accounts[0]})
 
-    # a week later we deploy the fee distributor and make an initial deposit
+    # a week later we deploy the fee distributor
     chain.sleep(WEEK)
     distributor = fee_distributor()
-    distributor.toggle_allow_checkpoint_token()
-    coin_a._mint_for_testing(10**18, {'from': distributor.address})
-    distributor.checkpoint_token()
 
     state_machine(
         StateMachine,
