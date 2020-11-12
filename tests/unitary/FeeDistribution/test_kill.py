@@ -58,9 +58,25 @@ def test_only_admin(fee_distributor, accounts, idx):
         fee_distributor.kill_me({'from': accounts[idx]})
 
 
-@pytest.mark.parametrize('idx', range(1,3))
+@pytest.mark.parametrize('idx', range(1, 3))
 def test_cannot_claim_after_killed(fee_distributor, accounts, idx):
     fee_distributor.kill_me({'from': accounts[0]})
 
     with brownie.reverts():
         fee_distributor.claim({'from': accounts[idx]})
+
+
+@pytest.mark.parametrize('idx', range(1, 3))
+def test_cannot_claim_for_after_killed(fee_distributor, accounts, alice, idx):
+    fee_distributor.kill_me({'from': accounts[0]})
+
+    with brownie.reverts():
+        fee_distributor.claim(alice, {'from': accounts[idx]})
+
+
+@pytest.mark.parametrize('idx', range(1, 3))
+def test_cannot_claim_many_after_killed(fee_distributor, accounts, alice, idx):
+    fee_distributor.kill_me({'from': accounts[0]})
+
+    with brownie.reverts():
+        fee_distributor.claim_many([alice] * 20, {'from': accounts[idx]})
