@@ -333,10 +333,14 @@ def claimable_tokens(addr: address) -> uint256:
 
 
 @external
+@nonreentrant('lock')
 def claimable_reward(_addr: address, _token: address) -> uint256:
     """
     @notice Get the number of claimable reward tokens for a user
+    @dev This function should be manually changed to "view" in the ABI
+         Calling it via a transaction will claim available reward tokens
     @param _addr Account to get reward amount for
+    @param _token Token to get reward amount for
     @return uint256 Claimable reward token amount
     """
     claimable: uint256 = ERC20(_token).balanceOf(_addr)
@@ -351,6 +355,36 @@ def claimable_reward(_addr: address, _token: address) -> uint256:
         claimable += self.balanceOf[_addr] * (integral - integral_for) / 10**18
 
     return claimable
+
+
+@external
+@nonreentrant('lock')
+def claim_rewards(_addr: address = msg.sender):
+    """
+    @notice Claim available reward tokens for `_addr`
+    @param _addr Address to claim for
+    """
+    self._checkpoint_rewards(_addr, self.totalSupply)
+
+
+@external
+@nonreentrant('lock')
+def claim_historic_rewards(_reward_tokens: address[MAX_REWARDS], _addr: address = msg.sender):
+    """
+    @notice Claim reward tokens available from a previously-set staking contract
+    @param _reward_tokens Array of reward token addresses to claim
+    @param _addr Address to claim for
+    """
+    for token in _reward_tokens:
+        if token == ZERO_ADDRESS:
+            break
+        integral: uint256 = self.reward_integral[token]
+        integral_for: uint256 = self.reward_integral_for[token][_addr]
+
+        if integral_for < integral:
+            claimable: uint256 = self.balanceOf[_addr] * (integral - integral_for) / 10**18
+            self.reward_integral_for[token][_addr] = integral
+            assert ERC20(token).transfer(_addr, claimable)
 
 
 @external
@@ -389,6 +423,7 @@ def set_approve_deposit(addr: address, can_deposit: bool):
 def deposit(_value: uint256, _addr: address = msg.sender):
     """
     @notice Deposit `_value` LP tokens
+    @dev Depositting also claims pending reward tokens
     @param _value Number of tokens to deposit
     @param _addr Address to deposit for
     """
@@ -421,11 +456,13 @@ def deposit(_value: uint256, _addr: address = msg.sender):
 
     log Deposit(_addr, _value)
 
+
 @external
 @nonreentrant('lock')
 def withdraw(_value: uint256):
     """
     @notice Withdraw `_value` LP tokens
+    @dev Withdrawing also claims pending reward tokens
     @param _value Number of tokens to withdraw
     """
     self._checkpoint(msg.sender)
@@ -459,10 +496,10 @@ def withdraw(_value: uint256):
 @external
 def allowance(_owner : address, _spender : address) -> uint256:
     """
-    @dev Function to check the amount of tokens that an owner allowed to a spender.
-    @param _owner The address which owns the funds.
-    @param _spender The address which will spend the funds.
-    @return An uint256 specifying the amount of tokens still available for the spender.
+    @notice Check the amount of tokens that an owner allowed to a spender
+    @param _owner The address which owns the funds
+    @param _spender The address which will spend the funds
+    @return uint256 Amount of tokens still available for the spender
     """
     return self.allowances[_owner][_spender]
 
@@ -494,7 +531,8 @@ def _transfer(_from: address, _to: address, _value: uint256):
 @nonreentrant('lock')
 def transfer(_to : address, _value : uint256) -> bool:
     """
-    @dev Transfer token for a specified address
+    @notice Transfer token for a specified address
+    @dev Transferring claims pending reward tokens for the sender and receiver
     @param _to The address to transfer to.
     @param _value The amount to be transferred.
     """
@@ -507,13 +545,12 @@ def transfer(_to : address, _value : uint256) -> bool:
 @nonreentrant('lock')
 def transferFrom(_from : address, _to : address, _value : uint256) -> bool:
     """
-     @dev Transfer tokens from one address to another.
+     @notice Transfer tokens from one address to another.
+     @dev Transferring claims pending reward tokens for the sender and receiver
      @param _from address The address which you want to send tokens from
      @param _to address The address which you want to transfer to
      @param _value uint256 the amount of tokens to be transferred
     """
-    # NOTE: vyper does not allow underflows
-    #       so the following subtraction would revert on insufficient balance
     _allowance: uint256 = self.allowances[_from][msg.sender]
     if _allowance != MAX_UINT256:
         self.allowances[_from][msg.sender] = _allowance - _value
@@ -579,27 +616,6 @@ def decreaseAllowance(_spender: address, _subtracted_value: uint256) -> bool:
     return True
 
 
-@external
-@nonreentrant('lock')
-def claim_rewards(_addr: address = msg.sender):
-    self._checkpoint_rewards(_addr, self.totalSupply)
-
-
-@external
-@nonreentrant('lock')
-def claim_historic_rewards(_reward_tokens: address[MAX_REWARDS], _addr: address = msg.sender):
-    for token in _reward_tokens:
-        if token == ZERO_ADDRESS:
-            break
-        integral: uint256 = self.reward_integral[token]
-        integral_for: uint256 = self.reward_integral_for[token][_addr]
-
-        if integral_for < integral:
-            claimable: uint256 = self.balanceOf[_addr] * (integral - integral_for) / 10**18
-            self.reward_integral_for[token][_addr] = integral
-            assert ERC20(token).transfer(_addr, claimable)
-
-
 @view
 @external
 def integrate_checkpoint() -> uint256:
@@ -609,6 +625,16 @@ def integrate_checkpoint() -> uint256:
 @external
 @nonreentrant('lock')
 def set_rewards(_reward_contract: address, _sigs: bytes32, _reward_tokens: address[MAX_REWARDS]):
+    """
+    @notice Set the active reward contract
+    @param _reward_contract Reward contract address. Set to ZERO_ADDRESS to
+                            disable staking.
+    @param _sigs Four byte selectors for staking, withdrawing and claiming,
+                 right padded with zero bytes. If the reward contract can
+                 be claimed from but does not require staking, the staking
+                 and withdraw selectors should be set to 0x00
+    @param _reward_tokens List of claimable tokens for this reward contract
+    """
     assert msg.sender == self.admin
 
     lp_token: address = self.lp_token
@@ -656,9 +682,15 @@ def set_rewards(_reward_contract: address, _sigs: bytes32, _reward_tokens: addre
 
 
 @external
-def kill_me():
+def set_killed(_is_killed: bool):
+    """
+    @notice Set the killed status for this contract
+    @dev When killed, the gauge always yields a rate of 0 and so cannot mint CRV
+    @param _is_killed Killed status to set
+    """
     assert msg.sender == self.admin
-    self.is_killed = not self.is_killed
+
+    self.is_killed = _is_killed
 
 
 @external
