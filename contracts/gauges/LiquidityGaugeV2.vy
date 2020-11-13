@@ -608,25 +608,31 @@ def set_rewards(_reward_contract: address, _sigs: bytes32, _reward_tokens: addre
     if current_reward_contract != ZERO_ADDRESS:
         self._checkpoint_rewards(ZERO_ADDRESS, total_supply)
         withdraw_sig: Bytes[4] = slice(self.reward_sigs, 4, 4)
-        if convert(withdraw_sig, uint256) != 0 and total_supply != 0:
-            raw_call(
-                current_reward_contract,
-                concat(withdraw_sig, convert(total_supply, bytes32))
-            )
+        if convert(withdraw_sig, uint256) != 0:
+            if total_supply != 0:
+                raw_call(
+                    current_reward_contract,
+                    concat(withdraw_sig, convert(total_supply, bytes32))
+                )
             ERC20(lp_token).approve(current_reward_contract, 0)
 
     if _reward_contract != ZERO_ADDRESS:
-        assert _reward_contract.is_contract
+        assert _reward_contract.is_contract  # dev: not a contract
         sigs: bytes32 = _sigs
         deposit_sig: Bytes[4] = slice(sigs, 0, 4)
         withdraw_sig: Bytes[4] = slice(sigs, 4, 4)
 
         if convert(deposit_sig, uint256) != 0:
             # if deposit sig is set, withdraw sig must also be set
-            assert convert(withdraw_sig, uint256) != 0
+            assert convert(withdraw_sig, uint256) != 0  # dev: deposit without withdraw
             ERC20(lp_token).approve(_reward_contract, MAX_UINT256)
+            if total_supply != 0:
+                raw_call(
+                    _reward_contract,
+                    concat(deposit_sig, convert(total_supply, bytes32))
+                )
         else:
-            assert convert(withdraw_sig, uint256) == 0
+            assert convert(withdraw_sig, uint256) == 0  # dev: withdraw without deposit
 
     self.reward_contract = _reward_contract
     self.reward_sigs = _sigs
@@ -636,6 +642,7 @@ def set_rewards(_reward_contract: address, _sigs: bytes32, _reward_tokens: addre
         elif self.reward_tokens[i] != ZERO_ADDRESS:
             self.reward_tokens[i] = ZERO_ADDRESS
         else:
+            assert i != 0  # dev: no reward token
             break
 
 
