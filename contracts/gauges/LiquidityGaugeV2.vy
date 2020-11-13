@@ -84,7 +84,6 @@ allowances: HashMap[address, HashMap[address, uint256]]
 
 name: public(String[64])
 symbol: public(String[32])
-decimals: public(uint256)
 
 # caller -> recipient -> can deposit?
 approved_to_deposit: public(HashMap[address, HashMap[address, bool]])
@@ -146,7 +145,6 @@ def __init__(
     """
     self.name = _name
     self.symbol = _symbol
-    self.decimals = 18
 
     crv_token: address = Minter(_minter).token()
     controller: address = Minter(_minter).controller()
@@ -161,6 +159,17 @@ def __init__(
     self.period_timestamp[0] = block.timestamp
     self.inflation_rate = CRV20(crv_token).rate()
     self.future_epoch_time = CRV20(crv_token).future_epoch_time_write()
+
+
+@view
+@external
+def decimals() -> uint256:
+    """
+    @notice Get the number of decimals for this token
+    @dev Implemented as a view method to reduce gas costs
+    @return uint256 decimal places
+    """
+    return 18
 
 
 @internal
