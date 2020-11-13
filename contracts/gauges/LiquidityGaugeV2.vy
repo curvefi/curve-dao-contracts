@@ -172,6 +172,12 @@ def decimals() -> uint256:
     return 18
 
 
+@view
+@external
+def integrate_checkpoint() -> uint256:
+    return self.period_timestamp[self.period]
+
+
 @internal
 def _update_liquidity_limit(addr: address, l: uint256, L: uint256):
     """
@@ -202,6 +208,9 @@ def _update_liquidity_limit(addr: address, l: uint256, L: uint256):
 
 @internal
 def _checkpoint_rewards(_addr: address, _total_supply: uint256):
+    """
+    @notice Claim pending rewards and checkpoint rewards for a user
+    """
     if _total_supply == 0:
         return
 
@@ -614,12 +623,6 @@ def decreaseAllowance(_spender: address, _subtracted_value: uint256) -> bool:
     log Approval(msg.sender, _spender, allowance)
 
     return True
-
-
-@view
-@external
-def integrate_checkpoint() -> uint256:
-    return self.period_timestamp[self.period]
 
 
 @external
