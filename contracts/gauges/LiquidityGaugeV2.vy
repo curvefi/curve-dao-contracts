@@ -471,10 +471,10 @@ def _transfer(_from: address, _to: address, _value: uint256):
             self._checkpoint_rewards(_from, total_supply)
         new_balance: uint256 = self.balanceOf[_from] - _value
         self.balanceOf[_from] = new_balance
-        self._update_liquidity_limit(_from, new_balance, total_supply - _value)
+        self._update_liquidity_limit(_from, new_balance, total_supply)
 
         if reward_contract != ZERO_ADDRESS:
-            self._checkpoint_rewards(_to, total_supply - _value)
+            self._checkpoint_rewards(_to, total_supply)
         new_balance = self.balanceOf[_to] + _value
         self.balanceOf[_to] = new_balance
         self._update_liquidity_limit(_to, new_balance, total_supply)
