@@ -235,8 +235,6 @@ def _checkpoint(addr: address):
     @notice Checkpoint for a user
     @param addr User address
     """
-    _token: address = self.crv_token
-    _controller: address = self.controller
     _period: int128 = self.period
     _period_time: uint256 = self.period_timestamp[_period]
     _integrate_inv_supply: uint256 = self.integrate_inv_supply[_period]
@@ -244,13 +242,10 @@ def _checkpoint(addr: address):
     new_rate: uint256 = rate
     prev_future_epoch: uint256 = self.future_epoch_time
     if prev_future_epoch >= _period_time:
+        _token: address = self.crv_token
         self.future_epoch_time = CRV20(_token).future_epoch_time_write()
         new_rate = CRV20(_token).rate()
         self.inflation_rate = new_rate
-    Controller(_controller).checkpoint_gauge(self)
-
-    _working_balance: uint256 = self.working_balances[addr]
-    _working_supply: uint256 = self.working_supply
 
     if self.is_killed:
         # Stop distributing inflation as soon as killed
@@ -258,6 +253,9 @@ def _checkpoint(addr: address):
 
     # Update integral of 1/supply
     if block.timestamp > _period_time:
+        _working_supply: uint256 = self.working_supply
+        _controller: address = self.controller
+        Controller(_controller).checkpoint_gauge(self)
         prev_week_time: uint256 = _period_time
         week_time: uint256 = min((_period_time + WEEK) / WEEK * WEEK, block.timestamp)
 
@@ -295,6 +293,7 @@ def _checkpoint(addr: address):
     self.integrate_inv_supply[_period] = _integrate_inv_supply
 
     # Update user-specific integrals
+    _working_balance: uint256 = self.working_balances[addr]
     self.integrate_fraction[addr] += _working_balance * (_integrate_inv_supply - self.integrate_inv_supply_of[addr]) / 10 ** 18
     self.integrate_inv_supply_of[addr] = _integrate_inv_supply
     self.integrate_checkpoint_of[addr] = block.timestamp
