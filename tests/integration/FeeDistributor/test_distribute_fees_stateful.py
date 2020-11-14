@@ -193,7 +193,13 @@ class StateMachine:
             # if no token checkpoint occured, add 100,000 tokens prior to teardown
             self.rule_transfer_fees(100000, 0)
 
+        # Need two checkpoints to get tokens fully distributed
+        # Because tokens for current week are obtained in the next week
+        # And that is by design
+        self.distributor.checkpoint_token()
         chain.sleep(WEEK*2)
+        self.distributor.checkpoint_token()
+
         for acct in self.accounts:
             self.distributor.claim({'from': acct})
 
