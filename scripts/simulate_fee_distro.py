@@ -18,6 +18,7 @@ def main():
     distributor.checkpoint_token()
     chain.sleep(86400 * 14)
     distributor.checkpoint_total_supply()
+    distributor.checkpoint_token()
 
     with Path('votelocks-11237343.json').open() as fp:
         data = json.load(fp)
