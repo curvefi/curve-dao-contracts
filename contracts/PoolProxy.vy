@@ -73,6 +73,8 @@ min_asymmetries: public(HashMap[address, uint256])
 burners: public(HashMap[address, address])
 burner_kill: public(bool)
 
+# pool -> caller -> can call `donate_admin_fees`
+donate_approval: public(HashMap[address, HashMap[address, bool]])
 
 @external
 def __init__(
@@ -468,11 +470,26 @@ def set_aave_referral(_pool: address, referral_code: uint256):
 
 
 @external
+def set_donate_approval(_pool: address, _caller: address, _is_approved: bool):
+    """
+    @notice Set approval of `_caller` to donate admin fees for `_pool`
+    @param _pool Pool address
+    @param _caller Adddress to set approval for
+    @param _is_approved Approval status
+    """
+    assert msg.sender == self.ownership_admin, "Access denied"
+
+    self.donate_approval[_pool][_caller] = _is_approved
+
+
+@external
 @nonreentrant('lock')
 def donate_admin_fees(_pool: address):
     """
     @notice Donate admin fees of `_pool` pool
     @param _pool Pool address
     """
-    assert msg.sender == self.ownership_admin, "Access denied"
+    if msg.sender != self.ownership_admin:
+        assert self.donate_approval[_pool][msg.sender], "Access denied"
+
     Curve(_pool).donate_admin_fees()  # dev: if implemented by the pool
