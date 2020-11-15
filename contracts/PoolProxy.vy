@@ -219,7 +219,7 @@ def withdraw_many(_pools: address[20]):
 
 
 @external
-@nonreentrant('lock')
+@nonreentrant('burn')
 def burn(_coin: address):
     """
     @notice Burn accrued `_coin` via a preset burner
@@ -237,7 +237,7 @@ def burn(_coin: address):
 
 
 @external
-@nonreentrant('lock')
+@nonreentrant('burn')
 def burn_many(_coins: address[20]):
     """
     @notice Burn accrued admin fees from multiple coins
@@ -281,7 +281,6 @@ def unkill_me(_pool: address):
 
 
 @external
-@nonreentrant('lock')
 def set_burner_kill(_is_killed: bool):
     """
     @notice Kill or unkill `burn` functionality
