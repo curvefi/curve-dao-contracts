@@ -14,6 +14,7 @@ interface Curve:
     def unkill_me(): nonpayable
     def commit_transfer_ownership(new_owner: address): nonpayable
     def apply_transfer_ownership(): nonpayable
+    def accept_transfer_ownership(): nonpayable
     def revert_transfer_ownership(): nonpayable
     def commit_new_parameters(amplification: uint256, new_fee: uint256, new_admin_fee: uint256): nonpayable
     def apply_new_parameters(): nonpayable
@@ -72,6 +73,8 @@ min_asymmetries: public(HashMap[address, uint256])
 burners: public(HashMap[address, address])
 burner_kill: public(bool)
 
+# pool -> caller -> can call `donate_admin_fees`
+donate_approval: public(HashMap[address, HashMap[address, bool]])
 
 @external
 def __init__(
@@ -216,7 +219,7 @@ def withdraw_many(_pools: address[20]):
 
 
 @external
-@nonreentrant('lock')
+@nonreentrant('burn')
 def burn(_coin: address):
     """
     @notice Burn accrued `_coin` via a preset burner
@@ -234,7 +237,7 @@ def burn(_coin: address):
 
 
 @external
-@nonreentrant('lock')
+@nonreentrant('burn')
 def burn_many(_coins: address[20]):
     """
     @notice Burn accrued admin fees from multiple coins
@@ -278,7 +281,6 @@ def unkill_me(_pool: address):
 
 
 @external
-@nonreentrant('lock')
 def set_burner_kill(_is_killed: bool):
     """
     @notice Kill or unkill `burn` functionality
@@ -308,6 +310,16 @@ def apply_transfer_ownership(_pool: address):
     @param _pool Pool address
     """
     Curve(_pool).apply_transfer_ownership()
+
+
+@external
+@nonreentrant('lock')
+def accept_transfer_ownership(_pool: address):
+    """
+    @notice Apply transferring ownership of `_pool`
+    @param _pool Pool address
+    """
+    Curve(_pool).accept_transfer_ownership()
 
 
 @external
@@ -457,11 +469,26 @@ def set_aave_referral(_pool: address, referral_code: uint256):
 
 
 @external
+def set_donate_approval(_pool: address, _caller: address, _is_approved: bool):
+    """
+    @notice Set approval of `_caller` to donate admin fees for `_pool`
+    @param _pool Pool address
+    @param _caller Adddress to set approval for
+    @param _is_approved Approval status
+    """
+    assert msg.sender == self.ownership_admin, "Access denied"
+
+    self.donate_approval[_pool][_caller] = _is_approved
+
+
+@external
 @nonreentrant('lock')
 def donate_admin_fees(_pool: address):
     """
     @notice Donate admin fees of `_pool` pool
     @param _pool Pool address
     """
-    assert msg.sender == self.ownership_admin, "Access denied"
+    if msg.sender != self.ownership_admin:
+        assert self.donate_approval[_pool][msg.sender], "Access denied"
+
     Curve(_pool).donate_admin_fees()  # dev: if implemented by the pool
