@@ -14,6 +14,7 @@ interface Curve:
     def unkill_me(): nonpayable
     def commit_transfer_ownership(new_owner: address): nonpayable
     def apply_transfer_ownership(): nonpayable
+    def accept_transfer_ownership(): nonpayable
     def revert_transfer_ownership(): nonpayable
     def commit_new_parameters(amplification: uint256, new_fee: uint256, new_admin_fee: uint256): nonpayable
     def apply_new_parameters(): nonpayable
@@ -308,6 +309,16 @@ def apply_transfer_ownership(_pool: address):
     @param _pool Pool address
     """
     Curve(_pool).apply_transfer_ownership()
+
+
+@external
+@nonreentrant('lock')
+def accept_transfer_ownership(_pool: address):
+    """
+    @notice Apply transferring ownership of `_pool`
+    @param _pool Pool address
+    """
+    Curve(_pool).accept_transfer_ownership()
 
 
 @external
