@@ -630,6 +630,7 @@ def decreaseAllowance(_spender: address, _subtracted_value: uint256) -> bool:
 def set_rewards(_reward_contract: address, _sigs: bytes32, _reward_tokens: address[MAX_REWARDS]):
     """
     @notice Set the active reward contract
+    @dev A reward contract cannot be set while this contract has no deposits
     @param _reward_contract Reward contract address. Set to ZERO_ADDRESS to
                             disable staking.
     @param _sigs Four byte selectors for staking, withdrawing and claiming,
@@ -661,14 +662,28 @@ def set_rewards(_reward_contract: address, _sigs: bytes32, _reward_tokens: addre
         withdraw_sig: Bytes[4] = slice(sigs, 4, 4)
 
         if convert(deposit_sig, uint256) != 0:
-            # if deposit sig is set, withdraw sig must also be set
-            assert convert(withdraw_sig, uint256) != 0  # dev: deposit without withdraw
+            # need a non-zero total supply to verify the sigs
+            assert total_supply != 0  # dev: zero total supply
             ERC20(lp_token).approve(_reward_contract, MAX_UINT256)
-            if total_supply != 0:
-                raw_call(
-                    _reward_contract,
-                    concat(deposit_sig, convert(total_supply, bytes32))
-                )
+
+            # it would be Very Bad if we get the signatures wrong here, so
+            # we do a test deposit and withdrawal prior to setting them
+            raw_call(
+                _reward_contract,
+                concat(deposit_sig, convert(total_supply, bytes32))
+            )  # dev: failed deposit
+            assert ERC20(lp_token).balanceOf(self) == 0
+            raw_call(
+                _reward_contract,
+                concat(withdraw_sig, convert(total_supply, bytes32))
+            )  # dev: failed withdraw
+            assert ERC20(lp_token).balanceOf(self) == total_supply
+
+            # deposit and withdraw are good, time to make the actual deposit
+            raw_call(
+                _reward_contract,
+                concat(deposit_sig, convert(total_supply, bytes32))
+            )
         else:
             assert convert(withdraw_sig, uint256) == 0  # dev: withdraw without deposit
 
