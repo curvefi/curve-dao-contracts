@@ -4,10 +4,8 @@
 @author Curve Finance
 @license MIT
 """
+
 from vyper.interfaces import ERC20
-
-
-# TODO: recover undistributed tokens back
 
 
 interface VotingEscrow:
@@ -21,19 +19,15 @@ interface VotingEscrow:
 event CommitAdmin:
     admin: address
 
-
 event ApplyAdmin:
     admin: address
-
 
 event ToggleAllowCheckpointToken:
     toggle_flag: bool
 
-
 event CheckpointToken:
     time: uint256
     tokens: uint256
-
 
 event Claimed:
     recipient: indexed(address)
@@ -75,7 +69,13 @@ is_killed: public(bool)
 
 
 @external
-def __init__(_voting_escrow: address, _start_time: uint256, _token: address, _admin: address, _emergency_return: address):
+def __init__(
+    _voting_escrow: address,
+    _start_time: uint256,
+    _token: address,
+    _admin: address,
+    _emergency_return: address
+):
     t: uint256 = _start_time / WEEK * WEEK
     self.start_time = t
     self.last_token_time = t
@@ -84,39 +84,6 @@ def __init__(_voting_escrow: address, _start_time: uint256, _token: address, _ad
     self.voting_escrow = _voting_escrow
     self.admin = _admin
     self.emergency_return = _emergency_return
-
-
-@external
-def commit_admin(addr: address):
-    assert msg.sender == self.admin  # dev: access denied
-    self.future_admin = addr
-    log CommitAdmin(addr)
-
-
-@external
-def apply_admin():
-    assert msg.sender == self.admin
-    assert self.future_admin != ZERO_ADDRESS
-    future_admin: address = self.future_admin
-    self.admin = future_admin
-    log ApplyAdmin(future_admin)
-
-
-@external
-def toggle_allow_checkpoint_token():
-    assert msg.sender == self.admin
-    flag: bool = not self.can_checkpoint_token
-    self.can_checkpoint_token = flag
-    log ToggleAllowCheckpointToken(flag)
-
-
-@external
-def kill_me():
-    assert msg.sender == self.admin
-    self.is_killed = True
-
-    token: address = self.token
-    assert ERC20(token).transfer(self.emergency_return, ERC20(token).balanceOf(self))
 
 
 @internal
@@ -157,21 +124,8 @@ def checkpoint_token():
     self._checkpoint_token()
 
 
-@external
-def burn(_coin: address) -> bool:
-    assert _coin == self.token
-
-    amount: uint256 = ERC20(_coin).balanceOf(msg.sender)
-    if amount != 0:
-        ERC20(_coin).transferFrom(msg.sender, self, amount)
-        if self.can_checkpoint_token and (block.timestamp > self.last_token_time + TOKEN_CHECKPOINT_DEADLINE):
-            self._checkpoint_token()
-
-    return True
-
-
 @internal
-def find_timestamp_epoch(ve: address, _timestamp: uint256) -> uint256:
+def _find_timestamp_epoch(ve: address, _timestamp: uint256) -> uint256:
     _min: uint256 = 0
     _max: uint256 = VotingEscrow(ve).epoch()
     for i in range(128):
@@ -186,8 +140,8 @@ def find_timestamp_epoch(ve: address, _timestamp: uint256) -> uint256:
     return _min
 
 
-@internal
 @view
+@internal
 def _find_timestamp_user_epoch(ve: address, user: address, _timestamp: uint256, max_user_epoch: uint256) -> uint256:
     _min: uint256 = 0
     _max: uint256 = max_user_epoch
@@ -203,8 +157,8 @@ def _find_timestamp_user_epoch(ve: address, user: address, _timestamp: uint256, 
     return _min
 
 
-@external
 @view
+@external
 def ve_for_at(user: address, _timestamp: uint256) -> uint256:
     ve: address = self.voting_escrow
     max_user_epoch: uint256 = VotingEscrow(ve).user_point_epoch(user)
@@ -224,7 +178,7 @@ def _checkpoint_total_supply():
         if t > rounded_timestamp:
             break
         else:
-            epoch: uint256 = self.find_timestamp_epoch(ve, t)
+            epoch: uint256 = self._find_timestamp_epoch(ve, t)
             pt: Point = VotingEscrow(ve).point_history(epoch)
             dt: int128 = 0
             if t > pt.ts:
@@ -368,3 +322,50 @@ def claim_many(_receivers: address[20]) -> bool:
         self.token_last_balance -= total
 
     return True
+
+
+@external
+def burn(_coin: address) -> bool:
+    assert _coin == self.token
+
+    amount: uint256 = ERC20(_coin).balanceOf(msg.sender)
+    if amount != 0:
+        ERC20(_coin).transferFrom(msg.sender, self, amount)
+        if self.can_checkpoint_token and (block.timestamp > self.last_token_time + TOKEN_CHECKPOINT_DEADLINE):
+            self._checkpoint_token()
+
+    return True
+
+
+@external
+def commit_admin(addr: address):
+    assert msg.sender == self.admin  # dev: access denied
+    self.future_admin = addr
+    log CommitAdmin(addr)
+
+
+@external
+def apply_admin():
+    assert msg.sender == self.admin
+    assert self.future_admin != ZERO_ADDRESS
+    future_admin: address = self.future_admin
+    self.admin = future_admin
+    log ApplyAdmin(future_admin)
+
+
+@external
+def toggle_allow_checkpoint_token():
+    assert msg.sender == self.admin
+    flag: bool = not self.can_checkpoint_token
+    self.can_checkpoint_token = flag
+    log ToggleAllowCheckpointToken(flag)
+
+
+@external
+def kill_me():
+    assert msg.sender == self.admin
+    self.is_killed = True
+
+    token: address = self.token
+    assert ERC20(token).transfer(self.emergency_return, ERC20(token).balanceOf(self))
+
