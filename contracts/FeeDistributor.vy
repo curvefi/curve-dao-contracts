@@ -438,3 +438,29 @@ def kill_me():
     token: address = self.token
     assert ERC20(token).transfer(self.emergency_return, ERC20(token).balanceOf(self))
 
+
+@external
+def recover_balance(_coin: address) -> bool:
+    """
+    @notice Recover ERC20 tokens from this contract
+    @dev Tokens are sent to the emergency return address.
+    @param _coin Token address
+    @return bool success
+    """
+    assert msg.sender == self.admin
+    assert _coin != self.token
+
+    amount: uint256 = ERC20(_coin).balanceOf(self)
+    response: Bytes[32] = raw_call(
+        _coin,
+        concat(
+            method_id("transfer(address,uint256)"),
+            convert(self.emergency_return, bytes32),
+            convert(amount, bytes32),
+        ),
+        max_outsize=32,
+    )
+    if len(response) != 0:
+        assert convert(response, bool)
+
+    return True
