@@ -11,6 +11,16 @@ WEEK = 7 * 86400
 def initial_setup(
     alice, chain, coin_reward, reward_contract, token, mock_lp_token, gauge_v2, gauge_controller, minter
 ):
+    # gauge setup
+    token.set_minter(minter, {'from': alice})
+    gauge_controller.add_type(b'Liquidity', 10**10, {'from': alice})
+    gauge_controller.add_gauge(gauge_v2, 0, 0, {'from': alice})
+
+    # deposit into gauge
+    mock_lp_token.approve(gauge_v2, 2**256-1, {'from': alice})
+    gauge_v2.deposit(10**18, {'from': alice})
+
+    # add rewards
     sigs = [
         reward_contract.stake.signature[2:],
         reward_contract.withdraw.signature[2:],
@@ -25,19 +35,11 @@ def initial_setup(
         {'from': alice}
     )
 
-    token.set_minter(minter, {'from': alice})
-
-    gauge_controller.add_type(b'Liquidity', 10**10, {'from': alice})
-    gauge_controller.add_gauge(gauge_v2, 0, 0, {'from': alice})
-
-    # Deposit
-    mock_lp_token.approve(gauge_v2, 2**256-1, {'from': alice})
-    gauge_v2.deposit(10**18, {'from': alice})
-
-    # Fund
+    # fund rewards
     coin_reward._mint_for_testing(REWARD, {'from': reward_contract})
     reward_contract.notifyRewardAmount(REWARD, {'from': alice})
 
+    # sleep half way through the reward period
     chain.sleep(int(86400 * 3.5))
 
 

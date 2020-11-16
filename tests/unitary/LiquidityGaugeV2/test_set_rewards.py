@@ -119,7 +119,7 @@ def test_deposit_no_withdraw(alice, coin_reward, reward_contract, gauge_v2):
     ]
     sigs = f"0x{sigs[0]}{'00' * 4}{sigs[2]}{'00' * 20}"
 
-    with brownie.reverts("dev: deposit without withdraw"):
+    with brownie.reverts("dev: failed withdraw"):
         gauge_v2.set_rewards(
             reward_contract,
             sigs,
@@ -137,6 +137,40 @@ def test_withdraw_no_deposit(alice, coin_reward, reward_contract, gauge_v2):
     sigs = f"0x{'00' * 4}{sigs[1]}{sigs[2]}{'00' * 20}"
 
     with brownie.reverts("dev: withdraw without deposit"):
+        gauge_v2.set_rewards(
+            reward_contract,
+            sigs,
+            [coin_reward] + [ZERO_ADDRESS] * 7,
+            {'from': alice}
+        )
+
+
+def test_bad_deposit_sig(alice, coin_reward, reward_contract, gauge_v2):
+    sigs = [
+        "12345678",
+        reward_contract.withdraw.signature[2:],
+        reward_contract.getReward.signature[2:]
+    ]
+    sigs = f"0x{sigs[0]}{'00' * 4}{sigs[2]}{'00' * 20}"
+
+    with brownie.reverts("dev: failed deposit"):
+        gauge_v2.set_rewards(
+            reward_contract,
+            sigs,
+            [coin_reward] + [ZERO_ADDRESS] * 7,
+            {'from': alice}
+        )
+
+
+def test_bad_withdraw_sig(alice, coin_reward, reward_contract, gauge_v2):
+    sigs = [
+        reward_contract.stake.signature[2:],
+        "12345678",
+        reward_contract.getReward.signature[2:]
+    ]
+    sigs = f"0x{sigs[0]}{'00' * 4}{sigs[2]}{'00' * 20}"
+
+    with brownie.reverts("dev: failed withdraw"):
         gauge_v2.set_rewards(
             reward_contract,
             sigs,

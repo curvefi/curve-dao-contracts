@@ -6,8 +6,11 @@ WEEK = 7 * 86400
 LP_AMOUNT = 10 ** 18
 
 
-def test_claim_no_deposit(alice, bob, chain, gauge_v2, reward_contract, coin_reward):
+def test_claim_no_deposit(alice, bob, chain, gauge_v2, mock_lp_token, reward_contract, coin_reward):
     # Fund
+    mock_lp_token.approve(gauge_v2, LP_AMOUNT, {'from': alice})
+    gauge_v2.deposit(LP_AMOUNT, {'from': alice})
+
     coin_reward._mint_for_testing(REWARD, {'from': alice})
     coin_reward.transfer(reward_contract, REWARD, {'from': alice})
     reward_contract.notifyRewardAmount(REWARD, {'from': alice})

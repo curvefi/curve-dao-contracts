@@ -1,3 +1,4 @@
+import brownie
 import pytest
 from brownie import ZERO_ADDRESS
 
@@ -124,13 +125,10 @@ def test_modify_deposit_no_ts(reward_contract_2, alice, gauge_v2, coin_a):
         reward_contract_2.getReward.signature[2:]
     ]
     sigs = f"0x{sigs[0]}{sigs[1]}{sigs[2]}{'00' * 20}"
-    gauge_v2.set_rewards(
-        reward_contract_2,
-        sigs,
-        [coin_a] + [ZERO_ADDRESS] * 7,
-        {'from': alice}
-    )
-
-    assert gauge_v2.reward_contract() == reward_contract_2
-    assert gauge_v2.reward_tokens(0) == coin_a
-    assert gauge_v2.reward_tokens(1) == ZERO_ADDRESS
+    with brownie.reverts("dev: zero total supply"):
+        gauge_v2.set_rewards(
+            reward_contract_2,
+            sigs,
+            [coin_a] + [ZERO_ADDRESS] * 7,
+            {'from': alice}
+        )
