@@ -36,8 +36,10 @@ event CheckpointToken:
 
 
 event Claimed:
-    recipient: address
+    recipient: indexed(address)
     amount: uint256
+    claim_epoch: uint256
+    max_epoch: uint256
 
 
 struct Point:
@@ -300,8 +302,11 @@ def _claim(addr: address, ve: address, _last_token_time: uint256) -> uint256:
 
             week_cursor += WEEK
 
-    self.user_epoch_of[addr] = min(max_user_epoch, user_epoch - 1)
+    user_epoch = min(max_user_epoch, user_epoch - 1)
+    self.user_epoch_of[addr] = user_epoch
     self.time_cursor_of[addr] = week_cursor
+
+    log Claimed(addr, to_distribute, user_epoch, max_user_epoch)
 
     return to_distribute
 
@@ -327,8 +332,6 @@ def claim(addr: address = msg.sender) -> uint256:
         token: address = self.token
         assert ERC20(token).transfer(addr, amount)
         self.token_last_balance -= amount
-
-    log Claimed(addr, amount)
 
     return amount
 
@@ -360,8 +363,6 @@ def claim_many(_receivers: address[20]) -> bool:
         if amount != 0:
             assert ERC20(token).transfer(addr, amount)
             total += amount
-
-        log Claimed(addr, amount)
 
     if total != 0:
         self.token_last_balance -= total
