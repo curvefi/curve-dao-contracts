@@ -76,6 +76,15 @@ def __init__(
     _admin: address,
     _emergency_return: address
 ):
+    """
+    @notice Contract constructor
+    @param _voting_escrow VotingEscrow contract address
+    @param _start_time Epoch time for fee distribution to start
+    @param _token Fee token address (3CRV)
+    @param _admin Admin address
+    @param _emergency_return Address to transfer `_token` balance to
+                             if this contract is killed
+    """
     t: uint256 = _start_time / WEEK * WEEK
     self.start_time = t
     self.last_token_time = t
@@ -119,6 +128,13 @@ def _checkpoint_token():
 
 @external
 def checkpoint_token():
+    """
+    @notice Update the token checkpoint
+    @dev Calculates the total number of tokens to be distributed in a given week.
+         During setup for the initial distribution this function is only callable
+         by the contract owner. Beyond initial distro, it can be enabled for anyone
+         to call.
+    """
     assert (msg.sender == self.admin) or\
            (self.can_checkpoint_token and (block.timestamp > self.last_token_time + TOKEN_CHECKPOINT_DEADLINE))
     self._checkpoint_token()
@@ -159,11 +175,17 @@ def _find_timestamp_user_epoch(ve: address, user: address, _timestamp: uint256, 
 
 @view
 @external
-def ve_for_at(user: address, _timestamp: uint256) -> uint256:
+def ve_for_at(_user: address, _timestamp: uint256) -> uint256:
+    """
+    @notice Get the veCRV balance for `_user` at `_timestamp`
+    @param _user Address to query balance for
+    @param _timestamp Epoch time
+    @return uint256 veCRV balance
+    """
     ve: address = self.voting_escrow
-    max_user_epoch: uint256 = VotingEscrow(ve).user_point_epoch(user)
-    epoch: uint256 = self._find_timestamp_user_epoch(ve, user, _timestamp, max_user_epoch)
-    pt: Point = VotingEscrow(ve).user_point_history(user, epoch)
+    max_user_epoch: uint256 = VotingEscrow(ve).user_point_epoch(_user)
+    epoch: uint256 = self._find_timestamp_user_epoch(ve, _user, _timestamp, max_user_epoch)
+    pt: Point = VotingEscrow(ve).user_point_history(_user, epoch)
     return convert(max(pt.bias - pt.slope * convert(_timestamp - pt.ts, int128), 0), uint256)
 
 
@@ -193,6 +215,12 @@ def _checkpoint_total_supply():
 
 @external
 def checkpoint_total_supply():
+    """
+    @notice Update the veCRV total supply checkpoint
+    @dev The checkpoint is also updated by the first claimant each
+         new epoch week. This function may be called independently
+         of a claim, to reduce claiming gas costs.
+    """
     self._checkpoint_total_supply()
 
 
@@ -267,7 +295,17 @@ def _claim(addr: address, ve: address, _last_token_time: uint256) -> uint256:
 
 @external
 @nonreentrant('lock')
-def claim(addr: address = msg.sender) -> uint256:
+def claim(_addr: address = msg.sender) -> uint256:
+    """
+    @notice Claim fees for `_addr`
+    @dev Each call to claim look at a maximum of 50 user veCRV points.
+         For accounts with many veCRV related actions, this function
+         may need to be called more than once to claim all available
+         fees. In the `Claimed` event that fires, if `claim_epoch` is
+         less than `max_epoch`, the account may claim again.
+    @param _addr Address to claim fees for
+    @return uint256 Amount of fees claimed in the call
+    """
     assert not self.is_killed
 
     if block.timestamp >= self.time_cursor:
@@ -281,10 +319,10 @@ def claim(addr: address = msg.sender) -> uint256:
 
     last_token_time = last_token_time / WEEK * WEEK
 
-    amount: uint256 = self._claim(addr, self.voting_escrow, last_token_time)
+    amount: uint256 = self._claim(_addr, self.voting_escrow, last_token_time)
     if amount != 0:
         token: address = self.token
-        assert ERC20(token).transfer(addr, amount)
+        assert ERC20(token).transfer(_addr, amount)
         self.token_last_balance -= amount
 
     return amount
@@ -293,6 +331,15 @@ def claim(addr: address = msg.sender) -> uint256:
 @external
 @nonreentrant('lock')
 def claim_many(_receivers: address[20]) -> bool:
+    """
+    @notice Make multiple fee claims in a single call
+    @dev Used to claim for many accounts at once, or to make
+         multiple claims for the same address when that address
+         has significant veCRV history
+    @param _receivers List of addresses to claim for. Claiming
+                      terminates at the first `ZERO_ADDRESS`.
+    @return bool success
+    """
     assert not self.is_killed
 
     if block.timestamp >= self.time_cursor:
@@ -326,7 +373,13 @@ def claim_many(_receivers: address[20]) -> bool:
 
 @external
 def burn(_coin: address) -> bool:
+    """
+    @notice Receive 3CRV into the contract and trigger a token checkpoint
+    @param _coin Address of the coin being received (must be 3CRV)
+    @return bool success
+    """
     assert _coin == self.token
+    assert not self.is_killed
 
     amount: uint256 = ERC20(_coin).balanceOf(msg.sender)
     if amount != 0:
@@ -338,14 +391,21 @@ def burn(_coin: address) -> bool:
 
 
 @external
-def commit_admin(addr: address):
+def commit_admin(_addr: address):
+    """
+    @notice Commit transfer of ownership
+    @param _addr New admin address
+    """
     assert msg.sender == self.admin  # dev: access denied
-    self.future_admin = addr
-    log CommitAdmin(addr)
+    self.future_admin = _addr
+    log CommitAdmin(_addr)
 
 
 @external
 def apply_admin():
+    """
+    @notice Apply transfer of ownership
+    """
     assert msg.sender == self.admin
     assert self.future_admin != ZERO_ADDRESS
     future_admin: address = self.future_admin
@@ -355,6 +415,9 @@ def apply_admin():
 
 @external
 def toggle_allow_checkpoint_token():
+    """
+    @notice Toggle permission for checkpointing by any account
+    """
     assert msg.sender == self.admin
     flag: bool = not self.can_checkpoint_token
     self.can_checkpoint_token = flag
@@ -363,7 +426,13 @@ def toggle_allow_checkpoint_token():
 
 @external
 def kill_me():
+    """
+    @notice Kill the contract
+    @dev Killing transfers the entire 3CRV balance to the emergency return address
+         and blocks the ability to claim or burn. The contract cannot be unkilled.
+    """
     assert msg.sender == self.admin
+
     self.is_killed = True
 
     token: address = self.token
