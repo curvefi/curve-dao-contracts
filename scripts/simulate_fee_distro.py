@@ -16,9 +16,10 @@ def main():
     fee_token.mint(distributor, 2000000 * 10**18, {"from": "0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7"})
 
     distributor.checkpoint_token()
-    chain.sleep(86400 * 14)
     distributor.checkpoint_total_supply()
+    chain.sleep(86400 * 14)
     distributor.checkpoint_token()
+    distributor.checkpoint_total_supply()
 
     with Path('votelocks-11237343.json').open() as fp:
         data = json.load(fp)
@@ -26,7 +27,14 @@ def main():
 
     for c, acct in enumerate(data):
         print(f"Claiming, {c}/{len(data)}")
-        distributor.claim({'from': acct})
+
+        # ensure we claim up to the user's max epoch, some accounts require multiple claims
+        max_epoch = voting_escrow.user_point_epoch(acct)
+        epoch = 0
+
+        while epoch < max_epoch:
+            distributor.claim({'from': acct})
+            epoch = distributor.user_epoch_of(acct)
 
     amount = fee_token.balanceOf(distributor)
     print(f"Remaining fee balance: ${amount/1e18:,.2f}")
