@@ -329,7 +329,7 @@ def revert_transfer_ownership(_pool: address):
     @notice Revert commited transferring ownership for `_pool`
     @param _pool Pool address
     """
-    assert msg.sender == self.ownership_admin, "Access denied"
+    assert msg.sender in [self.ownership_admin, self.emergency_admin], "Access denied"
     Curve(_pool).revert_transfer_ownership()
 
 
@@ -405,7 +405,7 @@ def revert_new_parameters(_pool: address):
     @notice Revert comitted new parameters for `_pool` pool
     @param _pool Pool address
     """
-    assert msg.sender == self.parameter_admin, "Access denied"
+    assert msg.sender in [self.ownership_admin, self.parameter_admin, self.emergency_admin], "Access denied"
     Curve(_pool).revert_new_parameters()  # dev: if implemented by the pool
 
 
@@ -452,7 +452,7 @@ def stop_ramp_A(_pool: address):
     @notice Stop gradually increasing A of `_pool`
     @param _pool Pool address
     """
-    assert msg.sender == self.parameter_admin, "Access denied"
+    assert msg.sender in [self.parameter_admin, self.emergency_admin], "Access denied"
     Curve(_pool).stop_ramp_A()
 
 
