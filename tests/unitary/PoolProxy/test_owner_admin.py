@@ -64,11 +64,10 @@ def test_cancel_transfer_ownership(accounts, pool_proxy, pool):
         pool_proxy.apply_transfer_ownership(pool, {'from': accounts[0]})
 
 
-@pytest.mark.parametrize('idx', range(1, 4))
-def test_cancel_transfer_ownership_no_access(accounts, pool_proxy, pool, idx):
+def test_cancel_transfer_ownership_no_access(accounts, pool_proxy, pool):
     pool_proxy.commit_transfer_ownership(pool, accounts[4], {'from': accounts[0]})
     with brownie.reverts("Access denied"):
-        pool_proxy.revert_transfer_ownership(pool, {'from': accounts[idx]})
+        pool_proxy.revert_transfer_ownership(pool, {'from': accounts[4]})
 
 
 def test_set_aave_referral(accounts, pool_proxy, owner_pool):
