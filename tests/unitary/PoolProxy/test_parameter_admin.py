@@ -118,7 +118,7 @@ def test_ramp_A_no_access(accounts, chain, pool_proxy, pool, idx):
         pool_proxy.ramp_A(pool, 1000, chain.time() + 86400 * 2, {'from': accounts[idx]})
 
 
-@pytest.mark.parametrize('idx', [0, 2, 3])
+@pytest.mark.parametrize('idx', [0, 3])
 def test_stop_ramp_A_no_access(accounts, pool_proxy, pool, idx):
     with brownie.reverts('Access denied'):
         pool_proxy.stop_ramp_A(pool, {'from': accounts[idx]})
@@ -181,10 +181,9 @@ def test_revert_new_parameters(accounts, pool_proxy, param_pool):
     assert param_pool.future_admin_fee() == 0
 
 
-@pytest.mark.parametrize('idx', [0, 2, 3])
-def test_revert_new_parameters_no_access(accounts, pool_proxy, param_pool, idx):
+def test_revert_new_parameters_no_access(accounts, pool_proxy, param_pool):
     with brownie.reverts('Access denied'):
-        pool_proxy.revert_new_parameters(param_pool, {'from': accounts[idx]})
+        pool_proxy.revert_new_parameters(param_pool, {'from': accounts[3]})
 
 
 def test_revert_new_parameters_not_exist(accounts, pool_proxy, pool):
