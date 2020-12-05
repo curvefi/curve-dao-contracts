@@ -1,4 +1,4 @@
-# curve-dao-contracts/scripts
+# curve-dao-contracts/scripts/deployment
 
 Deployment scripts for the Curve DAO.
 
@@ -62,9 +62,9 @@ Aragon: [Custom Deploy](https://hack.aragon.org/docs/guides-custom-deploy)
 
 # Deploy the [Curve Aragon Voting App](https://github.com/curvefi/curve-aragon-voting/blob/master/README.md)
 
-# Deploy Aragon DAO 
-    
-Read instructions in [Deploy Aragon DAO README](./Deploy_Aragon_DAO_README.md) 
+# Deploy Aragon DAO
+
+Read instructions in [Deploy Aragon DAO README](./Deploy_Aragon_DAO_README.md)
 
 Once the DAO is successfully deployed, modify [`deployment_config`](deployment_config.py) so that `ARAGON_AGENT` points to the [Aragon Ownership Agent](https://github.com/aragon/aragon-apps/blob/master/apps/agent/contracts/Agent.sol) deployment.
 
@@ -86,7 +86,7 @@ Deploy subgraphs for Curve Voting App and VotingEscrow
     brownie run transfer_dao_ownership live --network mainnet
     ```
 
-    This transfers the ownership of [`GaugeController`](../contracts/GaugeController.vy), [`PoolProxy`](../contracts/PoolProxy.vy), [`VotingEscrow`](../contracts/VotingEscrow.vy) and [`ERC20CRV`](../contracts/ERC20CRV.vy) from the main admin account to the [Aragon Ownership Agent](https://github.com/aragon/aragon-apps/blob/master/apps/agent/contracts/Agent.sol).
+    This transfers the ownership of [`GaugeController`](../../contracts/GaugeController.vy), [`PoolProxy`](../../contracts/PoolProxy.vy), [`VotingEscrow`](../../contracts/VotingEscrow.vy) and [`ERC20CRV`](../../contracts/ERC20CRV.vy) from the main admin account to the [Aragon Ownership Agent](https://github.com/aragon/aragon-apps/blob/master/apps/agent/contracts/Agent.sol).
 
 ### 5. Distributing Vested Tokens
 
