@@ -44,7 +44,7 @@ brownie test tests/integration
 
 ## Deployment
 
-See the [deployment documentation](scripts/README.md) for detailed information on how to deploy Curve DAO.
+See the [deployment documentation](scripts/deployment/README.md) for detailed information on how to deploy Curve DAO.
 
 ## Audits and Security
 
