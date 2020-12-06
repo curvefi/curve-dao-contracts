@@ -1,6 +1,12 @@
+import requests
+import sys
 import time
+import warnings
+
 from brownie import Contract, ZERO_ADDRESS, accounts
 from brownie.network.gas.strategies import GasNowScalingStrategy
+
+warnings.filterwarnings("ignore")
 
 # This script is used to claim fees from all pool contracts
 # and "burn" them, converting to 3CRV and sending it to the
@@ -11,7 +17,8 @@ from brownie.network.gas.strategies import GasNowScalingStrategy
 # the account you wish to perform transactions from
 CALLER = accounts.add()
 
-gas_strategy = GasNowScalingStrategy(initial_speed="standard", max_speed="fast")
+# minimum amount in USD required in order to claim fees from a pool
+CLAIM_THRESHOLD = 1000
 
 # fee coins, organized by the fee burner they are handled with
 COINS = [
@@ -64,8 +71,63 @@ COINS = [
     "0x57ab1ec28d129707052df4df418d58a2d46d5f51",  # sUSD
 ]
 
+_rate_cache = {}
+gas_strategy = GasNowScalingStrategy(initial_speed="standard", max_speed="fast")
 
-def main(acct=CALLER):
+
+def _fetch_rate(address):
+    # fetch teh current rate for a coin from coingecko
+    address = str(address).lower()
+    if address not in _rate_cache:
+        _rate_cache[address] = requests.get(
+            "https://api.coingecko.com/api/v3/simple/token_price/ethereum",
+            params={'contract_addresses': address, 'vs_currencies': "usd"}
+        ).json()[address]['usd']
+
+    return _rate_cache[address]
+
+
+def _get_admin_balances(pool):
+    admin_balances = []
+
+    for i in range(8):
+        try:
+            coin = Contract(pool.coins(i))
+            if hasattr(pool, "admin_balances"):
+                balance = pool.admin_balances(i)
+            else:
+                balance = coin.balanceOf(pool) - pool.balances(i)
+            balance = balance / 10**coin.decimals() * _fetch_rate(coin)
+            admin_balances.append(balance)
+
+        except Exception:
+            return admin_balances
+
+
+def get_pending():
+    print("Getting list of pools from registry...")
+    provider = Contract("0x0000000022D53366457F9d5E68Ec105046FC4383")
+    registry = Contract(provider.get_registry())
+    pool_list = [Contract(registry.pool_list(i)) for i in range(registry.pool_count())]
+
+    pending = {}
+    for i, pool in enumerate(pool_list, start=1):
+        sys.stdout.write(f"\rQuerying pending fee amounts ({i}/{len(pool_list)})...")
+        sys.stdout.flush()
+        pending[pool] = sum(_get_admin_balances(pool))
+
+    # pending = {i: sum(_get_admin_balances(i)) for i in pool_list}
+
+    print()
+    for addr, value in sorted(pending.items(), key=lambda k: k[1], reverse=True):
+        print(f"{addr}: ${value:,.2f}")
+
+    print(f'\nTotal pending claimable amount: ${sum(pending.values()):,.2f} USD')
+
+    return pending
+
+
+def main(acct=CALLER, claim_threshold=CLAIM_THRESHOLD):
     lp_tripool = Contract("0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490")
     distributor = Contract("0xA464e6DCda8AC41e03616F95f4BC98a13b8922Dc")
     proxy = Contract("0xeCb456EA5365865EbAb8a2661B0c503410e9B347")
@@ -80,16 +142,27 @@ def main(acct=CALLER):
     pool_list = [Contract(registry.pool_list(i)) for i in range(registry.pool_count())]
 
     # withdraw pool fees to pool proxy
-    for i in range(0, len(pool_list), 20):
-        pools = pool_list[i:i+20]
-        pools += [ZERO_ADDRESS] * (20-len(pools))
-        proxy.withdraw_many(pools, {'from': acct, 'gas_price': gas_strategy})
+    to_claim = []
+    for i in range(len(pool_list)):
+
+        # check claimable amount
+        claimable = _get_admin_balances(pool_list[i])
+        if claimable >= claim_threshold:
+            to_claim.append(pool_list[i])
+
+        if i == len(pool_list) - 1 or len(to_claim) == 20:
+            to_claim += [ZERO_ADDRESS] * (20-len(to_claim))
+            proxy.withdraw_many(to_claim, {'from': acct, 'gas_price': gas_strategy})
+            to_claim = []
 
     # call burners to convert fee tokens to 3CRV
     burn_start = 0
     to_burn = []
     for i in range(len(COINS)):
-        to_burn.append(COINS[i])
+        if Contract(COINS[i]).balanceOf(proxy) > 0:
+            # no point in burning if we have a zero balance
+            to_burn.append(COINS[i])
+
         to_burn_padded = to_burn + [ZERO_ADDRESS] * (20-len(to_burn))
 
         # estimate gas to decide when to burn - some of the burners are gas guzzlers
