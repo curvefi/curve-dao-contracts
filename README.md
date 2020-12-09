@@ -24,7 +24,7 @@ To get started, first create and initialize a Python [virtual environment](https
 ```bash
 git clone https://github.com/curvefi/curve-dao-contracts.git
 cd curve-dao-contracts
-pip install -r requirements
+pip install -r requirements.txt
 ```
 
 ### Running the Tests
