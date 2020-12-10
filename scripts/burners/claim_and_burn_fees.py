@@ -147,7 +147,7 @@ def main(acct=CALLER, claim_threshold=CLAIM_THRESHOLD):
 
         # check claimable amount
         claimable = _get_admin_balances(pool_list[i])
-        if claimable >= claim_threshold:
+        if sum(claimable) >= claim_threshold:
             to_claim.append(pool_list[i])
 
         if i == len(pool_list) - 1 or len(to_claim) == 20:
