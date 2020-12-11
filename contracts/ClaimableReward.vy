@@ -12,12 +12,12 @@ from vyper.interfaces import ERC20
 
 interface Gauge:
     def integrate_fraction(_address: address) -> uint256: view
-    # def integrate_inv_supply_of(_address: address) -> uint256: view
     def integrate_inv_supply(period: uint256) -> uint256: view
-    # def working_balances(_address: address) -> uint256: view
     def working_supply() -> uint256: view
     def period() -> uint256: view
 
+
+INTEGRATE_INV_SUPPLY_FACTOR: constant(uint256) = 10 ** 18
 
 gauge: public(address)
     
@@ -34,7 +34,7 @@ def _claim_tokens(_coin: address, account: address) -> uint256:
     fraction: uint256 = Gauge(self.gauge).integrate_fraction(account)
     integrate_inv: uint256 = Gauge(self.gauge).integrate_inv_supply(Gauge(self.gauge).period())
     working_supply: uint256 = Gauge(self.gauge).working_supply()
-    return total_balance * fraction * 10 ** 18 / integrate_inv / working_supply
+    return total_balance * fraction * INTEGRATE_INV_SUPPLY_FACTOR / integrate_inv / working_supply
 
 
 @view
