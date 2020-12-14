@@ -1,4 +1,4 @@
-# @version 0.2.7
+# @version 0.2.8
 """
 @title Tokenized Liquidity Gauge Wrapper
 @author Curve Finance
@@ -243,6 +243,7 @@ def deposit(_value: uint256, addr: address = msg.sender):
         LiquidityGauge(self.gauge).deposit(_value)
 
     log Deposit(addr, _value)
+    log Transfer(ZERO_ADDRESS, addr, _value)
 
 
 @external
@@ -262,6 +263,7 @@ def withdraw(_value: uint256):
         ERC20(self.lp_token).transfer(msg.sender, _value)
 
     log Withdraw(msg.sender, _value)
+    log Transfer(msg.sender, ZERO_ADDRESS, _value)
 
 
 @view
