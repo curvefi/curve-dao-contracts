@@ -4,6 +4,7 @@ All contract sources are within this directory.
 
 ## Subdirectories
 
+* [`gauges`](gauges): Contracts used for measuring provided liquidity
 * [`testing`](testing): Contracts used exclusively for testing. Not considered to be a core part of this project.
 
 ## Contracts
