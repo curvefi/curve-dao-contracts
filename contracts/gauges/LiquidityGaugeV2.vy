@@ -464,6 +464,7 @@ def deposit(_value: uint256, _addr: address = msg.sender):
                 )
 
     log Deposit(_addr, _value)
+    log Transfer(ZERO_ADDRESS, _addr, _value)
 
 
 @external
@@ -499,6 +500,7 @@ def withdraw(_value: uint256):
         ERC20(self.lp_token).transfer(msg.sender, _value)
 
     log Withdraw(msg.sender, _value)
+    log Transfer(msg.sender, ZERO_ADDRESS, _value)
 
 
 @view
