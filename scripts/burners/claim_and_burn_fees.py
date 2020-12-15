@@ -75,6 +75,24 @@ _rate_cache = {}
 gas_strategy = GasNowScalingStrategy(initial_speed="standard", max_speed="fast")
 
 
+def _get_pool_list():
+    sys.stdout.write("Getting list of pools from registry...")
+    sys.stdout.flush()
+
+    provider = Contract("0x0000000022D53366457F9d5E68Ec105046FC4383")
+    registry = Contract(provider.get_registry())
+
+    pool_count = registry.pool_count()
+    pool_list = []
+    for i in range(pool_count):
+        sys.stdout.write(f"\rGetting list of pools from registry ({i+1}/{pool_count})...")
+        sys.stdout.flush()
+        pool_list.append(Contract(registry.pool_list(i)))
+
+    print()
+    return pool_list
+
+
 def _fetch_rate(address):
     # fetch teh current rate for a coin from coingecko
     address = str(address).lower()
@@ -105,18 +123,12 @@ def _get_admin_balances(pool):
 
 
 def get_pending():
-    print("Getting list of pools from registry...")
-    provider = Contract("0x0000000022D53366457F9d5E68Ec105046FC4383")
-    registry = Contract(provider.get_registry())
-    pool_list = [Contract(registry.pool_list(i)) for i in range(registry.pool_count())]
-
+    pool_list = _get_pool_list()
     pending = {}
     for i, pool in enumerate(pool_list, start=1):
         sys.stdout.write(f"\rQuerying pending fee amounts ({i}/{len(pool_list)})...")
         sys.stdout.flush()
         pending[pool] = sum(_get_admin_balances(pool))
-
-    # pending = {i: sum(_get_admin_balances(i)) for i in pool_list}
 
     print()
     for addr, value in sorted(pending.items(), key=lambda k: k[1], reverse=True):
@@ -137,9 +149,7 @@ def main(acct=CALLER, claim_threshold=CLAIM_THRESHOLD):
     initial_balance = lp_tripool.balanceOf(distributor)
 
     # get list of active pools
-    provider = Contract("0x0000000022D53366457F9d5E68Ec105046FC4383")
-    registry = Contract(provider.get_registry())
-    pool_list = [Contract(registry.pool_list(i)) for i in range(registry.pool_count())]
+    pool_list = _get_pool_list()
 
     # withdraw pool fees to pool proxy
     to_claim = []
@@ -175,7 +185,7 @@ def main(acct=CALLER, claim_threshold=CLAIM_THRESHOLD):
                 burn_start = tx.timestamp
 
     # wait on synths to finalize
-    time.sleep(burn_start + 180 - time.time())
+    time.sleep(max(burn_start + 180 - time.time(), 0))
 
     # call `execute` on burners
     # for btc burner, this converts sUSD to USDC and sends to the underlying burner
@@ -187,4 +197,4 @@ def main(acct=CALLER, claim_threshold=CLAIM_THRESHOLD):
     proxy.burn(lp_tripool, {'from': acct, 'gas_price': gas_strategy})
 
     final = lp_tripool.balanceOf(distributor)
-    print(f"Success! Total 3CRV fowarded to distributor: {final-initial_balance/1e18:.4f}")
+    print(f"Success! Total 3CRV fowarded to distributor: {(final-initial_balance)/1e18:.4f}")
