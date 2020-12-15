@@ -35,9 +35,10 @@ def test_set_rewards_with_deposit(alice, coin_reward, reward_contract, mock_lp_t
 
 
 def test_set_rewards_no_deposit(alice, coin_reward, reward_contract, mock_lp_token, gauge_v2):
+    sigs = f"0x{'00' * 4}{'00' * 4}{reward_contract.getReward.signature[2:]}{'00' * 20}"
     gauge_v2.set_rewards(
         reward_contract,
-        "0x00",
+        sigs,
         [coin_reward] + [ZERO_ADDRESS] * 7,
         {'from': alice}
     )
@@ -49,11 +50,12 @@ def test_set_rewards_no_deposit(alice, coin_reward, reward_contract, mock_lp_tok
 
 
 def test_multiple_reward_tokens(alice, coin_reward, coin_a, coin_b, reward_contract, gauge_v2):
+    sigs = f"0x{'00' * 4}{'00' * 4}{reward_contract.getReward.signature[2:]}{'00' * 20}"
     reward_tokens = [coin_reward, coin_a, coin_b] + [ZERO_ADDRESS] * 5
 
     gauge_v2.set_rewards(
         reward_contract,
-        "0x00",
+        sigs,
         reward_tokens,
         {'from': alice}
     )
@@ -185,5 +187,21 @@ def test_no_reward_token(alice, reward_contract, gauge_v2):
             reward_contract,
             "0x00",
             [ZERO_ADDRESS] * 8,
+            {'from': alice}
+        )
+
+
+def test_bad_claim_sig(alice, coin_reward, reward_contract, gauge_v2):
+    sigs = [
+        reward_contract.stake.signature[2:],
+        reward_contract.withdraw.signature[2:],
+    ]
+    sigs = f"0x{sigs[0]}{sigs[1]}{'00' * 4}{'00' * 20}"
+
+    with brownie.reverts("dev: bad claim sig"):
+        gauge_v2.set_rewards(
+            reward_contract,
+            sigs,
+            [coin_reward] + [ZERO_ADDRESS] * 7,
             {'from': alice}
         )

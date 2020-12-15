@@ -224,7 +224,7 @@ def _checkpoint_rewards(_addr: address, _total_supply: uint256):
         balances[i] = ERC20(token).balanceOf(self)
 
     # claim from reward contract
-    raw_call(self.reward_contract, slice(self.reward_sigs, 8, 4))
+    raw_call(self.reward_contract, slice(self.reward_sigs, 8, 4))  # dev: bad claim sig
 
     for i in range(MAX_REWARDS):
         token: address = reward_tokens[i]
@@ -699,6 +699,10 @@ def set_rewards(_reward_contract: address, _sigs: bytes32, _reward_tokens: addre
         else:
             assert i != 0  # dev: no reward token
             break
+
+    if _reward_contract != ZERO_ADDRESS:
+        # do an initial checkpoint to verify that claims are working
+        self._checkpoint_rewards(ZERO_ADDRESS, total_supply)
 
 
 @external
