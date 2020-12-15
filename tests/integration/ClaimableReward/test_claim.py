@@ -47,35 +47,37 @@ def test_claim(ERC20, ERC20LP, CurvePool, PoolProxy, VotingEscrow, GaugeControll
     lp.approve(gauge, 2**256-1, {'from': neo})
     # chain.sleep(86400)
     lp_balance_neo = lp.balanceOf(neo)
-    # gauge.deposit(lp_balance_neo, {'from': neo})
-    # chain.sleep(86400)
-    # chain.sleep(86400)
-    # chain.sleep(86400)
-    # chain.sleep(86400)
-    # chain.sleep(86400)
-    # assert usdn.balanceOf(pool) == 1 * DECIMALS
-    # assert usdn.balanceOf(proxy) == 0
-    # gauge.user_checkpoint(neo)
-    # assert usdt.balanceOf(pool) == 1 * DECIMALS
-    # assert usdt.balanceOf(proxy) == 0
+    gauge.deposit(lp_balance_neo, {'from': neo})
+    chain.sleep(86400)
+    chain.sleep(86400)
+    chain.sleep(86400)
+    chain.sleep(86400)
+    chain.sleep(86400)
+    assert usdn.balanceOf(pool) == 1 * DECIMALS
+    assert usdn.balanceOf(proxy) == 0
+    gauge.user_checkpoint(neo, {'from': neo})
+    assert usdt.balanceOf(pool) == 1 * DECIMALS
+    assert usdt.balanceOf(proxy) == 0
 
-    # # fill claimContract with money
-    # usdn._mint_for_testing(2 * DECIMALS, {'from': neo})
-    # usdt._mint_for_testing(2 * DECIMALS, {'from': neo})
-    # assert usdn.balanceOf(neo) == 2 * DECIMALS
-    # assert usdt.balanceOf(neo) == 2 * DECIMALS
-    # usdn.approve(claimContract, 2**256-1, {'from': neo})
-    # usdt.approve(claimContract, 2**256-1, {'from': neo})
-    # claimContract.deposit(usdn, 2 * DECIMALS, {'from': neo})
-    # claimContract.deposit(usdt, 2 * DECIMALS, {'from': neo})
+    # fill claimContract with money
+    usdn._mint_for_testing(2 * DECIMALS, {'from': neo})
+    usdt._mint_for_testing(2 * DECIMALS, {'from': neo})
+    assert usdn.balanceOf(neo) == 2 * DECIMALS
+    assert usdt.balanceOf(neo) == 2 * DECIMALS
+    usdn.approve(claimContract, 2**256-1, {'from': neo})
+    usdt.approve(claimContract, 2**256-1, {'from': neo})
+    claimContract.deposit(usdn, 2 * DECIMALS, {'from': neo})
+    claimContract.deposit(usdt, 2 * DECIMALS, {'from': neo})
 
-    # # check share reward for first holder
-    # assert abs(claimContract.claim_tokens(usdn) - 2 * DECIMALS) <= 10
-    # assert abs(claimContract.claim_tokens(usdt) - 2 * DECIMALS) <= 10
-    # assert claimContract.claim_tokens(usdn, {'from': trinity}) == 0
-    # assert claimContract.claim_tokens(usdt, {'from': trinity}) == 0
-    # assert claimContract.claim_tokens(usdn, {'from': morpheus}) == 0
-    # assert claimContract.claim_tokens(usdt, {'from': morpheus}) == 0
+    # check share reward for first holder
+    assert abs(claimContract.claim_tokens(
+        usdn, {'from': neo}) - 2 * DECIMALS) <= 10
+    assert abs(claimContract.claim_tokens(
+        usdt, {'from': neo}) - 2 * DECIMALS) <= 10
+    assert claimContract.claim_tokens(usdn, {'from': trinity}) == 0
+    assert claimContract.claim_tokens(usdt, {'from': trinity}) == 0
+    assert claimContract.claim_tokens(usdn, {'from': morpheus}) == 0
+    assert claimContract.claim_tokens(usdt, {'from': morpheus}) == 0
 
     # # claim 1st reward
     # claimContract.claim(usdn)

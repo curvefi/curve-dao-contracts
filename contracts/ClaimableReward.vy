@@ -21,6 +21,7 @@ event Deposit:
 
 gauge: public(address)
 integrated_deposit: public(HashMap[address, uint256])
+integrated_claimed: public(HashMap[address, uint256])
 commited_deposit_for: public(HashMap[address, HashMap[address, uint256]])
 
 @external
@@ -35,7 +36,7 @@ def _claim_tokens(_coin: address, account: address) -> uint256:
     working_supply: uint256 = Gauge(self.gauge).working_supply()
     old_commited_deposit_for: uint256 = self.commited_deposit_for[_coin][account]
 
-    avaliable_deposit_amount:uint256 = self.integrated_deposit[_coin] - self.commited_deposit_for[_coin][account]
+    avaliable_deposit_amount:uint256 = self.integrated_deposit[_coin] - self.commited_deposit_for[_coin][account] - self.integrated_claimed[_coin]
     if avaliable_deposit_amount == 0:
         return 0
 
@@ -64,6 +65,7 @@ def claim(_coin: address) -> bool:
     assert available_amount > 0, "already claimed"
 
     ERC20(_coin).transfer(msg.sender, available_amount)
+    self.integrated_claimed[_coin] += available_amount
     self.commited_deposit_for[_coin][msg.sender] = self.integrated_deposit[_coin]
-    
+
     return True
