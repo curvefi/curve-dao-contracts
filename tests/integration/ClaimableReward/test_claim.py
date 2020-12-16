@@ -446,6 +446,21 @@ def test_claim(ERC20, ERC20LP, CurvePool, PoolProxy, VotingEscrow, GaugeControll
     assert (3.49 * DECIMALS <= claimContract.claimable_tokens(usdt,
                                                               {'from': morpheus}) <= 3.51 * DECIMALS)
 
+    claimContract.claim(usdn, {'from': trinity})
+    claimContract.claim(usdt, {'from': trinity})
+    assert (10.8 * DECIMALS <= usdn.balanceOf(trinity) <= 10.9 * DECIMALS)
+    assert (10.8 * DECIMALS <= usdt.balanceOf(trinity) <= 10.9 * DECIMALS)
+    assert (2.49 * DECIMALS <= usdn.balanceOf(claimContract) <= 2.51 * DECIMALS)
+    assert (2.49 * DECIMALS <= usdt.balanceOf(claimContract) <= 2.51 * DECIMALS)
+
+    assert (3.49 * DECIMALS <= claimContract.claimable_tokens(usdn,
+                                                              {'from': morpheus}) <= 3.51 * DECIMALS)
+    assert (3.49 * DECIMALS <= claimContract.claimable_tokens(usdt,
+                                                              {'from': morpheus}) <= 3.51 * DECIMALS)
+
+    # 2 kosiposhas are in
+
+
     assert False
     # # assert abs(usdn.balanceOf(claimContract)) <= 10
     # # assert abs(usdt.balanceOf(claimContract)) <= 10

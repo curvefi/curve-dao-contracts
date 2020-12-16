@@ -84,10 +84,10 @@ def _claimable_tokens(_coin: address, account: address) -> uint256:
     claim_amount: uint256 = (self.integrated_deposit[_coin] - self.commited_deposit_for[_coin][account] - (self.integrated_claimed[_coin]) ) * INTEGRATE_INV_SUPPLY_FACTOR * delta_fraction / delta_integrate_inv / working_supply
 
     if claim_amount > total_balance:
-        assert False, "PEPEGA"
-
-    # if claim_amount - self.claimed_for[_coin][account] > total_balance: 
-    #    return total_balance
+        if total_balance * INTEGRATE_INV_SUPPLY_FACTOR * delta_fraction / delta_integrate_inv / working_supply > total_balance:
+            return total_balance
+        else:
+            return total_balance * INTEGRATE_INV_SUPPLY_FACTOR * delta_fraction / delta_integrate_inv / working_supply
 
     return claim_amount
 
