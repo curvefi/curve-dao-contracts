@@ -5,7 +5,7 @@ DECIMALS = 10 ** 18
 
 def test_claim(ERC20, ERC20LP, CurvePool, PoolProxy, VotingEscrow, GaugeController, Minter, LiquidityGauge, ClaimableReward, accounts, token, chain):
     # init accounts
-    deployer, neo, trinity, morpheus = accounts[:4]
+    deployer, neo, trinity, morpheus, garry, ron = accounts[:6]
 
     # init contracts
     usdt = ERC20.deploy("Stable coin 1", "USDT", 18, {'from': deployer})
@@ -61,14 +61,6 @@ def test_claim(ERC20, ERC20LP, CurvePool, PoolProxy, VotingEscrow, GaugeControll
     assert usdt.balanceOf(pool) == 1 * DECIMALS
     assert usdt.balanceOf(proxy) == 0
 
-    # print("gauge.integrate_fraction(neo)=", gauge.integrate_fraction(neo))
-    # print("gauge.integrate_fraction(trinity)=", gauge.integrate_fraction(trinity))
-    # print("gauge.integrate_fraction(morpheus)=", gauge.integrate_fraction(morpheus))
-    # print("gauge.integrate_inv_supply_of(neo)=", gauge.integrate_inv_supply_of(neo))
-    # print("gauge.integrate_inv_supply_of(trinity)=", gauge.integrate_inv_supply_of(trinity))
-    # print("gauge.integrate_inv_supply_of(morpheus)=", gauge.integrate_inv_supply_of(morpheus))
-    # print("gauge.integrate_inv_supply(gauge.period())=", gauge.integrate_inv_supply(gauge.period()))
-
     # fill claimContract with money
     usdn._mint_for_testing(2 * DECIMALS, {'from': deployer})
     usdt._mint_for_testing(2 * DECIMALS, {'from': deployer})
@@ -78,11 +70,6 @@ def test_claim(ERC20, ERC20LP, CurvePool, PoolProxy, VotingEscrow, GaugeControll
     usdt.approve(claimContract, 2**256-1, {'from': deployer})
     claimContract.deposit(usdn, 2 * DECIMALS, {'from': deployer})
     claimContract.deposit(usdt, 2 * DECIMALS, {'from': deployer})
-
-    print(gauge.working_supply())
-    print(gauge.integrate_fraction(neo))
-    print(gauge.integrate_inv_supply_of(neo))
-    print(claimContract.integrated_deposit(usdn))
 
     # check share reward for first holder
     assert abs(claimContract.claimable_tokens(
@@ -155,15 +142,6 @@ def test_claim(ERC20, ERC20LP, CurvePool, PoolProxy, VotingEscrow, GaugeControll
     gauge.user_checkpoint(trinity, {'from': trinity})
     gauge.user_checkpoint(morpheus, {'from': morpheus})
 
-    # print("gauge.integrate_fraction(neo)=", gauge.integrate_fraction(neo))
-    # print("gauge.integrate_fraction(trinity)=", gauge.integrate_fraction(trinity))
-    # print("gauge.integrate_fraction(morpheus)=", gauge.integrate_fraction(morpheus))
-    # print("gauge.integrate_inv_supply_of(neo)=", gauge.integrate_inv_supply_of(neo))
-    # print("gauge.integrate_inv_supply_of(trinity)=", gauge.integrate_inv_supply_of(trinity))
-    # print("gauge.integrate_inv_supply_of(morpheus)=", gauge.integrate_inv_supply_of(morpheus))
-    # print("gauge.integrate_inv_supply(gauge.period())=", gauge.integrate_inv_supply(gauge.period()))
-    # print("gauge.working_supply()=", gauge.working_supply())
-
     # no money on claimContract
     assert claimContract.claimable_tokens(usdn, {'from': neo}) == 0
     assert claimContract.claimable_tokens(usdt, {'from': neo}) == 0
@@ -234,7 +212,7 @@ def test_claim(ERC20, ERC20LP, CurvePool, PoolProxy, VotingEscrow, GaugeControll
     with brownie.reverts("already claimed"):
         claimContract.claim(usdt, {'from': trinity})
 
-    for _ in range(5):
+    for _ in range(7):
         chain.sleep(86400)
 
     gauge.user_checkpoint(neo, {'from': neo})
@@ -291,15 +269,15 @@ def test_claim(ERC20, ERC20LP, CurvePool, PoolProxy, VotingEscrow, GaugeControll
 
     # claim reward for morpheus (old reward + new reward)
     assert (7.3 * DECIMALS <= claimContract.claimable_tokens(usdn,
-                                                              {'from': morpheus}) <= 7.34 * DECIMALS)
+                                                             {'from': morpheus}) <= 7.34 * DECIMALS)
     assert (7.3 * DECIMALS <= claimContract.claimable_tokens(usdt,
-                                                              {'from': morpheus}) <= 7.34 * DECIMALS)
+                                                             {'from': morpheus}) <= 7.34 * DECIMALS)
     claimContract.claim(usdn, {'from': morpheus})
     claimContract.claim(usdt, {'from': morpheus})
     assert (7.3 * DECIMALS <= usdn.balanceOf(morpheus,
-                                              {'from': morpheus}) <= 7.34 * DECIMALS)
+                                             {'from': morpheus}) <= 7.34 * DECIMALS)
     assert (7.3 * DECIMALS <= usdt.balanceOf(morpheus,
-                                              {'from': morpheus}) <= 7.34 * DECIMALS)
+                                             {'from': morpheus}) <= 7.34 * DECIMALS)
     assert (7.99 * DECIMALS <= usdn.balanceOf(claimContract) <= 8.01 * DECIMALS)
     assert (7.99 * DECIMALS <= usdt.balanceOf(claimContract) <= 8.01 * DECIMALS)
 
@@ -333,7 +311,7 @@ def test_claim(ERC20, ERC20LP, CurvePool, PoolProxy, VotingEscrow, GaugeControll
     with brownie.reverts("already claimed"):
         claimContract.claim(usdt, {'from': trinity})
 
-    for _ in range(5):
+    for _ in range(7):
         chain.sleep(86400)
 
     gauge.user_checkpoint(neo, {'from': neo})
@@ -395,10 +373,10 @@ def test_claim(ERC20, ERC20LP, CurvePool, PoolProxy, VotingEscrow, GaugeControll
                                                               {'from': morpheus}) <= 1.01 * DECIMALS)
 
     # both trinity and morpheus are not claiming during some time
-    for _ in range(5):
+    for _ in range(7):
         chain.sleep(86400)
 
-    gauge.user_checkpoint(neo, {'from': neo})   
+    gauge.user_checkpoint(neo, {'from': neo})
     gauge.user_checkpoint(trinity, {'from': trinity})
     gauge.user_checkpoint(morpheus, {'from': morpheus})
 
@@ -409,11 +387,6 @@ def test_claim(ERC20, ERC20LP, CurvePool, PoolProxy, VotingEscrow, GaugeControll
     assert (3.99 * DECIMALS <= usdn.balanceOf(claimContract) <= 4.01 * DECIMALS)
     assert (3.99 * DECIMALS <= usdt.balanceOf(claimContract) <= 4.01 * DECIMALS)
 
-    print("integr_deposit=", claimContract.integrated_deposit(usdn))
-    print("commited_deposit_for=", claimContract.commited_deposit_for(usdn, neo))
-    print("commited_deposit_for=", claimContract.commited_deposit_for(usdn, trinity))
-    print("commited_deposit_for=", claimContract.commited_deposit_for(usdn, morpheus))
-
     assert (2.49 * DECIMALS <= claimContract.claimable_tokens(usdn,
                                                               {'from': trinity}) <= 2.51 * DECIMALS)
     assert (2.49 * DECIMALS <= claimContract.claimable_tokens(usdt,
@@ -423,7 +396,7 @@ def test_claim(ERC20, ERC20LP, CurvePool, PoolProxy, VotingEscrow, GaugeControll
     assert (2.49 * DECIMALS <= claimContract.claimable_tokens(usdt,
                                                               {'from': morpheus}) <= 2.51 * DECIMALS)
 
-    for _ in range(5):
+    for _ in range(7):
         chain.sleep(86400)
 
     gauge.user_checkpoint(neo, {'from': neo})
@@ -453,59 +426,179 @@ def test_claim(ERC20, ERC20LP, CurvePool, PoolProxy, VotingEscrow, GaugeControll
     assert (2.49 * DECIMALS <= usdn.balanceOf(claimContract) <= 2.51 * DECIMALS)
     assert (2.49 * DECIMALS <= usdt.balanceOf(claimContract) <= 2.51 * DECIMALS)
 
-    assert (3.49 * DECIMALS <= claimContract.claimable_tokens(usdn,
-                                                              {'from': morpheus}) <= 3.51 * DECIMALS)
-    assert (3.49 * DECIMALS <= claimContract.claimable_tokens(usdt,
-                                                              {'from': morpheus}) <= 3.51 * DECIMALS)
+    # morpheus is unlucky, his share is more than balanceOf(claimContract), so he picks share of balanceOf(claimContract) instead
+    assert (1.25 * DECIMALS <= claimContract.claimable_tokens(usdn,
+                                                              {'from': morpheus}) <= 1.251 * DECIMALS)
+    assert (1.25 * DECIMALS <= claimContract.claimable_tokens(usdt,
+                                                              {'from': morpheus}) <= 1.251 * DECIMALS)
 
-    # 2 kosiposhas are in
+    # 2 guys are in with huge (garry) and little (ron) amounts
+    # share money for garry and ron
+    usdt._mint_for_testing(100 * DECIMALS, {'from': garry})
+    usdn.approve(pool, 2**256-1, {'from': garry})
+    usdn._mint_for_testing(100 * DECIMALS, {'from': garry})
+    usdt.approve(pool, 2**256-1, {'from': garry})
+    usdt._mint_for_testing(0.05 * DECIMALS, {'from': ron})
+    usdn.approve(pool, 2**256-1, {'from': ron})
+    usdn._mint_for_testing(0.05 * DECIMALS, {'from': ron})
+    usdt.approve(pool, 2**256-1, {'from': ron})
 
+    # add liquidity for garry and ron
+    pool.add_liquidity([100 * DECIMALS, 100 * DECIMALS], 0, {'from': garry})
+    lp.approve(gauge, 2**256-1, {'from': garry})
+    pool.add_liquidity([0.05 * DECIMALS, 0.05 * DECIMALS], 0, {'from': ron})
+    lp.approve(gauge, 2**256-1, {'from': ron})
+    lp_balance_garry = lp.balanceOf(garry)
+    gauge.deposit(lp.balanceOf(garry), {'from': garry})
+    gauge.deposit(lp.balanceOf(ron), {'from': ron})
 
-    assert False
-    # # assert abs(usdn.balanceOf(claimContract)) <= 10
-    # # assert abs(usdt.balanceOf(claimContract)) <= 10
-    # # # claimContract.claim(usdn, {'from': trinity})
-    # # # claimContract.claim(usdn, {'from': morpheus})
-    # # # claimContract.claim(usdt, {'from': trinity})
-    # # # claimContract.claim(usdt, {'from': morpheus})
-    # # # assert claimContract.claimable_tokens(usdn, {'from': neo}) == 0
-    # # # assert claimContract.claimable_tokens(usdt, {'from': neo}) == 0
-    # # # assert claimContract.claimable_tokens(usdn, {'from': trinity}) == 0
-    # # # assert claimContract.claimable_tokens(usdt, {'from': trinity}) == 0
-    # # # assert claimContract.claimable_tokens(usdn, {'from': morpheus}) == 0
-    # # # assert claimContract.claimable_tokens(usdt, {'from': morpheus}) == 0
+    claimContract.start_claiming(usdn, {'from': garry})
+    claimContract.start_claiming(usdt, {'from': garry})
+    claimContract.start_claiming(usdn, {'from': ron})
+    claimContract.start_claiming(usdt, {'from': ron})
 
-    # # # assert usdn.balanceOf(neo) + usdn.balanceOf(trinity) + \
-    # # #     usdn.balanceOf(morpheus) < 2 * 10 ** 18
-    # # # assert usdt.balanceOf(neo) + usdt.balanceOf(trinity) + \
-    # # #     usdt.balanceOf(morpheus) < 2 * 10 ** 18
+    for _ in range(7):
+        chain.sleep(86400)
 
-    # # # usdn._mint_for_testing(2 * 10 ** 18, {'from': neo})
-    # # # usdt._mint_for_testing(2 * 10 ** 18, {'from': neo})
-    # # # usdn.transfer(claimContract, 2 * 10 ** 18, {'from': neo})
-    # # # usdt.transfer(claimContract, 2 * 10 ** 18, {'from': neo})
-    # # # chain.sleep(86400)
-    # # # chain.sleep(86400)
-    # # # chain.sleep(86400)
-    # # # chain.sleep(86400)
-    # # # chain.sleep(86400)
-    # # # chain.sleep(86400)
-    # # # chain.sleep(86400)
-    # # # gauge.user_checkpoint(neo)
-    # # # gauge.user_checkpoint(trinity, {'from': trinity})
-    # # # gauge.user_checkpoint(morpheus, {'from': morpheus})
+    gauge.user_checkpoint(neo, {'from': neo})
+    gauge.user_checkpoint(trinity, {'from': trinity})
+    gauge.user_checkpoint(morpheus, {'from': morpheus})
+    gauge.user_checkpoint(garry, {'from': garry})
+    gauge.user_checkpoint(ron, {'from': ron})
 
-    # # # # assert claimContract.claimable_tokens(usdn) == 0
-    # # # # assert claimContract.claimable_tokens(usdt) == 0
+    # fill claimContract with money
+    usdn._mint_for_testing(100 * DECIMALS, {'from': deployer})
+    usdt._mint_for_testing(100 * DECIMALS, {'from': deployer})
+    claimContract.deposit(usdn, 100 * DECIMALS, {'from': deployer})
+    claimContract.deposit(usdt, 100 * DECIMALS, {'from': deployer})
+    assert (102.5 * DECIMALS <= usdn.balanceOf(claimContract) <= 102.51 * DECIMALS)
+    assert (102.5 * DECIMALS <= usdt.balanceOf(claimContract) <= 102.51 * DECIMALS)
 
-    # # # assert claimContract.claimable_tokens(
-    # # #     usdn, {'from': morpheus}) == 0
+    # split according to their shares
+    assert (1.04 * DECIMALS <= claimContract.claimable_tokens(usdn,
+                                                              {'from': morpheus}) <= 1.06 * DECIMALS)
+    assert (1.04 * DECIMALS <= claimContract.claimable_tokens(usdt,
+                                                              {'from': morpheus}) <= 1.06 * DECIMALS)
+    assert (0.97 * DECIMALS <= claimContract.claimable_tokens(usdn,
+                                                              {'from': trinity}) <= 0.98 * DECIMALS)
+    assert (0.97 * DECIMALS <= claimContract.claimable_tokens(usdt,
+                                                              {'from': trinity}) <= 0.98 * DECIMALS)
+    assert (97.99 * DECIMALS <= claimContract.claimable_tokens(usdn,
+                                                               {'from': garry}) <= 97.999 * DECIMALS)
+    assert (97.99 * DECIMALS <= claimContract.claimable_tokens(usdt,
+                                                               {'from': garry}) <= 97.999 * DECIMALS)
+    assert (0.048 * DECIMALS <= claimContract.claimable_tokens(usdn,
+                                                               {'from': ron}) <= 0.049 * DECIMALS)
+    assert (0.048 * DECIMALS <= claimContract.claimable_tokens(usdt,
+                                                               {'from': ron}) <= 0.049 * DECIMALS)
 
-    # # # # assert abs(claimContract.claimable_tokens(
-    # # # # usdn, {'from': trinity}) - 0.1178 * 10**18) < 10 ** 15
-    # # # # assert abs(claimContract.claimable_tokens(
-    # # # # usdt, {'from': trinity}) - 0.1178 * 10**18) < 10 ** 15
-    # # # assert abs(claimContract.claimable_tokens(
-    # # #     usdn, {'from': morpheus}) - 0.1178 * 10**18) < 10 ** 15
-    # # # assert abs(claimContract.claimable_tokens(
-    # # #     usdt, {'from': morpheus}) - 0.1178 * 10**18) < 10 ** 15
+    # withdraw money from gauge for garry, without any claims
+    gauge.withdraw(lp_balance_garry, {'from': garry})
+    gauge.user_checkpoint(garry, {'from': garry})
+
+    # here ron is trying to claim, still little money for him =|
+    assert (0.048 * DECIMALS <= claimContract.claimable_tokens(usdn,
+                                                               {'from': ron}) <= 0.049 * DECIMALS)
+    assert (0.048 * DECIMALS <= claimContract.claimable_tokens(usdt,
+                                                               {'from': ron}) <= 0.049 * DECIMALS)
+
+    for _ in range(7):
+        chain.sleep(86400)
+
+    gauge.user_checkpoint(neo, {'from': neo})
+    gauge.user_checkpoint(trinity, {'from': trinity})
+    gauge.user_checkpoint(morpheus, {'from': morpheus})
+    gauge.user_checkpoint(garry, {'from': garry})
+    gauge.user_checkpoint(ron, {'from': ron})
+
+    # fill claimContract with money
+    usdn._mint_for_testing(100 * DECIMALS, {'from': deployer})
+    usdt._mint_for_testing(100 * DECIMALS, {'from': deployer})
+    claimContract.deposit(usdn, 100 * DECIMALS, {'from': deployer})
+    claimContract.deposit(usdt, 100 * DECIMALS, {'from': deployer})
+    assert (202.5 * DECIMALS <= usdn.balanceOf(claimContract) <= 202.51 * DECIMALS)
+    assert (202.5 * DECIMALS <= usdt.balanceOf(claimContract) <= 202.51 * DECIMALS)
+
+    # here ron is trying to claim again, stonks
+    assert (4.87 * DECIMALS <= claimContract.claimable_tokens(usdn,
+                                                              {'from': ron}) <= 4.88 * DECIMALS)
+    assert (4.87 * DECIMALS <= claimContract.claimable_tokens(usdt,
+                                                              {'from': ron}) <= 4.88 * DECIMALS)
+
+    # here morpheus is trying to claim again, super stonks
+    assert (100.97 * DECIMALS <= claimContract.claimable_tokens(usdn,
+                                                                {'from': morpheus}) <= 100.98 * DECIMALS)
+    assert (100.97 * DECIMALS <= claimContract.claimable_tokens(usdt,
+                                                                {'from': morpheus}) <= 100.98 * DECIMALS)
+    claimContract.claim(usdn, {'from': morpheus})
+    claimContract.claim(usdt, {'from': morpheus})
+    assert (108.3 * DECIMALS <= usdn.balanceOf(morpheus) <= 108.4 * DECIMALS)
+    assert (108.3 * DECIMALS <= usdt.balanceOf(morpheus) <= 108.4 * DECIMALS)
+    assert (101.52 * DECIMALS <= usdn.balanceOf(claimContract)
+            <= 101.53 * DECIMALS)
+    assert (101.52 * DECIMALS <= usdt.balanceOf(claimContract)
+            <= 101.53 * DECIMALS)
+
+    # garry is back, claiming his money
+    assert (97.52 * DECIMALS <= claimContract.claimable_tokens(usdn,
+                                                               {'from': garry}) <= 97.53 * DECIMALS)
+    assert (97.52 * DECIMALS <= claimContract.claimable_tokens(usdt,
+                                                               {'from': garry}) <= 97.53 * DECIMALS)
+    claimContract.claim(usdn, {'from': garry})
+    claimContract.claim(usdt, {'from': garry})
+    assert (97.52 * DECIMALS <= usdn.balanceOf(garry) <= 97.53 * DECIMALS)
+    assert (97.52 * DECIMALS <= usdt.balanceOf(garry) <= 97.53 * DECIMALS)
+
+    # here ron is trying to claim again, too late =( , wait for next deposit
+    assert (0.097 * DECIMALS <= claimContract.claimable_tokens(usdn,
+                                                               {'from': ron}) <= 0.098 * DECIMALS)
+    assert (0.097 * DECIMALS <= claimContract.claimable_tokens(usdt,
+                                                               {'from': ron}) <= 0.098 * DECIMALS)
+    claimContract.claim(usdn, {'from': ron})
+    claimContract.claim(usdt, {'from': ron})
+
+    assert (1.9 * DECIMALS <= claimContract.claimable_tokens(usdn,
+                                                             {'from': trinity}) <= 1.99 * DECIMALS)
+    assert (1.9 * DECIMALS <= claimContract.claimable_tokens(usdt,
+                                                             {'from': trinity}) <= 1.99 * DECIMALS)
+    claimContract.claim(usdn, {'from': trinity})
+    claimContract.claim(usdt, {'from': trinity})
+
+    for _ in range(7):
+        chain.sleep(86400)
+
+    gauge.user_checkpoint(neo, {'from': neo})
+    gauge.user_checkpoint(trinity, {'from': trinity})
+    gauge.user_checkpoint(morpheus, {'from': morpheus})
+    gauge.user_checkpoint(garry, {'from': garry})
+    gauge.user_checkpoint(ron, {'from': ron})
+
+    # fill claimContract with money
+    usdn._mint_for_testing(100 * DECIMALS, {'from': deployer})
+    usdt._mint_for_testing(100 * DECIMALS, {'from': deployer})
+    claimContract.deposit(usdn, 100 * DECIMALS, {'from': deployer})
+    claimContract.deposit(usdt, 100 * DECIMALS, {'from': deployer})
+    assert (101.9 * DECIMALS <= usdn.balanceOf(claimContract) <= 102 * DECIMALS)
+    assert (101.9 * DECIMALS <= usdt.balanceOf(claimContract) <= 102 * DECIMALS)
+
+    # split according to their shares
+    assert claimContract.claimable_tokens(usdn, {'from': garry}) == 0
+    assert claimContract.claimable_tokens(usdt, {'from': garry}) == 0
+    assert claimContract.claimable_tokens(usdn, {'from': neo}) == 0
+    assert claimContract.claimable_tokens(usdt, {'from': neo}) == 0
+    assert (48.78 * DECIMALS <= claimContract.claimable_tokens(usdn,
+                                                               {'from': trinity}) <= 48.79 * DECIMALS)
+    assert (48.78 * DECIMALS <= claimContract.claimable_tokens(usdt,
+                                                               {'from': trinity}) <= 48.79 * DECIMALS)
+    assert (48.78 * DECIMALS <= claimContract.claimable_tokens(usdn,
+                                                               {'from': morpheus}) <= 48.79 * DECIMALS)
+    assert (48.78 * DECIMALS <= claimContract.claimable_tokens(usdt,
+                                                               {'from': morpheus}) <= 48.79 * DECIMALS)
+    assert (2.43 * DECIMALS <= claimContract.claimable_tokens(usdn,
+                                                              {'from': ron}) <= 2.44 * DECIMALS)
+    assert (2.43 * DECIMALS <= claimContract.claimable_tokens(usdt,
+                                                              {'from': ron}) <= 2.44 * DECIMALS)
+    assert claimContract.claimable_tokens(usdn, {'from': ron}) + claimContract.claimable_tokens(
+        usdn, {'from': trinity}) + claimContract.claimable_tokens(usdn, {'from': morpheus}) <= usdn.balanceOf(claimContract)
+    assert claimContract.claimable_tokens(usdt, {'from': ron}) + claimContract.claimable_tokens(
+        usdt, {'from': trinity}) + claimContract.claimable_tokens(usdt, {'from': morpheus}) <= usdt.balanceOf(claimContract)
