@@ -45,7 +45,6 @@ def test_claim(ERC20, ERC20LP, CurvePool, PoolProxy, VotingEscrow, GaugeControll
     assert usdn.balanceOf(proxy) == 0
     assert usdn.balanceOf(neo) == 0
     lp.approve(gauge, 2**256-1, {'from': neo})
-    # chain.sleep(86400)
     lp_balance_neo = lp.balanceOf(neo)
     gauge.deposit(lp_balance_neo, {'from': neo})
 
@@ -77,7 +76,7 @@ def test_claim(ERC20, ERC20LP, CurvePool, PoolProxy, VotingEscrow, GaugeControll
     assert abs(claimContract.claimable_tokens(
         usdt, {'from': neo}) - 2 * DECIMALS) <= 10
 
-    # # claim 1st reward
+    # claim 1st reward
     claimContract.claim(usdn, {'from': neo})
     claimContract.claim(usdt, {'from': neo})
     assert abs(usdn.balanceOf(neo) - 2 * DECIMALS) <= 10
@@ -98,10 +97,14 @@ def test_claim(ERC20, ERC20LP, CurvePool, PoolProxy, VotingEscrow, GaugeControll
     with brownie.reverts("claim is not allowed"):
         claimContract.claimable_tokens(usdt, {'from': morpheus})
 
-    claimContract.start_claiming(usdn, {'from': trinity})
-    claimContract.start_claiming(usdt, {'from': trinity})
-    claimContract.start_claiming(usdn, {'from': morpheus})
-    claimContract.start_claiming(usdt, {'from': morpheus})
+    with brownie.reverts("no lp tokens in gauge"):
+        claimContract.start_claiming(usdn, {'from': trinity})
+    with brownie.reverts("no lp tokens in gauge"):
+        claimContract.start_claiming(usdt, {'from': trinity})
+    with brownie.reverts("no lp tokens in gauge"):
+        claimContract.start_claiming(usdn, {'from': morpheus})
+    with brownie.reverts("no lp tokens in gauge"):
+        claimContract.start_claiming(usdt, {'from': morpheus})
 
     with brownie.reverts("claim is not allowed"):
         claimContract.claimable_tokens(usdn, {'from': trinity})
@@ -602,3 +605,20 @@ def test_claim(ERC20, ERC20LP, CurvePool, PoolProxy, VotingEscrow, GaugeControll
         usdn, {'from': trinity}) + claimContract.claimable_tokens(usdn, {'from': morpheus}) <= usdn.balanceOf(claimContract)
     assert claimContract.claimable_tokens(usdt, {'from': ron}) + claimContract.claimable_tokens(
         usdt, {'from': trinity}) + claimContract.claimable_tokens(usdt, {'from': morpheus}) <= usdt.balanceOf(claimContract)
+
+    # emergency withdrawal
+    with brownie.reverts("owner only"):
+        claimContract.emergency_withdrawal(usdn, {'from': neo})
+    with brownie.reverts("owner only"):
+        claimContract.emergency_withdrawal(usdt, {'from': trinity})
+
+    claimContract.emergency_withdrawal(usdn, {'from': deployer})
+    assert usdn.balanceOf(claimContract) == 0
+
+    claimContract.emergency_withdrawal(usdt, {'from': deployer})
+    assert usdt.balanceOf(claimContract) == 0
+
+    with brownie.reverts("zero amount"):
+        claimContract.emergency_withdrawal(usdn, {'from': deployer})
+    with brownie.reverts("zero amount"):
+        claimContract.emergency_withdrawal(usdt, {'from': deployer})
