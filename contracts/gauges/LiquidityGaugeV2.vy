@@ -244,7 +244,17 @@ def _checkpoint_rewards(_addr: address, _total_supply: uint256):
         if integral_for < integral:
             claimable: uint256 = self.balanceOf[_addr] * (integral - integral_for) / 10**18
             self.reward_integral_for[token][_addr] = integral
-            assert ERC20(token).transfer(_addr, claimable)
+            response: Bytes[32] = raw_call(
+                token,
+                concat(
+                    method_id("transfer(address,uint256)"),
+                    convert(_addr, bytes32),
+                    convert(claimable, bytes32),
+                ),
+                max_outsize=32,
+            )
+            if len(response) != 0:
+                assert convert(response, bool)
 
 
 @internal
@@ -393,7 +403,17 @@ def claim_historic_rewards(_reward_tokens: address[MAX_REWARDS], _addr: address 
         if integral_for < integral:
             claimable: uint256 = self.balanceOf[_addr] * (integral - integral_for) / 10**18
             self.reward_integral_for[token][_addr] = integral
-            assert ERC20(token).transfer(_addr, claimable)
+            response: Bytes[32] = raw_call(
+                token,
+                concat(
+                    method_id("transfer(address,uint256)"),
+                    convert(_addr, bytes32),
+                    convert(claimable, bytes32),
+                ),
+                max_outsize=32,
+            )
+            if len(response) != 0:
+                assert convert(response, bool)
 
 
 @external
