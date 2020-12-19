@@ -156,8 +156,8 @@ def burn(_coin: address) -> bool:
             )
             if len(response) != 0:
                 assert convert(response, bool)
-            # get actual balance in case of transfer fee or pre-existing balance
-            amount = ERC20(coin).balanceOf(self)
+        # get actual balance in case of transfer fee or pre-existing balance
+        amount = ERC20(coin).balanceOf(self)
 
     if amount != 0:
         if coin != SETH:
