@@ -1,7 +1,7 @@
-# @version 0.2.7
+# @version 0.2.8
 """
 @title Synth Burner
-@notice Converts ETH denominated coins to USDC and transfers to `UnderlyingBurner`
+@notice Converts EUR denominated coins to sEUR and transfers to `UnderlyingBurner`
 """
 
 from vyper.interfaces import ERC20
@@ -35,12 +35,12 @@ interface Synthetix:
 ADDRESS_PROVIDER: constant(address) = 0x0000000022D53366457F9d5E68Ec105046FC4383
 
 SNX: constant(address) = 0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F
-SETH: constant(address) = 0x5e74C9036fb86BD7eCdcb084a0673EFc32eA31cb
+SEUR: constant(address) = 0xD71eCFF9342A5Ced620049e616c5035F1dB98620
 SUSD: constant(address) = 0x57Ab1ec28D129707052df4dF418D58a2D46d5f51
 USDC: constant(address) = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
 
 # currency keys used to identify synths during exchange
-SETH_CURRENCY_KEY: constant(bytes32) = 0x7345544800000000000000000000000000000000000000000000000000000000
+SEUR_CURRENCY_KEY: constant(bytes32) = 0x7345555200000000000000000000000000000000000000000000000000000000
 SUSD_CURRENCY_KEY: constant(bytes32) = 0x7355534400000000000000000000000000000000000000000000000000000000
 
 
@@ -80,14 +80,14 @@ def __init__(_receiver: address, _recovery: address, _owner: address, _emergency
 def set_swap_for(_coin: address, _swap_for: address) -> bool:
     """
     @notice Set an intermediate swap coin for coins that cannot
-            directly swap to sETH
+            directly swap to sEUR
     @param _coin Coin being burned
     @param _swap_for Intermediate coin that can be swapped for
-            both `_coin` and sETH
+            both `_coin` and sEUR
     @return bool success
     """
     registry: address = AddressProvider(ADDRESS_PROVIDER).get_registry()
-    direct_pool: address = Registry(registry).find_pool_for_coins(_coin, SETH)
+    direct_pool: address = Registry(registry).find_pool_for_coins(_coin, SEUR)
 
     if _swap_for == ZERO_ADDRESS:
         # removing an intermediary swap, ensure direct swap is possible
@@ -97,7 +97,7 @@ def set_swap_for(_coin: address, _swap_for: address) -> bool:
         # and that intermediate route exists
         assert direct_pool == ZERO_ADDRESS
         assert Registry(registry).find_pool_for_coins(_coin, _swap_for) != ZERO_ADDRESS
-        assert Registry(registry).find_pool_for_coins(_swap_for, SETH) != ZERO_ADDRESS
+        assert Registry(registry).find_pool_for_coins(_swap_for, SEUR) != ZERO_ADDRESS
 
     self.swap_for[_coin] = _swap_for
 
@@ -106,10 +106,7 @@ def set_swap_for(_coin: address, _swap_for: address) -> bool:
 
 @internal
 def _swap(_registry_swap: address, _from: address, _to: address, _amount: uint256, _receiver: address):
-    eth_amount: uint256 = 0
-    if _from == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
-        eth_amount = _amount
-    elif not self.is_approved[_registry_swap][_from]:
+    if not self.is_approved[_registry_swap][_from]:
         response: Bytes[32] = raw_call(
             _from,
             concat(
@@ -123,14 +120,13 @@ def _swap(_registry_swap: address, _from: address, _to: address, _amount: uint25
             assert convert(response, bool)
         self.is_approved[_registry_swap][_from] = True
 
-    RegistrySwap(_registry_swap).exchange_with_best_rate(_from, _to, _amount, 0, _receiver, value=eth_amount)
+    RegistrySwap(_registry_swap).exchange_with_best_rate(_from, _to, _amount, 0, _receiver)
 
 
-@payable
 @external
 def burn(_coin: address) -> bool:
     """
-    @notice Receive `_coin` and convert to sUSD via sETH
+    @notice Receive `_coin` and convert to sUSD via sEUR
     @param _coin Address of the coin being converted
     @return bool success
     """
@@ -138,44 +134,41 @@ def burn(_coin: address) -> bool:
     coin: address = _coin
 
     # transfer coins from caller
-    amount: uint256 = 0
-    if coin == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
-        amount = self.balance
-    else:
-        amount = ERC20(coin).balanceOf(msg.sender)
-        if amount != 0:
-            response: Bytes[32] = raw_call(
-                coin,
-                concat(
-                    method_id("transferFrom(address,address,uint256)"),
-                    convert(msg.sender, bytes32),
-                    convert(self, bytes32),
-                    convert(amount, bytes32),
-                ),
-                max_outsize=32,
-            )
-            if len(response) != 0:
-                assert convert(response, bool)
-        # get actual balance in case of transfer fee or pre-existing balance
-        amount = ERC20(coin).balanceOf(self)
+    amount: uint256 = ERC20(coin).balanceOf(msg.sender)
+    if amount != 0:
+        response: Bytes[32] = raw_call(
+            coin,
+            concat(
+                method_id("transferFrom(address,address,uint256)"),
+                convert(msg.sender, bytes32),
+                convert(self, bytes32),
+                convert(amount, bytes32),
+            ),
+            max_outsize=32,
+        )
+        if len(response) != 0:
+            assert convert(response, bool)
+
+    # get actual balance in case of transfer fee or pre-existing balance
+    amount = ERC20(coin).balanceOf(self)
 
     if amount != 0:
-        if coin != SETH:
+        if coin != SEUR:
             registry_swap: address = AddressProvider(ADDRESS_PROVIDER).get_address(2)
             swap_for: address = self.swap_for[coin]
             if swap_for != ZERO_ADDRESS:
-                # sometimes an intermediate swap is required to get to sETH
+                # sometimes an intermediate swap is required to get to sEUR
                 self._swap(registry_swap, coin, swap_for, amount, self)
                 coin = swap_for
                 amount = ERC20(coin).balanceOf(self)
 
-            # swap to sETH
-            self._swap(registry_swap, coin, SETH, amount, self)
+            # swap to sEUR
+            self._swap(registry_swap, coin, SEUR, amount, self)
 
-        # convert sETH to sUSD
+        # convert sEUR to sUSD
         Synthetix(SNX).exchange(
-            SETH_CURRENCY_KEY,
-            ERC20(SETH).balanceOf(self),
+            SEUR_CURRENCY_KEY,
+            ERC20(SEUR).balanceOf(self),
             SUSD_CURRENCY_KEY,
         )
 
