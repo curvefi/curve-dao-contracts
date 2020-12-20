@@ -93,12 +93,12 @@ def _claimable_tokens(_coin: address, account: address) -> uint256:
 
 @view
 @external
-def claimable_tokens(_coin: address) -> uint256:
+def claimable_tokens(_coin: address, _account: address) -> uint256:
     """
     @notice Return amount of available _coin for claim
     @param _coin Address of ERC20 token for claim reward 
     """
-    return self._claimable_tokens(_coin, msg.sender)
+    return self._claimable_tokens(_coin, _account)
 
 
 @external
