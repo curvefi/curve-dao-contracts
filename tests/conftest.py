@@ -60,7 +60,7 @@ def charlie(accounts):
 
 @pytest.fixture(scope="session")
 def receiver(accounts):
-    yield accounts[3]
+    yield accounts.at("0x0000000000000000000000000000000000031337", True)
 
 
 # core contracts

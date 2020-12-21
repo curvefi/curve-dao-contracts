@@ -38,7 +38,6 @@ def test_swap(MintableTestToken, SUSD, alice, receiver, burner, token, burner_ba
         assert SUSD.balanceOf(receiver) == 0
 
 
-@pytest.mark.skip(reason="eth pool is not live yet")
 def test_swap_ether(MintableTestToken, SUSD, alice, receiver, burner):
     burner.burn(ETH_ADDRESS, {'from': alice, 'value': "1 ether"})
 
