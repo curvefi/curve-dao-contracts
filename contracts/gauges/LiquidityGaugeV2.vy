@@ -32,6 +32,9 @@ interface VotingEscrow:
     def user_point_epoch(addr: address) -> uint256: view
     def user_point_history__ts(addr: address, epoch: uint256) -> uint256: view
 
+interface ERC20Extended:
+    def symbol() -> String[26]: view
+
 
 event Deposit:
     provider: indexed(address)
@@ -63,7 +66,6 @@ event Approval:
     _owner: indexed(address)
     _spender: indexed(address)
     _value: uint256
-
 
 
 MAX_REWARDS: constant(uint256) = 8
@@ -128,23 +130,17 @@ is_killed: public(bool)
 
 
 @external
-def __init__(
-    _name: String[64],
-    _symbol: String[32],
-    _lp_token: address,
-    _minter: address,
-    _admin: address,
-):
+def __init__(_lp_token: address, _minter: address, _admin: address):
     """
     @notice Contract constructor
-    @param _name Token full name
-    @param _symbol Token symbol
     @param _lp_token Liquidity Pool contract address
     @param _minter Minter contract address
     @param _admin Admin who can kill the gauge
     """
-    self.name = _name
-    self.symbol = _symbol
+
+    symbol: String[26] = ERC20Extended(_lp_token).symbol()
+    self.name = concat("Curve.fi ", symbol, " Gauge Deposit")
+    self.symbol = concat(symbol, "-gauge")
 
     crv_token: address = Minter(_minter).token()
     controller: address = Minter(_minter).controller()
