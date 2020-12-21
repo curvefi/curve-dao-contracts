@@ -91,6 +91,11 @@ def pool_proxy(PoolProxy, accounts):
 
 
 @pytest.fixture(scope="module")
+def gauge_proxy(GaugeProxy, alice, bob):
+    yield GaugeProxy.deploy(alice, bob, {'from': alice})
+
+
+@pytest.fixture(scope="module")
 def coin_reward(ERC20, accounts):
     yield ERC20.deploy("YFIIIIII Funance", "YFIIIIII", 18, {'from': accounts[0]})
 
