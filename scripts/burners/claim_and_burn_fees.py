@@ -26,12 +26,33 @@ COINS = [
     # this burner is called first, as it forwards into other burners
     "0x075b1bb99792c9E1041bA13afEf80C91a1e70fB3",  # sbtcCRV
 
-    # BTC burner, convers to USDC and sends to underlying burner
+    # BTC burner, converts to USDC and sends to underlying burner
     "0xeb4c2781e4eba804ce9a9803c67d0893436bb27d",  # renBTC
     "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",  # wBTC
     "0xfe18be6b3bd88a2d2a7f928d00292e7a9963cfc6",  # sBTC
     "0x0316EB71485b0Ab14103307bf65a021042c6d380",  # hBTC
     "0x8dAEBADE922dF735c38C80C7eBD708Af50815fAa",  # tBTC
+    "0x5228a22e72ccC52d415EcFd199F99D0665E7733b",  # pBTC
+    "0x9be89d2a4cd102d8fecc6bf9da793be995c22541",  # bBTC
+    "0x8064d9Ae6cDf087b1bcd5BDf3531bD5d8C537a68",  # oBTC
+
+    # ETH burner, converts to USDC and sends to underlying burner
+    "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",  # ETH
+    "0x5e74C9036fb86BD7eCdcb084a0673EFc32eA31cb",  # sETH
+
+    # Euro burner, converts to USDC and sends to underlying burner
+    "0xdB25f211AB05b1c97D595516F45794528a807ad8",  # EURS
+    "0xD71eCFF9342A5Ced620049e616c5035F1dB98620",  # sEUR
+
+    # idleBurner, unwraps and sends to underlying burner
+    "0x3fe7940616e5bc47b0775a0dccf6237893353bb4",  # idleDAI
+    "0x5274891bEC421B39D23760c04A6755eCB444797C",  # idleUSDC
+    "0xF34842d05A1c888Ca02769A633DF37177415C2f8",  # idleUSDT
+
+    # aToken burner, unwraps and sends to underlying burner
+    "0x028171bCA77440897B824Ca71D1c56caC55b68A3",  # aDAI
+    "0xBcca60bB61934080951369a648Fb03DF4F96263C",  # aUSDC
+    "0x3Ed3B47Dd13EC9a98b44e6204A523E766B225811",  # aUSDT
 
     # cToken burner, unwraps and sends to underlying burner
     "0x39aa39c021dfbae8fac545936693ac917d5e7563",  # cDAI
@@ -58,6 +79,7 @@ COINS = [
     "0xe2f2a5C287993345a840Db3B0845fbC70f5935a5",  # MUSD
     "0x196f4727526eA7FB1e17b2071B3d8eAA38486988",  # RSV
     "0x5bc25f649fc4e26069ddf4cf4010f9f706c23831",  # DUSD
+    "0xa47c8bf37f92aBed4A126BDA807A7b7498661acD",  # UST
 
     # USDN burner
     "0x674C6Ad92Fd080e4004b2312b45f796a192D27a0",  # USDN
@@ -70,6 +92,21 @@ COINS = [
     "0x8e870d67f660d95d5be530380d0ec0bd388289e1",  # PAX
     "0x57ab1ec28d129707052df4df418d58a2d46d5f51",  # sUSD
 ]
+
+# burners that require a 2nd `execute` transaction to complete
+EXECUTING_BURNERS = [
+    # for synth burners, executing converts sUSD to USDC and forwards to
+    # underlying burner. this has to happen in a separate transaction due
+    # to the three minute settlement time.
+    "0x00702BbDEaD24C40647f235F15971dB0867F6bdB",  # BtcBurner
+    "0x02C57fedb33D89e12CF6C482CD2D17481A60E311",  # EthBurner
+    "0x3a16b6001201577CC67bDD8aAE5A105bbB035882",  # EuroBurner
+
+    # the underlying burner must `execute` last - this deposits DAI/USDC/USDT
+    # into 3pool and transfers the 3CRV to the fee distributor
+    "0x874210cF3dC563B98c137927e7C951491A2e9AF3",  # UnderlyingBurner
+]
+
 
 _rate_cache = {}
 gas_strategy = GasNowScalingStrategy(initial_speed="standard", max_speed="fast")
@@ -143,8 +180,6 @@ def main(acct=CALLER, claim_threshold=CLAIM_THRESHOLD):
     lp_tripool = Contract("0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490")
     distributor = Contract("0xA464e6DCda8AC41e03616F95f4BC98a13b8922Dc")
     proxy = Contract("0xeCb456EA5365865EbAb8a2661B0c503410e9B347")
-    btc_burner = Contract("0x00702BbDEaD24C40647f235F15971dB0867F6bdB")
-    underlying_burner = Contract("0x874210cF3dC563B98c137927e7C951491A2e9AF3")
 
     initial_balance = lp_tripool.balanceOf(distributor)
 
@@ -187,11 +222,9 @@ def main(acct=CALLER, claim_threshold=CLAIM_THRESHOLD):
     # wait on synths to finalize
     time.sleep(max(burn_start + 180 - time.time(), 0))
 
-    # call `execute` on burners
-    # for btc burner, this converts sUSD to USDC and sends to the underlying burner
-    btc_burner.execute({'from': acct, 'gas_price': gas_strategy})
-    # for underlying burner, this deposits USDC/USDT/DAI into 3CRV and sends to the distributor
-    underlying_burner.execute({'from': acct, 'gas_price': gas_strategy})
+    # call `execute` on burners that require it
+    for contract_address in EXECUTING_BURNERS:
+        Contract(contract_address).execute({'from': acct, 'gas_price': gas_strategy})
 
     # finally, call to burn 3CRV - this also triggers a token checkpoint
     proxy.burn(lp_tripool, {'from': acct, 'gas_price': gas_strategy})
