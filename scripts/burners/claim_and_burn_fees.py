@@ -3,7 +3,7 @@ import sys
 import time
 import warnings
 
-from brownie import Contract, ZERO_ADDRESS, accounts
+from brownie import Contract, ETH_ADDRESS, ZERO_ADDRESS, accounts
 from brownie.network.gas.strategies import GasNowScalingStrategy
 
 warnings.filterwarnings("ignore")
@@ -93,18 +93,13 @@ COINS = [
     "0x57ab1ec28d129707052df4df418d58a2d46d5f51",  # sUSD
 ]
 
-# burners that require a 2nd `execute` transaction to complete
-EXECUTING_BURNERS = [
-    # for synth burners, executing converts sUSD to USDC and forwards to
-    # underlying burner. this has to happen in a separate transaction due
-    # to the three minute settlement time.
+# for synth burners, executing converts sUSD to USDC and forwards to
+# underlying burner. this has to happen in a separate transaction due
+# to the three minute settlement time.
+SYNTH_BURNERS = [
     "0x00702BbDEaD24C40647f235F15971dB0867F6bdB",  # BtcBurner
     "0x02C57fedb33D89e12CF6C482CD2D17481A60E311",  # EthBurner
     "0x3a16b6001201577CC67bDD8aAE5A105bbB035882",  # EuroBurner
-
-    # the underlying burner must `execute` last - this deposits DAI/USDC/USDT
-    # into 3pool and transfers the 3CRV to the fee distributor
-    "0x874210cF3dC563B98c137927e7C951491A2e9AF3",  # UnderlyingBurner
 ]
 
 
@@ -131,7 +126,7 @@ def _get_pool_list():
 
 
 def _fetch_rate(address):
-    # fetch teh current rate for a coin from coingecko
+    # fetch the current rate for a coin from coingecko
     address = str(address).lower()
     if address not in _rate_cache:
         _rate_cache[address] = requests.get(
@@ -191,6 +186,8 @@ def main(acct=CALLER, claim_threshold=CLAIM_THRESHOLD):
     for i in range(len(pool_list)):
 
         # check claimable amount
+        sys.stdout.write(f"\rQuerying pending fee amounts ({i}/{len(pool_list)})...")
+        sys.stdout.flush()
         claimable = _get_admin_balances(pool_list[i])
         if sum(claimable) >= claim_threshold:
             to_claim.append(pool_list[i])
@@ -204,8 +201,11 @@ def main(acct=CALLER, claim_threshold=CLAIM_THRESHOLD):
     burn_start = 0
     to_burn = []
     for i in range(len(COINS)):
-        if Contract(COINS[i]).balanceOf(proxy) > 0:
-            # no point in burning if we have a zero balance
+        # no point in burning if we have a zero balance
+        if COINS[i] == ETH_ADDRESS:
+            if proxy.balance() > 0:
+                to_burn.append(COINS[i])
+        elif Contract(COINS[i]).balanceOf(proxy) > 0:
             to_burn.append(COINS[i])
 
         to_burn_padded = to_burn + [ZERO_ADDRESS] * (20-len(to_burn))
@@ -222,9 +222,17 @@ def main(acct=CALLER, claim_threshold=CLAIM_THRESHOLD):
     # wait on synths to finalize
     time.sleep(max(burn_start + 180 - time.time(), 0))
 
-    # call `execute` on burners that require it
-    for contract_address in EXECUTING_BURNERS:
-        Contract(contract_address).execute({'from': acct, 'gas_price': gas_strategy})
+    # call `execute` on synth burners that require it
+    # converts settled sUSD to USDC and sends to the underlying burner
+    susd = Contract("0x57Ab1ec28D129707052df4dF418D58a2D46d5f51")
+    for burner in SYNTH_BURNERS:
+        if susd.balanceOf(burner) > 0:
+            Contract(burner).execute({'from': acct, 'gas_price': gas_strategy})
+
+    # call `execute` on the underlying burner
+    # deposits DAI/USDC/USDT into 3pool and transfers the 3CRV to the fee distributor
+    underlying_burner = Contract("0x874210cF3dC563B98c137927e7C951491A2e9AF3")
+    underlying_burner.execute({'from': acct, 'gas_price': gas_strategy})
 
     # finally, call to burn 3CRV - this also triggers a token checkpoint
     proxy.burn(lp_tripool, {'from': acct, 'gas_price': gas_strategy})
