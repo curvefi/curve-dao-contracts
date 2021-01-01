@@ -1,3 +1,5 @@
+import pylab  # Requires matplotlib
+
 from time import time
 from datetime import datetime
 from brownie import Contract
@@ -21,5 +23,16 @@ def main():
         t -= WEEK
     if output[0][1] == 0:
         output = output[1:]
+    dates = []
+    fees = []
     for d, fee in output[::-1]:
-        print("{0}|\t${1:.2f}".format(d, fee * virtual_price / 1e18))
+        dates.append(d)
+        fees.append(fee * virtual_price / 1e18)
+        print("{0}|\t${1:.2f}".format(d, fees[-1]))
+
+    pylab.bar(range(len(fees)), fees)
+    pylab.xlabel("Distribution date")
+    pylab.ylabel("Fees distributed")
+    pylab.xticks(range(len(dates)), [d.strftime("%d-%m-%y") for d in dates])
+    pylab.ylim(0, max(fees) * 1.1)
+    pylab.show()
