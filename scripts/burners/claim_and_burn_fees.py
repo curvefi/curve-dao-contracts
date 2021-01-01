@@ -44,11 +44,6 @@ COINS = [
     "0xdB25f211AB05b1c97D595516F45794528a807ad8",  # EURS
     "0xD71eCFF9342A5Ced620049e616c5035F1dB98620",  # sEUR
 
-    # idleBurner, unwraps and sends to underlying burner
-    "0x3fe7940616e5bc47b0775a0dccf6237893353bb4",  # idleDAI
-    "0x5274891bEC421B39D23760c04A6755eCB444797C",  # idleUSDC
-    "0xF34842d05A1c888Ca02769A633DF37177415C2f8",  # idleUSDT
-
     # aToken burner, unwraps and sends to underlying burner
     "0x028171bCA77440897B824Ca71D1c56caC55b68A3",  # aDAI
     "0xBcca60bB61934080951369a648Fb03DF4F96263C",  # aUSDC
@@ -59,12 +54,12 @@ COINS = [
     "0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643",  # cUSDC
 
     # yToken burner, unwraps and sends to underlying burner
-    "0xC2cB1040220768554cf699b0d863A3cd4324ce32",  # y/yDAI
-    "0x26EA744E5B887E5205727f55dFBE8685e3b21951",  # y/yUSDC
-    "0xE6354ed5bC4b393a5Aad09f21c46E101e692d447",  # y/yUSDT
-    "0x16de59092dAE5CcF4A1E6439D611fd0653f0Bd01",  # busd/yDAI
-    "0xd6aD7a6750A7593E092a9B218d66C0A814a3436e",  # busd/yUSDC
-    "0x83f798e925BcD4017Eb265844FDDAbb448f1707D",  # busd/yUSDT
+    "0xC2cB1040220768554cf699b0d863A3cd4324ce32",  # busd/yDAI
+    "0x26EA744E5B887E5205727f55dFBE8685e3b21951",  # busd/yUSDC
+    "0xE6354ed5bC4b393a5Aad09f21c46E101e692d447",  # busd/yUSDT
+    "0x16de59092dAE5CcF4A1E6439D611fd0653f0Bd01",  # y/yDAI
+    "0xd6aD7a6750A7593E092a9B218d66C0A814a3436e",  # y/yUSDC
+    "0x83f798e925BcD4017Eb265844FDDAbb448f1707D",  # y/yUSDT
     "0x99d1Fa417f94dcD62BfE781a1213c092a47041Bc",  # pax/yDAI
     "0x9777d7E2b60bB01759D0E2f8be2095df444cb07E",  # pax/yUSDC
     "0x1bE5d71F2dA660BFdee8012dDc58D024448A0A59",  # pax/yUSDT
@@ -104,7 +99,7 @@ SYNTH_BURNERS = [
 
 
 _rate_cache = {}
-gas_strategy = GasNowScalingStrategy(initial_speed="standard", max_speed="fast")
+gas_strategy = GasNowScalingStrategy(initial_speed="slow", max_speed="fast")
 
 
 def _get_pool_list():
@@ -115,52 +110,74 @@ def _get_pool_list():
     registry = Contract(provider.get_registry())
 
     pool_count = registry.pool_count()
-    pool_list = []
+    pool_list = {}
     for i in range(pool_count):
         sys.stdout.write(f"\rGetting list of pools from registry ({i+1}/{pool_count})...")
         sys.stdout.flush()
-        pool_list.append(Contract(registry.pool_list(i)))
+        swap = Contract(registry.pool_list(i))
+        pool_list[swap] = [i.lower() for i in registry.get_coins(swap) if i != ZERO_ADDRESS]
 
     print()
     return pool_list
 
 
-def _fetch_rate(address):
-    # fetch the current rate for a coin from coingecko
-    address = str(address).lower()
-    if address not in _rate_cache:
-        _rate_cache[address] = requests.get(
+def _fetch_rates(coin_list):
+    # fetch the current USD rates for a list of coins
+    if not _rate_cache:
+        _rate_cache[ETH_ADDRESS.lower()] = requests.get(
+            'https://api.coingecko.com/api/v3/simple/price',
+            params={"ids": "ethereum", 'vs_currencies': "usd"},
+        ).json()['ethereum']['usd']
+        response = requests.get(
             "https://api.coingecko.com/api/v3/simple/token_price/ethereum",
-            params={'contract_addresses': address, 'vs_currencies': "usd"}
-        ).json()[address]['usd']
+            params={'contract_addresses': ','.join(COINS), 'vs_currencies': "usd"}
+        ).json()
+        for addr in response:
+            _rate_cache[addr.lower()] = response[addr]['usd']
 
-    return _rate_cache[address]
+    rates = {}
+    for coin in [i for i in coin_list if i in _rate_cache]:
+        rates[coin] = _rate_cache[coin]
+
+    if len(rates) < len(coin_list):
+        # for coins where a rate is unavailable, we assume it to be the average
+        # rate of the other coins within the pool. when no rates are available,
+        # everything is assumed to be worth $1
+        avg_rate = sum(rates.values()) / len(rates.values()) if rates else 1
+        for coin in [i for i in coin_list if i not in _rate_cache]:
+            rates[coin] = avg_rate
+
+    return rates
 
 
-def _get_admin_balances(pool):
+def _get_admin_balances(pool, coin_list):
     admin_balances = []
 
-    for i in range(8):
-        try:
-            coin = Contract(pool.coins(i))
-            if hasattr(pool, "admin_balances"):
-                balance = pool.admin_balances(i)
-            else:
-                balance = coin.balanceOf(pool) - pool.balances(i)
-            balance = balance / 10**coin.decimals() * _fetch_rate(coin)
-            admin_balances.append(balance)
+    rates = _fetch_rates(coin_list)
 
-        except Exception:
-            return admin_balances
+    for i, coin in enumerate(coin_list):
+        if hasattr(pool, "admin_balances"):
+            balance = pool.admin_balances(i)
+        else:
+            balance = Contract(coin).balanceOf(pool) - pool.balances(i)
+
+        if coin != ETH_ADDRESS.lower():
+            decimals = Contract(coin).decimals()
+        else:
+            decimals = 18
+        balance = balance / 10**decimals * rates[coin]
+        admin_balances.append(balance)
+
+    return admin_balances
 
 
 def get_pending():
     pool_list = _get_pool_list()
     pending = {}
-    for i, pool in enumerate(pool_list, start=1):
+    for i, (pool, coin_list) in enumerate(pool_list.items(), start=1):
         sys.stdout.write(f"\rQuerying pending fee amounts ({i}/{len(pool_list)})...")
         sys.stdout.flush()
-        pending[pool] = sum(_get_admin_balances(pool))
+        pending[pool] = sum(_get_admin_balances(pool, coin_list))
 
     print()
     for addr, value in sorted(pending.items(), key=lambda k: k[1], reverse=True):
@@ -225,8 +242,14 @@ def main(acct=CALLER, claim_threshold=CLAIM_THRESHOLD):
     # call `execute` on synth burners that require it
     # converts settled sUSD to USDC and sends to the underlying burner
     susd = Contract("0x57Ab1ec28D129707052df4dF418D58a2D46d5f51")
+    exchanger = Contract("0x0bfDc04B38251394542586969E2356d0D731f7DE")
+    susd_currency_key = "0x7355534400000000000000000000000000000000000000000000000000000000"
     for burner in SYNTH_BURNERS:
         if susd.balanceOf(burner) > 0:
+            settlement_time = exchanger.maxSecsLeftInWaitingPeriod(burner, susd_currency_key)
+            if settlement_time:
+                print("Sleeping until synths have time to settle...")
+                time.sleep(settlement_time)
             Contract(burner).execute({'from': acct, 'gas_price': gas_strategy})
 
     # call `execute` on the underlying burner
