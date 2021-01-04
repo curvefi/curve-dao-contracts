@@ -209,23 +209,24 @@ def _checkpoint_rewards(_addr: address, _total_supply: uint256):
     if _total_supply == 0:
         return
 
-    balances: uint256[MAX_REWARDS] = empty(uint256[MAX_REWARDS])
+    reward_balances: uint256[MAX_REWARDS] = empty(uint256[MAX_REWARDS])
     reward_tokens: address[MAX_REWARDS] = empty(address[MAX_REWARDS])
     for i in range(MAX_REWARDS):
         token: address = self.reward_tokens[i]
         if token == ZERO_ADDRESS:
             break
         reward_tokens[i] = token
-        balances[i] = ERC20(token).balanceOf(self)
+        reward_balances[i] = ERC20(token).balanceOf(self)
 
     # claim from reward contract
     raw_call(self.reward_contract, slice(self.reward_sigs, 8, 4))  # dev: bad claim sig
 
+    user_balance: uint256 = self.balanceOf[_addr]
     for i in range(MAX_REWARDS):
         token: address = reward_tokens[i]
         if token == ZERO_ADDRESS:
             break
-        dI: uint256 = 10**18 * (ERC20(token).balanceOf(self) - balances[i]) / _total_supply
+        dI: uint256 = 10**18 * (ERC20(token).balanceOf(self) - reward_balances[i]) / _total_supply
         if _addr == ZERO_ADDRESS:
             if dI != 0:
                 self.reward_integral[token] += dI
@@ -237,19 +238,20 @@ def _checkpoint_rewards(_addr: address, _total_supply: uint256):
 
         integral_for: uint256 = self.reward_integral_for[token][_addr]
         if integral_for < integral:
-            claimable: uint256 = self.balanceOf[_addr] * (integral - integral_for) / 10**18
+            claimable: uint256 = user_balance * (integral - integral_for) / 10**18
             self.reward_integral_for[token][_addr] = integral
-            response: Bytes[32] = raw_call(
-                token,
-                concat(
-                    method_id("transfer(address,uint256)"),
-                    convert(_addr, bytes32),
-                    convert(claimable, bytes32),
-                ),
-                max_outsize=32,
-            )
-            if len(response) != 0:
-                assert convert(response, bool)
+            if claimable != 0:
+                response: Bytes[32] = raw_call(
+                    token,
+                    concat(
+                        method_id("transfer(address,uint256)"),
+                        convert(_addr, bytes32),
+                        convert(claimable, bytes32),
+                    ),
+                    max_outsize=32,
+                )
+                if len(response) != 0:
+                    assert convert(response, bool)
 
 
 @internal
