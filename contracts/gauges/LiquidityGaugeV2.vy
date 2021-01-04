@@ -70,7 +70,6 @@ event Approval:
 
 MAX_REWARDS: constant(uint256) = 8
 TOKENLESS_PRODUCTION: constant(uint256) = 40
-BOOST_WARMUP: constant(uint256) = 2 * 7 * 86400
 WEEK: constant(uint256) = 604800
 
 minter: public(address)
@@ -190,7 +189,7 @@ def _update_liquidity_limit(addr: address, l: uint256, L: uint256):
     voting_total: uint256 = ERC20(_voting_escrow).totalSupply()
 
     lim: uint256 = l * TOKENLESS_PRODUCTION / 100
-    if (voting_total > 0) and (block.timestamp > self.period_timestamp[0] + BOOST_WARMUP):
+    if voting_total > 0:
         lim += L * voting_balance / voting_total * (100 - TOKENLESS_PRODUCTION) / 100
 
     lim = min(l, lim)
