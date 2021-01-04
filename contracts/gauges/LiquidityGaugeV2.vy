@@ -70,7 +70,6 @@ event Approval:
 
 MAX_REWARDS: constant(uint256) = 8
 TOKENLESS_PRODUCTION: constant(uint256) = 40
-BOOST_WARMUP: constant(uint256) = 2 * 7 * 86400
 WEEK: constant(uint256) = 604800
 
 minter: public(address)
@@ -190,7 +189,7 @@ def _update_liquidity_limit(addr: address, l: uint256, L: uint256):
     voting_total: uint256 = ERC20(_voting_escrow).totalSupply()
 
     lim: uint256 = l * TOKENLESS_PRODUCTION / 100
-    if (voting_total > 0) and (block.timestamp > self.period_timestamp[0] + BOOST_WARMUP):
+    if voting_total > 0:
         lim += L * voting_balance / voting_total * (100 - TOKENLESS_PRODUCTION) / 100
 
     lim = min(l, lim)
@@ -210,23 +209,24 @@ def _checkpoint_rewards(_addr: address, _total_supply: uint256):
     if _total_supply == 0:
         return
 
-    balances: uint256[MAX_REWARDS] = empty(uint256[MAX_REWARDS])
+    reward_balances: uint256[MAX_REWARDS] = empty(uint256[MAX_REWARDS])
     reward_tokens: address[MAX_REWARDS] = empty(address[MAX_REWARDS])
     for i in range(MAX_REWARDS):
         token: address = self.reward_tokens[i]
         if token == ZERO_ADDRESS:
             break
         reward_tokens[i] = token
-        balances[i] = ERC20(token).balanceOf(self)
+        reward_balances[i] = ERC20(token).balanceOf(self)
 
     # claim from reward contract
     raw_call(self.reward_contract, slice(self.reward_sigs, 8, 4))  # dev: bad claim sig
 
+    user_balance: uint256 = self.balanceOf[_addr]
     for i in range(MAX_REWARDS):
         token: address = reward_tokens[i]
         if token == ZERO_ADDRESS:
             break
-        dI: uint256 = 10**18 * (ERC20(token).balanceOf(self) - balances[i]) / _total_supply
+        dI: uint256 = 10**18 * (ERC20(token).balanceOf(self) - reward_balances[i]) / _total_supply
         if _addr == ZERO_ADDRESS:
             if dI != 0:
                 self.reward_integral[token] += dI
@@ -238,19 +238,20 @@ def _checkpoint_rewards(_addr: address, _total_supply: uint256):
 
         integral_for: uint256 = self.reward_integral_for[token][_addr]
         if integral_for < integral:
-            claimable: uint256 = self.balanceOf[_addr] * (integral - integral_for) / 10**18
+            claimable: uint256 = user_balance * (integral - integral_for) / 10**18
             self.reward_integral_for[token][_addr] = integral
-            response: Bytes[32] = raw_call(
-                token,
-                concat(
-                    method_id("transfer(address,uint256)"),
-                    convert(_addr, bytes32),
-                    convert(claimable, bytes32),
-                ),
-                max_outsize=32,
-            )
-            if len(response) != 0:
-                assert convert(response, bool)
+            if claimable != 0:
+                response: Bytes[32] = raw_call(
+                    token,
+                    concat(
+                        method_id("transfer(address,uint256)"),
+                        convert(_addr, bytes32),
+                        convert(claimable, bytes32),
+                    ),
+                    max_outsize=32,
+                )
+                if len(response) != 0:
+                    assert convert(response, bool)
 
 
 @internal
