@@ -37,6 +37,7 @@ COINS = [
     "0x8064d9Ae6cDf087b1bcd5BDf3531bD5d8C537a68",  # oBTC
 
     # ETH burner, converts to USDC and sends to underlying burner
+    "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84",  # stETH
     "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",  # ETH
     "0x5e74C9036fb86BD7eCdcb084a0673EFc32eA31cb",  # sETH
 
@@ -93,7 +94,7 @@ COINS = [
 # to the three minute settlement time.
 SYNTH_BURNERS = [
     "0x00702BbDEaD24C40647f235F15971dB0867F6bdB",  # BtcBurner
-    "0x02C57fedb33D89e12CF6C482CD2D17481A60E311",  # EthBurner
+    "0xD782EbD4bAbd95c2D8255112eFc6DD865c849394",  # EthBurner
     "0x3a16b6001201577CC67bDD8aAE5A105bbB035882",  # EuroBurner
 ]
 
