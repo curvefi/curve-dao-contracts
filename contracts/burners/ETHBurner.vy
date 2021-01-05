@@ -75,6 +75,15 @@ def __init__(_receiver: address, _recovery: address, _owner: address, _emergency
     self.owner = _owner
     self.emergency_owner = _emergency_owner
 
+    self.swap_for[0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84] = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE  # stETH
+
+
+@payable
+@external
+def __default__():
+    # required to receive ether during intermediate swaps
+    pass
+
 
 @external
 def set_swap_for(_coin: address, _swap_for: address) -> bool:
@@ -167,7 +176,10 @@ def burn(_coin: address) -> bool:
                 # sometimes an intermediate swap is required to get to sETH
                 self._swap(registry_swap, coin, swap_for, amount, self)
                 coin = swap_for
-                amount = ERC20(coin).balanceOf(self)
+                if coin == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+                    amount = self.balance
+                else:
+                    amount = ERC20(coin).balanceOf(self)
 
             # swap to sETH
             self._swap(registry_swap, coin, SETH, amount, self)
@@ -213,18 +225,21 @@ def recover_balance(_coin: address) -> bool:
     """
     assert msg.sender in [self.owner, self.emergency_owner]  # dev: only owner
 
-    amount: uint256 = ERC20(_coin).balanceOf(self)
-    response: Bytes[32] = raw_call(
-        _coin,
-        concat(
-            method_id("transfer(address,uint256)"),
-            convert(self.recovery, bytes32),
-            convert(amount, bytes32),
-        ),
-        max_outsize=32,
-    )
-    if len(response) != 0:
-        assert convert(response, bool)
+    if _coin == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+        raw_call(self.recovery, b"", value=self.balance)
+    else:
+        amount: uint256 = ERC20(_coin).balanceOf(self)
+        response: Bytes[32] = raw_call(
+            _coin,
+            concat(
+                method_id("transfer(address,uint256)"),
+                convert(self.recovery, bytes32),
+                convert(amount, bytes32),
+            ),
+            max_outsize=32,
+        )
+        if len(response) != 0:
+            assert convert(response, bool)
 
     return True
 
