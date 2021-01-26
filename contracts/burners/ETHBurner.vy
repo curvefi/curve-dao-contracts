@@ -76,7 +76,7 @@ def __init__(_receiver: address, _recovery: address, _owner: address, _emergency
     self.emergency_owner = _emergency_owner
 
     self.swap_for[0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84] = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE  # stETH
-
+    self.swap_for[0xE95A203B1a91a908F9B9CE46459d101078c2c3cb] = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE  # aETH
 
 @payable
 @external
