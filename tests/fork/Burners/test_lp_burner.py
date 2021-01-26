@@ -26,8 +26,8 @@ def test_swap(MintableTestToken, SBTC, alice, receiver, lp_burner, btc_burner, t
     lp_burner.set_swap_data(token, SBTC, btc_burner)
 
     if caller_balance:
-    coin._mint_for_testing(alice, amount, {'from': alice})
-    coin.approve(lp_burner, 2**256-1, {'from': alice})
+        coin._mint_for_testing(alice, amount, {'from': alice})
+        coin.approve(lp_burner, 2**256-1, {'from': alice})
 
     if burner_balance:
         coin._mint_for_testing(lp_burner, amount, {'from': alice})
