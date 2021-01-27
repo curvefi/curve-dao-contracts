@@ -10,6 +10,7 @@ def burner(ETHBurner, alice, receiver):
 tokens = (
     ("0x5e74C9036fb86BD7eCdcb084a0673EFc32eA31cb", "sETH"),
     ("0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84", "stETH"),
+    ("0xE95A203B1a91a908F9B9CE46459d101078c2c3cb", "aETH"),
 )
 
 
