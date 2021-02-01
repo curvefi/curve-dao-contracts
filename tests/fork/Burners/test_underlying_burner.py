@@ -3,7 +3,7 @@ import pytest
 
 @pytest.fixture(scope="module")
 def burner(UnderlyingBurner, alice, receiver):
-    yield UnderlyingBurner.deploy(receiver, receiver, alice, alice, {'from': alice})
+    yield UnderlyingBurner.deploy(receiver, receiver, alice, alice, {"from": alice})
 
 
 tripool = (
@@ -21,19 +21,21 @@ swapped = (
 @pytest.mark.parametrize("token", [i[0] for i in tripool], ids=[i[1] for i in tripool])
 @pytest.mark.parametrize("burner_balance", (True, False))
 @pytest.mark.parametrize("caller_balance", (True, False))
-def test_burn_no_swap(MintableTestToken, alice, receiver, burner, token, burner_balance, caller_balance):
+def test_burn_no_swap(
+    MintableTestToken, alice, receiver, burner, token, burner_balance, caller_balance
+):
     coin = MintableTestToken(token)
-    amount = 10**coin.decimals()
+    amount = 10 ** coin.decimals()
 
     if caller_balance:
-        coin._mint_for_testing(alice, amount, {'from': alice})
-        coin.approve(burner, 2**256-1, {'from': alice})
+        coin._mint_for_testing(alice, amount, {"from": alice})
+        coin.approve(burner, 2 ** 256 - 1, {"from": alice})
 
     if burner_balance:
-        coin._mint_for_testing(burner, amount, {'from': alice})
+        coin._mint_for_testing(burner, amount, {"from": alice})
         amount *= 2
 
-    burner.burn(coin, {'from': alice})
+    burner.burn(coin, {"from": alice})
 
     if burner_balance or caller_balance:
         assert coin.balanceOf(alice) == 0
@@ -45,15 +47,15 @@ def test_burn_no_swap(MintableTestToken, alice, receiver, burner, token, burner_
 @pytest.mark.parametrize("has_balance", (True, False))
 def test_burn_swap(MintableTestToken, USDC, alice, receiver, burner, token, has_balance):
     coin = MintableTestToken(token)
-    amount = 10**coin.decimals()
+    amount = 10 ** coin.decimals()
 
-    coin._mint_for_testing(alice, amount, {'from': alice})
-    coin.approve(burner, 2**256-1, {'from': alice})
+    coin._mint_for_testing(alice, amount, {"from": alice})
+    coin.approve(burner, 2 ** 256 - 1, {"from": alice})
 
     if has_balance:
-        coin._mint_for_testing(burner, amount, {'from': alice})
+        coin._mint_for_testing(burner, amount, {"from": alice})
 
-    burner.burn(coin, {'from': alice})
+    burner.burn(coin, {"from": alice})
 
     assert coin.balanceOf(alice) == 0
     assert coin.balanceOf(burner) == 0
@@ -67,10 +69,10 @@ def test_burn_swap(MintableTestToken, USDC, alice, receiver, burner, token, has_
 def test_execute(MintableTestToken, ThreeCRV, alice, burner, receiver):
     coins = [MintableTestToken(i[0]) for i in tripool]
     for coin in coins:
-        amount = 10**coin.decimals()
-        coin._mint_for_testing(burner, amount, {'from': alice})
+        amount = 10 ** coin.decimals()
+        coin._mint_for_testing(burner, amount, {"from": alice})
 
-    burner.execute({'from': alice})
+    burner.execute({"from": alice})
 
     for coin in coins:
         assert coin.balanceOf(alice) == 0

@@ -59,7 +59,9 @@ class StateMachine:
             return
 
         gauge_type = int(st_type * (len(self.type_weights)))
-        gauge = self.LiquidityGauge.deploy(self.lp_token, self.minter, self.accounts[0], {"from": self.accounts[0]})
+        gauge = self.LiquidityGauge.deploy(
+            self.lp_token, self.minter, self.accounts[0], {"from": self.accounts[0]}
+        )
 
         self.controller.add_gauge(gauge, gauge_type, st_gauge_weight, {"from": self.accounts[0]})
         self.gauges.append({"contract": gauge, "type": gauge_type, "weight": st_gauge_weight})

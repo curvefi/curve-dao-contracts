@@ -1,8 +1,7 @@
 import pytest
-from brownie.test import strategy, given
+from brownie.test import given, strategy
 
-from tests.conftest import approx
-from tests.conftest import YEAR, YEAR_1_SUPPLY, INITIAL_SUPPLY
+from tests.conftest import INITIAL_SUPPLY, YEAR, YEAR_1_SUPPLY, approx
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -18,12 +17,14 @@ def test_mintable_in_timeframe(accounts, token, theoretical_supply, time, chain)
     chain.mine()
     t1 = chain[-1].timestamp
     if t1 - t0 >= YEAR:
-        token.update_mining_parameters({'from': accounts[0]})
+        token.update_mining_parameters({"from": accounts[0]})
 
     t1 = chain[-1].timestamp
     available_supply = token.available_supply()
     mintable = token.mintable_in_timeframe(t0, t1)
-    assert (available_supply - (INITIAL_SUPPLY * 10 ** 18)) >= mintable  # Should only round down, not up
+    assert (
+        available_supply - (INITIAL_SUPPLY * 10 ** 18)
+    ) >= mintable  # Should only round down, not up
     if t1 == t0:
         assert mintable == 0
     else:
@@ -32,16 +33,18 @@ def test_mintable_in_timeframe(accounts, token, theoretical_supply, time, chain)
     assert approx(theoretical_supply(), available_supply, 1e-16)
 
 
-@given(time1=strategy('uint', max_value=YEAR), time2=strategy('uint', max_value=YEAR))
+@given(time1=strategy("uint", max_value=YEAR), time2=strategy("uint", max_value=YEAR))
 def test_random_range_year_one(token, chain, accounts, time1, time2):
     creation_time = token.start_epoch_time()
-    start, end = sorted((creation_time+time1, creation_time+time2))
+    start, end = sorted((creation_time + time1, creation_time + time2))
     rate = YEAR_1_SUPPLY // YEAR
 
-    assert token.mintable_in_timeframe(start, end) == rate * (end-start)
+    assert token.mintable_in_timeframe(start, end) == rate * (end - start)
 
 
-@given(start=strategy('uint', max_value=YEAR*6), duration=strategy('uint', max_value=YEAR))
+@given(
+    start=strategy("uint", max_value=YEAR * 6), duration=strategy("uint", max_value=YEAR),
+)
 def test_random_range_multiple_epochs(token, chain, accounts, start, duration):
     creation_time = token.start_epoch_time()
     start += creation_time
@@ -53,15 +56,15 @@ def test_random_range_multiple_epochs(token, chain, accounts, start, duration):
     for i in range(end_epoch):
         chain.sleep(YEAR)
         chain.mine()
-        token.update_mining_parameters({'from': accounts[0]})
+        token.update_mining_parameters({"from": accounts[0]})
 
     if start_epoch == end_epoch:
-        assert approx(token.mintable_in_timeframe(start, end), rate * (end-start), 2e-16)
+        assert approx(token.mintable_in_timeframe(start, end), rate * (end - start), 2e-16)
     else:
         assert token.mintable_in_timeframe(start, end) < rate * end
 
 
-@given(duration=strategy('uint', min_value=1, max_value=YEAR))
+@given(duration=strategy("uint", min_value=1, max_value=YEAR))
 def test_available_supply(chain, web3, token, duration):
     creation_time = token.start_epoch_time()
     initial_supply = token.totalSupply()
@@ -69,5 +72,5 @@ def test_available_supply(chain, web3, token, duration):
     chain.sleep(duration)
     chain.mine()
 
-    expected = initial_supply + (web3.eth.getBlock('latest')['timestamp'] - creation_time) * rate
+    expected = initial_supply + (web3.eth.getBlock("latest")["timestamp"] - creation_time) * rate
     assert token.available_supply() == expected

@@ -1,7 +1,8 @@
 import json
 import threading
 from decimal import Decimal
-from brownie import accounts, history, ERC20CRV, VestingEscrow
+
+from brownie import ERC20CRV, VestingEscrow, accounts, history
 
 from . import deployment_config as config
 
@@ -13,7 +14,7 @@ BLACKLIST = [
     "0x000000000000000000000000000000000000dead",
     "0xe857656b7804ecc0d0d0fd643c6cfb69063a7d1a",
     "0xbce6d09b800d0bc03f34ef93ed356519faec64d0",
-    "0xe4ffd96b5e6d2b6cdb91030c48cc932756c951b5"
+    "0xe4ffd96b5e6d2b6cdb91030c48cc932756c951b5",
 ]
 
 
@@ -29,12 +30,7 @@ def live():
     with open(config.DEPLOYMENTS_JSON) as fp:
         deployments = json.load(fp)
 
-    vest_tokens(
-        admin,
-        funding_admins,
-        deployments['ERC20CRV'],
-        config.REQUIRED_CONFIRMATIONS
-    )
+    vest_tokens(admin, funding_admins, deployments["ERC20CRV"], config.REQUIRED_CONFIRMATIONS)
 
 
 def development():
@@ -45,7 +41,7 @@ def development():
     * Run the main deployment and distribution logic
     * Perform a sanity check to confirm balances and total supply are as expected
     """
-    token = ERC20CRV.deploy("Curve DAO Token", "CRV", 18, {'from': accounts[0]})
+    token = ERC20CRV.deploy("Curve DAO Token", "CRV", 18, {"from": accounts[0]})
     vesting_escrow, vested_amounts = vest_tokens(accounts[0], accounts[1:5], token, 1)
     sanity_check(vesting_escrow, vested_amounts)
 
@@ -68,13 +64,13 @@ def _fund_accounts(acct, vesting_escrow, fund_arguments, confs):
             recipients, amounts = fund_arguments.pop()
         except IndexError:
             break
-        tx = vesting_escrow.fund(recipients, amounts, {'from': acct, 'required_confs': 0})
+        tx = vesting_escrow.fund(recipients, amounts, {"from": acct, "required_confs": 0})
         _log_tx(
             txid=tx.txid,
             fn_name=tx.fn_name,
             recipients=recipients,
             amounts=amounts,
-            sender=acct.address
+            sender=acct.address,
         )
         tx.wait(confs)
 
@@ -94,12 +90,12 @@ def vest_tokens(admin, funding_admins, token_address, confs):
         start_time + VESTING_PERIOD,
         False,
         funding_admins,
-        {'from': admin, 'required_confs': confs}
+        {"from": admin, "required_confs": confs},
     )
     _log_tx(
         txid=vesting_escrow.tx.txid,
         fn_name="VestingEscrow.deploy",
-        contract_address=vesting_escrow.address
+        contract_address=vesting_escrow.address,
     )
 
     # load vesting data from json
@@ -136,23 +132,18 @@ def vest_tokens(admin, funding_admins, token_address, confs):
         else:
             vested_amounts[i][1] -= 1
 
-    tx = token.approve(vesting_escrow, TOTAL_AMOUNT, {'from': admin, 'required_confs': confs})
+    tx = token.approve(vesting_escrow, TOTAL_AMOUNT, {"from": admin, "required_confs": confs})
     _log_tx(
-        txid=tx.txid,
-        fn_name=tx.fn_name,
-        spender=vesting_escrow.address,
-        amount=TOTAL_AMOUNT,
+        txid=tx.txid, fn_name=tx.fn_name, spender=vesting_escrow.address, amount=TOTAL_AMOUNT,
     )
-    tx = vesting_escrow.add_tokens(TOTAL_AMOUNT, {'from': admin, 'required_confs': confs})
+    tx = vesting_escrow.add_tokens(TOTAL_AMOUNT, {"from": admin, "required_confs": confs})
     _log_tx(
-        txid=tx.txid,
-        fn_name=tx.fn_name,
-        amount=TOTAL_AMOUNT,
+        txid=tx.txid, fn_name=tx.fn_name, amount=TOTAL_AMOUNT,
     )
 
     # convert vested_amounts into input args for `VestingEscrow.fund` calls
     fund_arguments = [
-        ([x[0] for x in vested_amounts[i:i+100]], [x[1] for x in vested_amounts[i:i+100]])
+        ([x[0] for x in vested_amounts[i : i + 100]], [x[1] for x in vested_amounts[i : i + 100]],)
         for i in range(0, len(vested_amounts), 100)
     ]
 
@@ -160,15 +151,14 @@ def vest_tokens(admin, funding_admins, token_address, confs):
     zeros = 100 - len(fund_arguments[-1][0])
     fund_arguments[-1] = (
         fund_arguments[-1][0] + ["0x0000000000000000000000000000000000000000"] * zeros,
-        fund_arguments[-1][1] + [0] * zeros
+        fund_arguments[-1][1] + [0] * zeros,
     )
 
     # use threading to handle the funding across several accounts
     funding_threads = []
     for acct in [admin] + funding_admins:
         thread = threading.Thread(
-            target=_fund_accounts,
-            args=(acct, vesting_escrow, fund_arguments, confs),
+            target=_fund_accounts, args=(acct, vesting_escrow, fund_arguments, confs),
         )
         funding_threads.append(thread)
         thread.start()
@@ -177,23 +167,19 @@ def vest_tokens(admin, funding_admins, token_address, confs):
         thread.join()
 
     # burn all the admin accounts!
-    tx = vesting_escrow.disable_fund_admins({'from': admin, 'required_confs': confs})
+    tx = vesting_escrow.disable_fund_admins({"from": admin, "required_confs": confs})
     _log_tx(
-        txid=tx.txid,
-        fn_name=tx.fn_name,
+        txid=tx.txid, fn_name=tx.fn_name,
     )
     vesting_escrow.commit_transfer_ownership(
-        "0x000000000000000000000000000000000000dead",
-        {'from': admin, 'required_confs': confs}
+        "0x000000000000000000000000000000000000dead", {"from": admin, "required_confs": confs},
     )
     _log_tx(
-        txid=tx.txid,
-        fn_name=tx.fn_name,
+        txid=tx.txid, fn_name=tx.fn_name,
     )
-    vesting_escrow.apply_transfer_ownership({'from': admin, 'required_confs': confs})
+    vesting_escrow.apply_transfer_ownership({"from": admin, "required_confs": confs})
     _log_tx(
-        txid=tx.txid,
-        fn_name=tx.fn_name,
+        txid=tx.txid, fn_name=tx.fn_name,
     )
 
     gas_used = sum(i.gas_used for i in history[start_idx:])

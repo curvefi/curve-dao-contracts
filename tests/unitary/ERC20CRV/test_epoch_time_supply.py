@@ -29,7 +29,7 @@ def test_update_mining_parameters(token, chain, accounts):
     creation_time = token.start_epoch_time()
     new_epoch = creation_time + YEAR - chain.time()
     chain.sleep(new_epoch)
-    token.update_mining_parameters({'from': accounts[0]})
+    token.update_mining_parameters({"from": accounts[0]})
 
 
 def test_update_mining_parameters_same_epoch(token, chain, accounts):
@@ -37,7 +37,7 @@ def test_update_mining_parameters_same_epoch(token, chain, accounts):
     new_epoch = creation_time + YEAR - chain.time()
     chain.sleep(new_epoch - 3)
     with brownie.reverts("dev: too soon!"):
-        token.update_mining_parameters({'from': accounts[0]})
+        token.update_mining_parameters({"from": accounts[0]})
 
 
 def test_mintable_in_timeframe_end_before_start(token, accounts):

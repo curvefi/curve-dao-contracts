@@ -1,11 +1,6 @@
 import json
-from brownie import (
-    accounts,
-    ERC20CRV,
-    VestingEscrow,
-    VestingEscrowFactory,
-    VestingEscrowSimple,
-)
+
+from brownie import ERC20CRV, VestingEscrow, VestingEscrowFactory, VestingEscrowSimple, accounts
 
 from . import deployment_config as config
 
@@ -22,14 +17,14 @@ def live():
     with open(config.DEPLOYMENTS_JSON) as fp:
         deployments = json.load(fp)
 
-    vest_tokens(admin, deployments['ERC20CRV'], config.REQUIRED_CONFIRMATIONS)
+    vest_tokens(admin, deployments["ERC20CRV"], config.REQUIRED_CONFIRMATIONS)
 
 
 def development():
     """
     Vest tokens in a development environment and validate the result.
     """
-    token = ERC20CRV.deploy("Curve DAO Token", "CRV", 18, {'from': accounts[0]})
+    token = ERC20CRV.deploy("Curve DAO Token", "CRV", 18, {"from": accounts[0]})
     vesting_escrow, vested_amounts = vest_tokens(accounts[0], token, 1)
     sanity_check(token, vesting_escrow, vested_amounts)
 
@@ -38,15 +33,15 @@ def vest_tokens(admin, token_address, confs):
     token = ERC20CRV.at(token_address)
 
     # deploy library and vesting factories
-    target = VestingEscrowSimple.deploy({'from': admin, 'required_confs': confs})
+    target = VestingEscrowSimple.deploy({"from": admin, "required_confs": confs})
 
     factory_contracts = []
     for data in config.FACTORY_ESCROWS:
         factory = VestingEscrowFactory.deploy(
-            target, data['admin'], {'from': admin, 'required_confs': confs}
+            target, data["admin"], {"from": admin, "required_confs": confs}
         )
-        token.transfer(factory, data['amount'], {'from': admin, 'required_confs': confs})
-        factory_contracts.append((factory, data['amount']))
+        token.transfer(factory, data["amount"], {"from": admin, "required_confs": confs})
+        factory_contracts.append((factory, data["amount"]))
 
     # deploy standard escrows
     start_time = token.future_epoch_time_write.call()
@@ -55,29 +50,29 @@ def vest_tokens(admin, token_address, confs):
         vesting_escrow = VestingEscrow.deploy(
             token,
             start_time,
-            start_time + data['duration'],
-            data['can_disable'],
+            start_time + data["duration"],
+            data["can_disable"],
             [ZERO_ADDRESS] * 4,
-            {'from': admin, 'required_confs': confs}
+            {"from": admin, "required_confs": confs},
         )
-        data['contract'] = vesting_escrow
+        data["contract"] = vesting_escrow
 
-        total_amount = sum(data['recipients'].values())
-        token.approve(vesting_escrow, total_amount, {'from': admin, 'required_confs': confs})
-        vesting_escrow.add_tokens(total_amount, {'from': admin, 'required_confs': confs})
+        total_amount = sum(data["recipients"].values())
+        token.approve(vesting_escrow, total_amount, {"from": admin, "required_confs": confs})
+        vesting_escrow.add_tokens(total_amount, {"from": admin, "required_confs": confs})
 
-        zeros = 100 - len(data['recipients'])
-        fund_inputs = tuple(data['recipients'].items())
+        zeros = 100 - len(data["recipients"])
+        fund_inputs = tuple(data["recipients"].items())
         recipients = [i[0] for i in fund_inputs] + [ZERO_ADDRESS] * zeros
         amounts = [i[1] for i in fund_inputs] + [0] * zeros
 
-        vesting_escrow.fund(recipients, amounts, {'from': admin, 'required_confs': confs})
+        vesting_escrow.fund(recipients, amounts, {"from": admin, "required_confs": confs})
 
-        if 'admin' in data:
+        if "admin" in data:
             vesting_escrow.commit_transfer_ownership(
-                data['admin'], {'from': admin, 'required_confs': confs}
+                data["admin"], {"from": admin, "required_confs": confs}
             )
-            vesting_escrow.apply_transfer_ownership({'from': admin, 'required_confs': confs})
+            vesting_escrow.apply_transfer_ownership({"from": admin, "required_confs": confs})
 
     print("Deployments finished!\n\nFactories:")
     for factory, amount in factory_contracts:
@@ -85,7 +80,7 @@ def vest_tokens(admin, token_address, confs):
 
     print("\nStandard Escrows:")
     for data in config.STANDARD_ESCROWS:
-        total_amount = sum(data['recipients'].values())
+        total_amount = sum(data["recipients"].values())
         print(
             f"  {data['contract'].address}: {len(data['recipients'])} recipients, "
             f"{total_amount} total tokens, {data['duration']/YEAR} year lock"
@@ -101,8 +96,8 @@ def sanity_check(token, standard_escrows, factory_escrows):
             raise ValueError(f"Incorrect balance in factory {factory.address}")
 
     for data in standard_escrows:
-        escrow = data['contract']
-        total_amount = sum(data['recipients'].values())
+        escrow = data["contract"]
+        total_amount = sum(data["recipients"].values())
         if escrow.initial_locked_supply() != total_amount:
             raise ValueError(
                 f"Unexpected locked supply in {escrow.address}: {escrow.initial_locked_supply()}"
@@ -112,7 +107,7 @@ def sanity_check(token, standard_escrows, factory_escrows):
                 f"Unallocated supply remains in {escrow.address}: {escrow.unallocated_supply()}"
             )
 
-        for recipient, expected in data['recipients'].items():
+        for recipient, expected in data["recipients"].items():
             balance = escrow.initial_locked(recipient)
             if balance != expected:
                 raise ValueError(

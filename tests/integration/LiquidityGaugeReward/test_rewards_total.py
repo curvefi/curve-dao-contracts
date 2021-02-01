@@ -1,6 +1,7 @@
 import brownie
 from brownie import chain
 from brownie.test import strategy
+
 from tests.conftest import approx
 
 
@@ -14,8 +15,9 @@ class StateMachine:
     st_time = strategy("uint", max_value=365 * 86400)
     st_reward = strategy("uint64")
 
-    def __init__(self, accounts, liquidity_gauge_reward, mock_lp_token,
-                 reward_contract, coin_reward):
+    def __init__(
+        self, accounts, liquidity_gauge_reward, mock_lp_token, reward_contract, coin_reward,
+    ):
         self.accounts = accounts
         self.token = mock_lp_token
         self.liquidity_gauge = liquidity_gauge_reward
@@ -75,7 +77,7 @@ class StateMachine:
         assert self.token.balanceOf(st_account) == balance + st_value
 
     def rule_claim(self, st_account):
-        self.liquidity_gauge.claim_rewards({'from': st_account})
+        self.liquidity_gauge.claim_rewards({"from": st_account})
 
     def rule_advance_time(self, st_time):
         """
@@ -110,7 +112,7 @@ class StateMachine:
         chain.sleep(2 * 7 * 86400)
         rewards_claimed = 0
         for act in self.accounts:
-            self.liquidity_gauge.claim_rewards({'from': act})
+            self.liquidity_gauge.claim_rewards({"from": act})
             rewards_claimed += self.coin_reward.balanceOf(act)
 
         if self.rewards_total > 7 * 86400:  # Otherwise we may have 0 claimed
@@ -119,8 +121,14 @@ class StateMachine:
 
 
 def test_state_machine(
-        state_machine, accounts, liquidity_gauge_reward, mock_lp_token,
-        reward_contract, coin_reward, no_call_coverage):
+    state_machine,
+    accounts,
+    liquidity_gauge_reward,
+    mock_lp_token,
+    reward_contract,
+    coin_reward,
+    no_call_coverage,
+):
     # fund accounts to be used in the test
     for acct in accounts[1:5]:
         mock_lp_token.transfer(acct, 10 ** 21, {"from": accounts[0]})
@@ -139,5 +147,5 @@ def test_state_machine(
         mock_lp_token,
         reward_contract,
         coin_reward,
-        settings=settings
+        settings=settings,
     )
