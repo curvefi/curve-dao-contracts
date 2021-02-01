@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
-from brownie import accounts, chain, Contract, FeeDistributor
+
+from brownie import Contract, FeeDistributor, accounts, chain
 
 
 def main():
@@ -10,10 +11,14 @@ def main():
 
     # sept 17, 2020 - 2 days before admin fee collection begins
     start_time = 1600300800
-    distributor = FeeDistributor.deploy(voting_escrow, start_time, fee_token, alice, alice, {'from': alice})
+    distributor = FeeDistributor.deploy(
+        voting_escrow, start_time, fee_token, alice, alice, {"from": alice}
+    )
 
     # transfer 2m USD of 3CRV
-    fee_token.mint(distributor, 2000000 * 10**18, {"from": "0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7"})
+    fee_token.mint(
+        distributor, 2000000 * 10 ** 18, {"from": "0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7"},
+    )
 
     distributor.checkpoint_token()
     distributor.checkpoint_total_supply()
@@ -21,9 +26,9 @@ def main():
     distributor.checkpoint_token()
     distributor.checkpoint_total_supply()
 
-    with Path('votelocks-11237343.json').open() as fp:
+    with Path("votelocks-11237343.json").open() as fp:
         data = json.load(fp)
-    data = set([i['provider'] for i in data])
+    data = set([i["provider"] for i in data])
 
     for c, acct in enumerate(data):
         print(f"Claiming, {c}/{len(data)}")
@@ -33,7 +38,7 @@ def main():
         epoch = 0
 
         while epoch < max_epoch:
-            distributor.claim({'from': acct})
+            distributor.claim({"from": acct})
             epoch = distributor.user_epoch_of(acct)
 
     amount = fee_token.balanceOf(distributor)

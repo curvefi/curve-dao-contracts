@@ -1,10 +1,10 @@
 from collections import deque
 from enum import IntEnum
 
+import pytest
 from brownie import chain
 from brownie.test import given, strategy
 from hypothesis import settings
-import pytest
 
 # number of liquidity gauges
 GAUGE_COUNT = 100
@@ -22,6 +22,7 @@ class ActionEnum(IntEnum):
     """
     Enum of possible gauge actions in a test round.
     """
+
     vote = 0
     deposit = 1
     withdraw = 2
@@ -30,33 +31,26 @@ class ActionEnum(IntEnum):
 
     @classmethod
     def get_action(cls, value: int):
-        value = len(cls) * value // (GAUGE_COUNT+1)
+        value = len(cls) * value // (GAUGE_COUNT + 1)
         return cls(value)
 
 
 @pytest.fixture(scope="module", autouse=True)
-def setup(
-    accounts,
-    gauge_controller,
-    mock_lp_token,
-    minter,
-    token,
-    voting_escrow
-):
+def setup(accounts, gauge_controller, mock_lp_token, minter, token, voting_escrow):
     # general test setup
-    token.set_minter(minter, {'from': accounts[0]})
+    token.set_minter(minter, {"from": accounts[0]})
 
     while len(accounts) < USER_COUNT:
         accounts.add()
 
     for i in range(len(accounts)):
-        mock_lp_token.transfer(accounts[i], 10**22, {'from': accounts[0]})
-        token.transfer(accounts[i], 10**22, {'from': accounts[0]})
-        token.approve(voting_escrow, 10**22, {'from': accounts[i]})
-        voting_escrow.create_lock(10**22, chain.time() + 86400 * 365 * 2, {'from': accounts[i]})
+        mock_lp_token.transfer(accounts[i], 10 ** 22, {"from": accounts[0]})
+        token.transfer(accounts[i], 10 ** 22, {"from": accounts[0]})
+        token.approve(voting_escrow, 10 ** 22, {"from": accounts[i]})
+        voting_escrow.create_lock(10 ** 22, chain.time() + 86400 * 365 * 2, {"from": accounts[i]})
 
     for i in range(TYPE_COUNT):
-        gauge_controller.add_type(i, 10**18, {'from': accounts[0]})
+        gauge_controller.add_type(i, 10 ** 18, {"from": accounts[0]})
 
 
 @pytest.fixture(scope="module")
@@ -64,14 +58,14 @@ def gauges(LiquidityGauge, accounts, gauge_controller, mock_lp_token, minter, se
     # deploy `GAUGE_COUNT` liquidity gauges and return them as a list
     gauges = []
     for i in range(GAUGE_COUNT):
-        contract = LiquidityGauge.deploy(mock_lp_token, minter, accounts[0], {'from': accounts[0]})
-        gauge_controller.add_gauge(contract, i % TYPE_COUNT, {'from': accounts[0]})
+        contract = LiquidityGauge.deploy(mock_lp_token, minter, accounts[0], {"from": accounts[0]})
+        gauge_controller.add_gauge(contract, i % TYPE_COUNT, {"from": accounts[0]})
         gauges.append(contract)
 
     yield gauges
 
 
-@given(st_actions=strategy(f'uint[{GAUGE_COUNT}]', max_value=GAUGE_COUNT, unique=True))
+@given(st_actions=strategy(f"uint[{GAUGE_COUNT}]", max_value=GAUGE_COUNT, unique=True))
 @settings(max_examples=TEST_RUNS)
 def test_scalability(accounts, gauges, gauge_controller, mock_lp_token, minter, st_actions):
 
@@ -85,7 +79,7 @@ def test_scalability(accounts, gauges, gauge_controller, mock_lp_token, minter, 
     # this way accounts never vote too often
     last_voted = deque(accounts)
 
-    balances = {i: [0]*len(accounts) for i in gauges}
+    balances = {i: [0] * len(accounts) for i in gauges}
 
     for i in range(TEST_ROUNDS):
         print(f"Round {i}")
@@ -104,17 +98,17 @@ def test_scalability(accounts, gauges, gauge_controller, mock_lp_token, minter, 
             idx = list(accounts).index(acct)
 
             if action == ActionEnum.vote:
-                gauge_controller.vote_for_gauge_weights(gauge, 100, {'from': last_voted[0]})
+                gauge_controller.vote_for_gauge_weights(gauge, 100, {"from": last_voted[0]})
 
             elif action == ActionEnum.deposit:
-                mock_lp_token.approve(gauge, 10**17, {'from': acct})
-                gauge.deposit(10**17, {'from': acct})
-                balances[gauge][idx] += 10**17
+                mock_lp_token.approve(gauge, 10 ** 17, {"from": acct})
+                gauge.deposit(10 ** 17, {"from": acct})
+                balances[gauge][idx] += 10 ** 17
 
             elif action == ActionEnum.withdraw:
                 amount = balances[gauge][idx]
-                gauge.withdraw(amount, {'from': acct})
+                gauge.withdraw(amount, {"from": acct})
                 balances[gauge][idx] = 0
 
             elif action == ActionEnum.mint:
-                minter.mint(gauge, {'from': acct})
+                minter.mint(gauge, {"from": acct})

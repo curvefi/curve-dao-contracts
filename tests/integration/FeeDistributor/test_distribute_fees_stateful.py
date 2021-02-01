@@ -1,4 +1,5 @@
 from collections import defaultdict
+
 from brownie import chain
 from brownie.test import strategy
 
@@ -8,10 +9,10 @@ YEAR = 86400 * 365
 
 class StateMachine:
 
-    st_acct = strategy('address', length=5)
-    st_weeks = strategy('uint256', min_value=1, max_value=12)
-    st_amount = strategy('decimal', min_value=1, max_value=100, places=3)
-    st_time = strategy('uint256', min_value=0, max_value=86400 * 3)
+    st_acct = strategy("address", length=5)
+    st_weeks = strategy("uint256", min_value=1, max_value=12)
+    st_amount = strategy("decimal", min_value=1, max_value=100, places=3)
+    st_time = strategy("uint256", min_value=0, max_value=86400 * 3)
 
     def __init__(cls, distributor, accounts, voting_escrow, fee_coin):
         cls.distributor = distributor
@@ -23,7 +24,7 @@ class StateMachine:
         self.locked_until = {self.accounts[0]: self.voting_escrow.locked__end(self.accounts[0])}
         self.fees = {}
         self.user_claims = defaultdict(dict)
-        self.total_fees = 10**18
+        self.total_fees = 10 ** 18
 
     def _check_active_lock(self, st_acct):
         # check if `st_acct` has an active lock
@@ -31,7 +32,7 @@ class StateMachine:
             return False
 
         if self.locked_until[st_acct] < chain.time():
-            self.voting_escrow.withdraw({'from': st_acct})
+            self.voting_escrow.withdraw({"from": st_acct})
             del self.locked_until[st_acct]
             return False
 
@@ -75,7 +76,7 @@ class StateMachine:
 
         if not self._check_active_lock(st_acct):
             until = ((chain.time() // WEEK) + st_weeks) * WEEK
-            self.voting_escrow.create_lock(int(st_amount * 10**18), until, {'from': st_acct})
+            self.voting_escrow.create_lock(int(st_amount * 10 ** 18), until, {"from": st_acct})
             self.locked_until[st_acct] = until
 
     def rule_extend_lock(self, st_acct, st_weeks, st_time):
@@ -98,7 +99,7 @@ class StateMachine:
             until = ((self.locked_until[st_acct] // WEEK) + st_weeks) * WEEK
             until = min(until, (chain.time() + YEAR * 4) // WEEK * WEEK)
 
-            self.voting_escrow.increase_unlock_time(until, {'from': st_acct})
+            self.voting_escrow.increase_unlock_time(until, {"from": st_acct})
             self.locked_until[st_acct] = until
 
     def rule_increase_lock_amount(self, st_acct, st_amount, st_time):
@@ -118,7 +119,7 @@ class StateMachine:
         chain.sleep(st_time)
 
         if self._check_active_lock(st_acct):
-            self.voting_escrow.increase_amount(int(st_amount * 10**18), {'from': st_acct})
+            self.voting_escrow.increase_amount(int(st_amount * 10 ** 18), {"from": st_acct})
 
     def rule_claim_fees(self, st_acct, st_time):
         """
@@ -135,10 +136,13 @@ class StateMachine:
 
         claimed = self.fee_coin.balanceOf(st_acct)
 
-        tx = self.distributor.claim({'from': st_acct})
+        tx = self.distributor.claim({"from": st_acct})
 
         claimed = self.fee_coin.balanceOf(st_acct) - claimed
-        self.user_claims[st_acct][tx.timestamp] = (claimed, self.distributor.time_cursor_of(st_acct))
+        self.user_claims[st_acct][tx.timestamp] = (
+            claimed,
+            self.distributor.time_cursor_of(st_acct),
+        )
 
     def rule_transfer_fees(self, st_amount, st_time):
         """
@@ -156,8 +160,8 @@ class StateMachine:
         """
         chain.sleep(st_time)
 
-        amount = int(st_amount * 10**18)
-        tx = self.fee_coin._mint_for_testing(amount, {'from': self.distributor.address})
+        amount = int(st_amount * 10 ** 18)
+        tx = self.fee_coin._mint_for_testing(amount, {"from": self.distributor.address})
 
         if not self.distributor.can_checkpoint_token():
             self.distributor.toggle_allow_checkpoint_token()
@@ -179,8 +183,8 @@ class StateMachine:
         """
         chain.sleep(st_time)
 
-        amount = int(st_amount * 10**18)
-        tx = self.fee_coin._mint_for_testing(amount, {'from': self.distributor.address})
+        amount = int(st_amount * 10 ** 18)
+        tx = self.fee_coin._mint_for_testing(amount, {"from": self.distributor.address})
 
         self.fees[tx.timestamp] = amount
         self.total_fees += amount
@@ -197,18 +201,21 @@ class StateMachine:
         # Because tokens for current week are obtained in the next week
         # And that is by design
         self.distributor.checkpoint_token()
-        chain.sleep(WEEK*2)
+        chain.sleep(WEEK * 2)
         self.distributor.checkpoint_token()
 
         for acct in self.accounts:
-            self.distributor.claim({'from': acct})
+            self.distributor.claim({"from": acct})
 
         t0 = self.distributor.start_time()
         t1 = chain[-1].timestamp // WEEK * WEEK
         tokens_per_user_per_week = {
             acct: [
-                self.distributor.tokens_per_week(w) * self.distributor.ve_for_at(acct, w) // self.distributor.ve_supply(w)
-                for w in range(t0, t1+WEEK, WEEK)]
+                self.distributor.tokens_per_week(w)
+                * self.distributor.ve_for_at(acct, w)
+                // self.distributor.ve_supply(w)
+                for w in range(t0, t1 + WEEK, WEEK)
+            ]
             for acct in self.accounts[:5]
         }
 
@@ -221,11 +228,11 @@ class StateMachine:
 def test_stateful(state_machine, accounts, voting_escrow, fee_distributor, coin_a, token):
     for i in range(5):
         # ensure accounts[:5] all have tokens that may be locked
-        token.approve(voting_escrow, 2**256-1, {'from': accounts[i]})
-        token.transfer(accounts[i], 10**18 * 10000000, {'from': accounts[0]})
+        token.approve(voting_escrow, 2 ** 256 - 1, {"from": accounts[i]})
+        token.transfer(accounts[i], 10 ** 18 * 10000000, {"from": accounts[0]})
 
     # accounts[0] locks 10,000,000 tokens for 2 years - longer than the maximum duration of the test
-    voting_escrow.create_lock(10**18 * 10000000, chain.time() + YEAR * 2, {'from': accounts[0]})
+    voting_escrow.create_lock(10 ** 18 * 10000000, chain.time() + YEAR * 2, {"from": accounts[0]})
 
     # a week later we deploy the fee distributor
     chain.sleep(WEEK)
@@ -237,5 +244,5 @@ def test_stateful(state_machine, accounts, voting_escrow, fee_distributor, coin_
         accounts[:5],
         voting_escrow,
         coin_a,
-        settings={'stateful_step_count': 30}
+        settings={"stateful_step_count": 30},
     )

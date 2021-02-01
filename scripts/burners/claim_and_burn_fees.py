@@ -1,9 +1,9 @@
-import requests
 import sys
 import time
 import warnings
 
-from brownie import Contract, ETH_ADDRESS, ZERO_ADDRESS, accounts
+import requests
+from brownie import ETH_ADDRESS, ZERO_ADDRESS, Contract, accounts
 from brownie.network.gas.strategies import GasNowScalingStrategy
 
 warnings.filterwarnings("ignore")
@@ -25,7 +25,6 @@ COINS = [
     # LP Burner - for withdrawing LP tokens
     # this burner is called first, as it forwards into other burners
     "0x075b1bb99792c9E1041bA13afEf80C91a1e70fB3",  # sbtcCRV
-
     # BTC burner, converts to USDC and sends to underlying burner
     "0xeb4c2781e4eba804ce9a9803c67d0893436bb27d",  # renBTC
     "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",  # wBTC
@@ -35,25 +34,20 @@ COINS = [
     "0x5228a22e72ccC52d415EcFd199F99D0665E7733b",  # pBTC
     "0x9be89d2a4cd102d8fecc6bf9da793be995c22541",  # bBTC
     "0x8064d9Ae6cDf087b1bcd5BDf3531bD5d8C537a68",  # oBTC
-
     # ETH burner, converts to USDC and sends to underlying burner
     "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84",  # stETH
     "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",  # ETH
     "0x5e74C9036fb86BD7eCdcb084a0673EFc32eA31cb",  # sETH
-
     # Euro burner, converts to USDC and sends to underlying burner
     "0xdB25f211AB05b1c97D595516F45794528a807ad8",  # EURS
     "0xD71eCFF9342A5Ced620049e616c5035F1dB98620",  # sEUR
-
     # aToken burner, unwraps and sends to underlying burner
     "0x028171bCA77440897B824Ca71D1c56caC55b68A3",  # aDAI
     "0xBcca60bB61934080951369a648Fb03DF4F96263C",  # aUSDC
     "0x3Ed3B47Dd13EC9a98b44e6204A523E766B225811",  # aUSDT
-
     # cToken burner, unwraps and sends to underlying burner
     "0x39aa39c021dfbae8fac545936693ac917d5e7563",  # cDAI
     "0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643",  # cUSDC
-
     # yToken burner, unwraps and sends to underlying burner
     "0xC2cB1040220768554cf699b0d863A3cd4324ce32",  # busd/yDAI
     "0x26EA744E5B887E5205727f55dFBE8685e3b21951",  # busd/yUSDC
@@ -66,7 +60,6 @@ COINS = [
     "0x1bE5d71F2dA660BFdee8012dDc58D024448A0A59",  # pax/yUSDT
     "0x04bC0Ab673d88aE9dbC9DA2380cB6B79C4BCa9aE",  # yTUSD
     "0x73a052500105205d34Daf004eAb301916DA8190f",  # yBUSD
-
     # meta-burner, for assets that can be directly swapped to 3CRV
     "0x056fd409e1d7a124bd7017459dfea2f387b6d5cd",  # GUSD
     "0xdf574c24545e5ffecb9a659c229253d4111d87e1",  # HUSD
@@ -76,10 +69,8 @@ COINS = [
     "0x196f4727526eA7FB1e17b2071B3d8eAA38486988",  # RSV
     "0x5bc25f649fc4e26069ddf4cf4010f9f706c23831",  # DUSD
     "0xa47c8bf37f92aBed4A126BDA807A7b7498661acD",  # UST
-
     # USDN burner
     "0x674C6Ad92Fd080e4004b2312b45f796a192D27a0",  # USDN
-
     # underlying burner
     # called last, as other burners forward to it
     "0x6B175474E89094C44Da98b954EedeAC495271d0F",  # DAI
@@ -126,15 +117,15 @@ def _fetch_rates(coin_list):
     # fetch the current USD rates for a list of coins
     if not _rate_cache:
         _rate_cache[ETH_ADDRESS.lower()] = requests.get(
-            'https://api.coingecko.com/api/v3/simple/price',
-            params={"ids": "ethereum", 'vs_currencies': "usd"},
-        ).json()['ethereum']['usd']
+            "https://api.coingecko.com/api/v3/simple/price",
+            params={"ids": "ethereum", "vs_currencies": "usd"},
+        ).json()["ethereum"]["usd"]
         response = requests.get(
             "https://api.coingecko.com/api/v3/simple/token_price/ethereum",
-            params={'contract_addresses': ','.join(COINS), 'vs_currencies': "usd"}
+            params={"contract_addresses": ",".join(COINS), "vs_currencies": "usd"},
         ).json()
         for addr in response:
-            _rate_cache[addr.lower()] = response[addr]['usd']
+            _rate_cache[addr.lower()] = response[addr]["usd"]
 
     rates = {}
     for coin in [i for i in coin_list if i in _rate_cache]:
@@ -166,7 +157,7 @@ def _get_admin_balances(pool, coin_list):
             decimals = Contract(coin).decimals()
         else:
             decimals = 18
-        balance = balance / 10**decimals * rates[coin]
+        balance = balance / 10 ** decimals * rates[coin]
         admin_balances.append(balance)
 
     return admin_balances
@@ -184,7 +175,7 @@ def get_pending():
     for addr, value in sorted(pending.items(), key=lambda k: k[1], reverse=True):
         print(f"{addr}: ${value:,.2f}")
 
-    print(f'\nTotal pending claimable amount: ${sum(pending.values()):,.2f} USD')
+    print(f"\nTotal pending claimable amount: ${sum(pending.values()):,.2f} USD")
 
     return pending
 
@@ -211,8 +202,8 @@ def main(acct=CALLER, claim_threshold=CLAIM_THRESHOLD):
             to_claim.append(pool_list[i])
 
         if i == len(pool_list) - 1 or len(to_claim) == 20:
-            to_claim += [ZERO_ADDRESS] * (20-len(to_claim))
-            proxy.withdraw_many(to_claim, {'from': acct, 'gas_price': gas_strategy})
+            to_claim += [ZERO_ADDRESS] * (20 - len(to_claim))
+            proxy.withdraw_many(to_claim, {"from": acct, "gas_price": gas_strategy})
             to_claim = []
 
     # call burners to convert fee tokens to 3CRV
@@ -226,11 +217,14 @@ def main(acct=CALLER, claim_threshold=CLAIM_THRESHOLD):
         elif Contract(COINS[i]).balanceOf(proxy) > 0:
             to_burn.append(COINS[i])
 
-        to_burn_padded = to_burn + [ZERO_ADDRESS] * (20-len(to_burn))
+        to_burn_padded = to_burn + [ZERO_ADDRESS] * (20 - len(to_burn))
 
         # estimate gas to decide when to burn - some of the burners are gas guzzlers
-        if i == len(COINS) - 1 or proxy.burn_many.estimate_gas(to_burn_padded, {'from': acct}) > 2000000:
-            tx = proxy.burn_many(to_burn_padded, {'from': acct, 'gas_price': gas_strategy})
+        if (
+            i == len(COINS) - 1
+            or proxy.burn_many.estimate_gas(to_burn_padded, {"from": acct}) > 2000000
+        ):
+            tx = proxy.burn_many(to_burn_padded, {"from": acct, "gas_price": gas_strategy})
             to_burn = []
             if not burn_start:
                 # record the timestamp of the first tx - need to
@@ -251,15 +245,15 @@ def main(acct=CALLER, claim_threshold=CLAIM_THRESHOLD):
             if settlement_time:
                 print("Sleeping until synths have time to settle...")
                 time.sleep(settlement_time)
-            Contract(burner).execute({'from': acct, 'gas_price': gas_strategy})
+            Contract(burner).execute({"from": acct, "gas_price": gas_strategy})
 
     # call `execute` on the underlying burner
     # deposits DAI/USDC/USDT into 3pool and transfers the 3CRV to the fee distributor
     underlying_burner = Contract("0x874210cF3dC563B98c137927e7C951491A2e9AF3")
-    underlying_burner.execute({'from': acct, 'gas_price': gas_strategy})
+    underlying_burner.execute({"from": acct, "gas_price": gas_strategy})
 
     # finally, call to burn 3CRV - this also triggers a token checkpoint
-    proxy.burn(lp_tripool, {'from': acct, 'gas_price': gas_strategy})
+    proxy.burn(lp_tripool, {"from": acct, "gas_price": gas_strategy})
 
     final = lp_tripool.balanceOf(distributor)
     print(f"Success! Total 3CRV fowarded to distributor: {(final-initial_balance)/1e18:.4f}")
