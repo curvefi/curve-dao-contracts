@@ -28,12 +28,12 @@ COINS = [
     # BTC burner, converts to USDC and sends to underlying burner
     "0xeb4c2781e4eba804ce9a9803c67d0893436bb27d",  # renBTC
     "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",  # wBTC
-    "0xfe18be6b3bd88a2d2a7f928d00292e7a9963cfc6",  # sBTC
     "0x0316EB71485b0Ab14103307bf65a021042c6d380",  # hBTC
     "0x8dAEBADE922dF735c38C80C7eBD708Af50815fAa",  # tBTC
     "0x5228a22e72ccC52d415EcFd199F99D0665E7733b",  # pBTC
     "0x9be89d2a4cd102d8fecc6bf9da793be995c22541",  # bBTC
     "0x8064d9Ae6cDf087b1bcd5BDf3531bD5d8C537a68",  # oBTC
+    "0xfe18be6b3bd88a2d2a7f928d00292e7a9963cfc6",  # sBTC
     # ETH burner, converts to USDC and sends to underlying burner
     "0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84",  # stETH
     "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",  # ETH
@@ -233,19 +233,6 @@ def main(acct=CALLER, claim_threshold=CLAIM_THRESHOLD):
 
     # wait on synths to finalize
     time.sleep(max(burn_start + 180 - time.time(), 0))
-
-    # call `execute` on synth burners that require it
-    # converts settled sUSD to USDC and sends to the underlying burner
-    susd = Contract("0x57Ab1ec28D129707052df4dF418D58a2D46d5f51")
-    exchanger = Contract("0x0bfDc04B38251394542586969E2356d0D731f7DE")
-    susd_currency_key = "0x7355534400000000000000000000000000000000000000000000000000000000"
-    for burner in SYNTH_BURNERS:
-        if susd.balanceOf(burner) > 0:
-            settlement_time = exchanger.maxSecsLeftInWaitingPeriod(burner, susd_currency_key)
-            if settlement_time:
-                print("Sleeping until synths have time to settle...")
-                time.sleep(settlement_time)
-            Contract(burner).execute({"from": acct, "gas_price": gas_strategy})
 
     # call `execute` on the underlying burner
     # deposits DAI/USDC/USDT into 3pool and transfers the 3CRV to the fee distributor
