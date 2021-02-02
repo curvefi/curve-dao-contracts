@@ -1,4 +1,4 @@
-# @version 0.2.7
+# @version 0.2.8
 """
 @title yToken Burner
 @notice Converts yTokens to USDC and transfers to `UnderlyingBurner`

@@ -1,4 +1,4 @@
-# @version 0.2.7
+# @version 0.2.8
 """
 @title cToken Burner
 @notice Converts cTokens lending coins to USDC and transfers to `UnderlyingBurner`
