@@ -1,3 +1,4 @@
+import json
 import warnings
 
 import requests
@@ -46,10 +47,8 @@ ACTIONS = [
     # ("target", "fn_name", *args),
 ]
 
-# metadata description to include with vote
-# ipfs content should be in the form `{"text":"a description of the vote"}`
-# you can use https://ipfsbrowser.com/ to pin the description file to IPFS
-DESCRIPTION = "ipfs:[IPFS HASH HERE]"
+# description of the vote, will be pinned to IPFS
+DESCRIPTION = "Add liquidity gauges and enable fee claiming for new pools."
 
 
 def prepare_evm_script():
@@ -68,8 +67,12 @@ def prepare_evm_script():
 
 
 def make_vote(sender=SENDER):
-    aragon = Contract(TARGET["voting"])
+    text = json.dumps({"text": DESCRIPTION})
+    response = requests.post("https://ipfs.infura.io:5001/api/v0/add", files={"file": text})
+    ipfs_hash = response.json()["Hash"]
+    print(f"ipfs hash: {ipfs_hash}")
 
+    aragon = Contract(TARGET["voting"])
     evm_script = prepare_evm_script()
     if TARGET.get("forwarder"):
         # the emergency DAO only allows new votes via a forwarder contract
@@ -81,7 +84,7 @@ def make_vote(sender=SENDER):
         tx = Contract(TARGET["forwarder"]).forward(evm_script, {"from": sender})
     else:
         print(f"Target: {aragon.address}\nEVM script: {evm_script}")
-        tx = aragon.newVote(evm_script, DESCRIPTION, False, False, {"from": sender})
+        tx = aragon.newVote(evm_script, f"ipfs:{ipfs_hash}", False, False, {"from": sender})
 
     vote_id = tx.events["StartVote"]["voteId"]
 
