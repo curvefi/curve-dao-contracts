@@ -24,10 +24,12 @@ interface AddressProvider:
     def get_address(_id: uint256) -> address: view
 
 interface Synthetix:
-    def exchange(
+    def exchangeWithTracking(
         sourceCurrencyKey: bytes32,
         sourceAmount: uint256,
         destinationCurrencyKey: bytes32,
+        originator: address,
+        trackingCode: bytes32,
     ): nonpayable
     def settle(currencyKey: bytes32) -> uint256[3]: nonpayable
 
@@ -46,6 +48,7 @@ USDC: constant(address) = TRIPOOL_COINS[1]
 SNX: constant(address) = 0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F
 SUSD: constant(address) = 0x57Ab1ec28D129707052df4dF418D58a2D46d5f51
 SUSD_CURRENCY_KEY: constant(bytes32) = 0x7355534400000000000000000000000000000000000000000000000000000000
+TRACKING_CODE: constant(bytes32) = 0x4355525645000000000000000000000000000000000000000000000000000000
 
 is_approved: HashMap[address, HashMap[address, bool]]
 
@@ -158,7 +161,7 @@ def convert_synth(_currency_key: bytes32, _amount: uint256) -> bool:
     @param _amount Amount of the synth to convert
     @return bool success
     """
-    Synthetix(SNX).exchange(_currency_key, _amount, SUSD_CURRENCY_KEY)
+    Synthetix(SNX).exchangeWithTracking(_currency_key, _amount, SUSD_CURRENCY_KEY, self, TRACKING_CODE)
     return True
 
 
