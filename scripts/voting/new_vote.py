@@ -11,14 +11,20 @@ warnings.filterwarnings("ignore")
 # modify the constants below according the the comments, and then use `simulate` in
 # a forked mainnet to verify the result of the vote prior to broadcasting on mainnet
 
-# addresses related to the DAO - these should not need modifications
-CURVE_DAO = {
+# addresses related to the DAO - these should not need modification
+CURVE_DAO_OWNERSHIP = {
     "agent": "0x40907540d8a6c65c637785e8f8b742ae6b0b9968",
     "voting": "0xe478de485ad2fe566d49342cbd03e49ed7db3356",
     "token": "0x5f3b5DfEb7B28CDbD7FAba78963EE202a494e2A2",
     "quorum": 30,
 }
 
+CURVE_DAO_PARAM = {
+    "agent": "0x4eeb3ba4f221ca16ed4a0cc7254e2e32df948c5f",
+    "voting": "0xbcff8b0b9419b9a88c44546519b1e909cf330399",
+    "token": "0x5f3b5DfEb7B28CDbD7FAba78963EE202a494e2A2",
+    "quorum": 15,
+}
 
 EMERGENCY_DAO = {
     "forwarder": "0xf409Ce40B5bb1e4Ef8e97b1979629859c6d5481f",
@@ -29,7 +35,7 @@ EMERGENCY_DAO = {
 }
 
 # the intended target of the vote, should be one of the above constant dicts
-TARGET = CURVE_DAO
+TARGET = CURVE_DAO_OWNERSHIP
 
 # address to create the vote from - you will need to modify this prior to mainnet use
 SENDER = accounts.at("0x9B44473E223f8a3c047AD86f387B80402536B029", force=True)
@@ -38,17 +44,23 @@ SENDER = accounts.at("0x9B44473E223f8a3c047AD86f387B80402536B029", force=True)
 # in the format (target, function name, *input args).
 #
 # for example, to call:
-# `GaugeController("0x2F50D538606Fa9EDD2B11E2446BEb18C9D5846bB").add_gauge("0xFA712...", 0, 0)
+# GaugeController("0x2F50D538606Fa9EDD2B11E2446BEb18C9D5846bB").add_gauge("0xFA712...", 0, 0)
 #
 # use the following:
 # [("0x2F50D538606Fa9EDD2B11E2446BEb18C9D5846bB", "add_gauge", "0xFA712...", 0, 0),]
+#
+# commonly used addresses:
+# GaugeController - 0x2F50D538606Fa9EDD2B11E2446BEb18C9D5846bB
+# GaugeProxy - 0x519AFB566c05E00cfB9af73496D00217A630e4D5
+# PoolProxy - 0xeCb456EA5365865EbAb8a2661B0c503410e9B347
+
 
 ACTIONS = [
     # ("target", "fn_name", *args),
 ]
 
 # description of the vote, will be pinned to IPFS
-DESCRIPTION = "Add liquidity gauges and enable fee claiming for new pools."
+DESCRIPTION = "A description of the vote."
 
 
 def prepare_evm_script():
