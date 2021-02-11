@@ -23,25 +23,15 @@ interface RegistrySwap:
         _receiver: address,
     ) -> uint256: payable
 
-interface Synthetix:
-    def exchange(
-        sourceCurrencyKey: bytes32,
-        sourceAmount: uint256,
-        destinationCurrencyKey: bytes32,
-    ): nonpayable
-    def settle(currencyKey: bytes32) -> uint256[3]: nonpayable
+interface UnderlyingBurner:
+    def convert_synth(_currency_key: bytes32, _amount: uint256) -> bool: nonpayable
 
 
 ADDRESS_PROVIDER: constant(address) = 0x0000000022D53366457F9d5E68Ec105046FC4383
-
-SNX: constant(address) = 0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F
 SETH: constant(address) = 0x5e74C9036fb86BD7eCdcb084a0673EFc32eA31cb
-SUSD: constant(address) = 0x57Ab1ec28D129707052df4dF418D58a2D46d5f51
-USDC: constant(address) = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
 
 # currency keys used to identify synths during exchange
 SETH_CURRENCY_KEY: constant(bytes32) = 0x7345544800000000000000000000000000000000000000000000000000000000
-SUSD_CURRENCY_KEY: constant(bytes32) = 0x7355534400000000000000000000000000000000000000000000000000000000
 
 
 is_approved: HashMap[address, HashMap[address, bool]]
@@ -169,7 +159,12 @@ def burn(_coin: address) -> bool:
         amount = ERC20(coin).balanceOf(self)
 
     if amount != 0:
-        if coin != SETH:
+        if coin == SETH:
+            # transfer sBTC to underlying burner and convert to sUSD
+            target: address = self.receiver
+            ERC20(SETH).transfer(target, amount)
+            UnderlyingBurner(target).convert_synth(SETH_CURRENCY_KEY, amount)
+        else:
             registry_swap: address = AddressProvider(ADDRESS_PROVIDER).get_address(2)
             swap_for: address = self.swap_for[coin]
             if swap_for != ZERO_ADDRESS:
@@ -183,34 +178,6 @@ def burn(_coin: address) -> bool:
 
             # swap to sETH
             self._swap(registry_swap, coin, SETH, amount, self)
-
-        # convert sETH to sUSD
-        Synthetix(SNX).exchange(
-            SETH_CURRENCY_KEY,
-            ERC20(SETH).balanceOf(self),
-            SUSD_CURRENCY_KEY,
-        )
-
-    return True
-
-
-@external
-def execute() -> bool:
-    """
-    @notice Convert sUSD to USDC and transfer to the underlying burner
-    @dev Synths are locked for 3 minutes after they are exchanged, so
-         this call will revert unless sufficient time has passed since
-         the last `burn`
-    @return bool success
-    """
-    assert not self.is_killed  # dev: is killed
-
-    amount: uint256 = ERC20(SUSD).balanceOf(self)
-
-    if amount != 0:
-        Synthetix(SNX).settle(SUSD_CURRENCY_KEY)
-        registry_swap: address = AddressProvider(ADDRESS_PROVIDER).get_address(2)
-        self._swap(registry_swap, SUSD, USDC, amount, self.receiver)
 
     return True
 

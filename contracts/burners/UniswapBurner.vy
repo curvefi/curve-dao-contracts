@@ -1,16 +1,22 @@
 # @version 0.2.8
 """
-@title idleToken Burner
-@notice Converts idleTokens lending coins to USDC and transfers to `UnderlyingBurner`
+@title Uniswap Burner
+@notice Swaps coins to USDC using Uniswap or Sushi, and transfers to `UnderlyingBurner`
 """
 
 from vyper.interfaces import ERC20
 
 
-interface IdleToken:
-    def redeemIdleToken(_amount: uint256) -> uint256: nonpayable
-    def token() -> address: view
+WETH: constant(address) = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2
+USDC: constant(address) = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
 
+ROUTERS: constant(address[2]) = [
+    0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D,  # uniswap
+    0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F   # sushi
+]
+
+
+is_approved: HashMap[address, HashMap[address, bool]]
 
 receiver: public(address)
 recovery: public(address)
@@ -44,8 +50,8 @@ def __init__(_receiver: address, _recovery: address, _owner: address, _emergency
 @external
 def burn(_coin: address) -> bool:
     """
-    @notice Unwrap `_coin` and transfer to the underlying burner
-    @param _coin Address of the coin being unwrapped
+    @notice Receive `_coin` and swap it for USDC using Uniswap or Sushi
+    @param _coin Address of the coin being converted
     @return bool success
     """
     assert not self.is_killed  # dev: is killed
@@ -53,29 +59,78 @@ def burn(_coin: address) -> bool:
     # transfer coins from caller
     amount: uint256 = ERC20(_coin).balanceOf(msg.sender)
     if amount != 0:
-        ERC20(_coin).transferFrom(msg.sender, self, amount)
-
-    # get actual balance in case of transfer fee or pre-existing balance
-    amount = ERC20(_coin).balanceOf(self)
-
-    if amount != 0:
-        # unwrap idleTokens for underlying asset
-        IdleToken(_coin).redeemIdleToken(amount)
-        underlying: address = IdleToken(_coin).token()
-        amount = ERC20(underlying).balanceOf(self)
-
-        # transfer underlying to underlying burner
         response: Bytes[32] = raw_call(
-            underlying,
+            _coin,
             concat(
-                method_id("transfer(address,uint256)"),
-                convert(self.receiver, bytes32),
+                method_id("transferFrom(address,address,uint256)"),
+                convert(msg.sender, bytes32),
+                convert(self, bytes32),
                 convert(amount, bytes32),
             ),
             max_outsize=32,
         )
         if len(response) != 0:
             assert convert(response, bool)
+
+    # get actual balance in case of transfer fee or pre-existing balance
+    amount = ERC20(_coin).balanceOf(self)
+
+    best_expected: uint256 = 0
+    router: address = ZERO_ADDRESS
+
+    # check the rates on uniswap and sushi to see which is the better option
+    # vyper doesn't support dynamic arrays, so we build the calldata manually
+    for addr in ROUTERS:
+        response: Bytes[128] = raw_call(
+            addr,
+            concat(
+                method_id("getAmountsOut(uint256,address[])"),
+                convert(amount, bytes32),
+                convert(64, bytes32),
+                convert(3, bytes32),
+                convert(_coin, bytes32),
+                convert(WETH, bytes32),
+                convert(USDC, bytes32),
+            ),
+            max_outsize=128
+        )
+        expected: uint256 = convert(slice(response, 96, 32), uint256)
+        if expected > best_expected:
+            best_expected = expected
+            router = addr
+
+    # make sure the router is approved to transfer the coin
+    if not self.is_approved[router][_coin]:
+        response: Bytes[32] = raw_call(
+            _coin,
+            concat(
+                method_id("approve(address,uint256)"),
+                convert(router, bytes32),
+                convert(MAX_UINT256, bytes32),
+            ),
+            max_outsize=32,
+        )
+        if len(response) != 0:
+            assert convert(response, bool)
+        self.is_approved[router][_coin] = True
+
+    # swap for USDC on whichever of uniswap/sushi gives a better rate
+    # vyper doesn't support dynamic arrays, so we build the calldata manually
+    raw_call(
+        router,
+        concat(
+            method_id("swapExactTokensForTokens(uint256,uint256,address[],address,uint256)"),
+            convert(amount, bytes32),           # swap amount
+            EMPTY_BYTES32,                      # min expected
+            convert(160, bytes32),              # offset pointer to path array
+            convert(self.receiver, bytes32),    # receiver of the swap
+            convert(block.timestamp, bytes32),  # swap deadline
+            convert(3, bytes32),                # path length
+            convert(_coin, bytes32),            # input token
+            convert(WETH, bytes32),             # weth (intermediate swap)
+            convert(USDC, bytes32),             # usdc (final output)
+        )
+    )
 
     return True
 
@@ -131,6 +186,7 @@ def set_killed(_is_killed: bool) -> bool:
     self.is_killed = _is_killed
 
     return True
+
 
 
 @external

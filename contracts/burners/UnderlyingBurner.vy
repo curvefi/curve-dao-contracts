@@ -1,4 +1,4 @@
-# @version 0.2.7
+# @version 0.2.8
 """
 @title Underlying Burner
 @notice Converts underlying coins to USDC, adds liquidity to 3pool
@@ -23,6 +23,16 @@ interface RegistrySwap:
 interface AddressProvider:
     def get_address(_id: uint256) -> address: view
 
+interface Synthetix:
+    def exchangeWithTracking(
+        sourceCurrencyKey: bytes32,
+        sourceAmount: uint256,
+        destinationCurrencyKey: bytes32,
+        originator: address,
+        trackingCode: bytes32,
+    ): nonpayable
+    def settle(currencyKey: bytes32) -> uint256[3]: nonpayable
+
 
 ADDRESS_PROVIDER: constant(address) = 0x0000000022D53366457F9d5E68Ec105046FC4383
 
@@ -35,6 +45,10 @@ TRIPOOL_COINS: constant(address[3]) = [
 ]
 USDC: constant(address) = TRIPOOL_COINS[1]
 
+SNX: constant(address) = 0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F
+SUSD: constant(address) = 0x57Ab1ec28D129707052df4dF418D58a2D46d5f51
+SUSD_CURRENCY_KEY: constant(bytes32) = 0x7355534400000000000000000000000000000000000000000000000000000000
+TRACKING_CODE: constant(bytes32) = 0x4355525645000000000000000000000000000000000000000000000000000000
 
 is_approved: HashMap[address, HashMap[address, bool]]
 
@@ -125,11 +139,29 @@ def burn(_coin: address) -> bool:
                 assert convert(response, bool)
             self.is_approved[registry_swap][_coin] = True
 
+        if _coin == SUSD:
+            # if the coin is sUSD, settle prior to exchanging
+            Synthetix(SNX).settle(SUSD_CURRENCY_KEY)
+
         # get actual balance in case of transfer fee or pre-existing balance
         amount = ERC20(_coin).balanceOf(self)
         if amount != 0:
             RegistrySwap(registry_swap).exchange_with_best_rate(_coin, USDC, amount, 0)
 
+    return True
+
+
+@external
+def convert_synth(_currency_key: bytes32, _amount: uint256) -> bool:
+    """
+    @notice Convert a synth to sUSD
+    @dev Synth burners transfer synths to this contract and then conver them
+         via this method. In this way we reduce the number of calls to settle.
+    @param _currency_key Currency key of the synth to convert
+    @param _amount Amount of the synth to convert
+    @return bool success
+    """
+    Synthetix(SNX).exchangeWithTracking(_currency_key, _amount, SUSD_CURRENCY_KEY, self, TRACKING_CODE)
     return True
 
 
