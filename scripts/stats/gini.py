@@ -1,8 +1,7 @@
-import requests
-from brownie import web3
-
 import numpy as np
 import pylab
+import requests
+from brownie import web3
 
 START_BLOCK = 10647813 + 86400
 graph_url = "https://api.thegraph.com/subgraphs/name/pengiundev/curve-votingescrow3"

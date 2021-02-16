@@ -1,9 +1,8 @@
 from datetime import datetime
 from time import time
 
-from brownie import Contract
-
 import pylab  # Requires matplotlib
+from brownie import Contract
 
 WEEK = 86400 * 7
 

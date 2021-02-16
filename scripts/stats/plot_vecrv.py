@@ -1,7 +1,6 @@
-from brownie import Contract, web3
-
 import numpy as np
 import pylab
+from brownie import Contract, web3
 
 START_BLOCK = 10647813
 
