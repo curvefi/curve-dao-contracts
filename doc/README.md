@@ -5,7 +5,10 @@ urve DAO consists of multiple smart contracts connected by Aragon. Apart from
 that, standard Aragon's 1 token = 1 vote method is replaced with the voting
 weight proportional to locktime, as will be described below.
 
-![Curve DAO contracts managed by Aragon](dao-overview.pdf)
+<div align="center">
+<img src="dao-overview.svg">
+</div>
+
 
 Curve DAO has a token CRV which is used for both governance and value accrual.
 
