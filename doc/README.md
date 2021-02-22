@@ -4,17 +4,20 @@ Curve DAO consists of multiple smart contracts connected by Aragon. Apart from
 that, standard Aragon's 1 token = 1 vote method is replaced with the voting
 weight proportional to locktime, as will be described below.
 
-![Curve DAO contracts managed by Aragon](dao-overview.pdf)
+<div align="center">
+<img src="dao-overview.svg">
+</div>
+
 
 Curve DAO has a token CRV which is used for both governance and value accrual.
 
 ## Time-weighted voting. Vote-locked tokens in VotingEscrow
 
-Instead of voting with token amount $a$, in Curve DAO tokens are lockable
-in a _VotingEscrow_ for a selectable locktime $t_l$, where $t_l < t_{\max}$,
-and $t_{\max} = 4~\text{years}$. After locking, the time _left to unlock_
-is $t\le t_l$. The voting weight is equal to:
-$$w = a \frac{t}{t_{\max}}.$$
+Instead of voting with token amount <img src="https://render.githubusercontent.com/render/math?math=a">, in Curve DAO tokens are lockable
+in a _VotingEscrow_ for a selectable locktime <img src="https://render.githubusercontent.com/render/math?math=t_l">, where <img src="https://render.githubusercontent.com/render/math?math=t_l < t_{\max}">,
+and <img src="https://render.githubusercontent.com/render/math?math=t_{\max} = 4~\text{years}">. After locking, the time _left to unlock_
+is <img src="https://render.githubusercontent.com/render/math?math=t\le t_l">. The voting weight is equal to:
+<img src="https://render.githubusercontent.com/render/math?math=w = a \frac{t}{t_{\max}}.">
 In other words, the vote is both amount- and time-weighted, where the time
 counted is how long the tokens cannot be moved in future.
 
@@ -24,11 +27,14 @@ tradable and/or tokenized), unless it is one of whitelisted smart contracts
 
 _VotingEscrow_ tries to resemble Aragon's Minime token. Most importantly,
 `balanceOf() / balanceOfAt()` and `totalSupply() / totalSupplyAt()`
-return the time-weighted voting weight $w$ and the sum of all of those weights
-$W = \sum w_i$ respectively. Aragon can interface _VotingEscrow_ as if it was
+return the time-weighted voting weight <img src="https://render.githubusercontent.com/render/math?math=w"> and the sum of all of those weights
+<img src="https://render.githubusercontent.com/render/math?math=W = \sum w_i"> respectively. Aragon can interface _VotingEscrow_ as if it was
 a typical governance token.
 
-![Voting weight of vote-locked tokens](votelock.pdf){width=280px}
+
+<div align="center">
+<img src="votelock.svg" width=280>
+</div>
 
 Locks can be created with `create_lock()`,  extended in time with `increase_unlock_time()`
 or token amount with `increase_amount()`, and `withdraw()` can remove tokens
@@ -36,18 +42,18 @@ from the escrow when the lock is expired.
 
 ### Implementation details
 
-User voting power $w_i$ is linearly decreasing since the moment of lock.
-So does the total voting power $W$. In order to avoid periodic check-ins,
+User voting power <img src="https://render.githubusercontent.com/render/math?math=w_i"> is linearly decreasing since the moment of lock.
+So does the total voting power <img src="https://render.githubusercontent.com/render/math?math=W">. In order to avoid periodic check-ins,
 every time the user deposits, or withdraws, or changes the locktime, we
-_record user's slope and bias_ for the linear function $w_i(t)$ in
+_record user's slope and bias_ for the linear function <img src="https://render.githubusercontent.com/render/math?math=w_i(t)"> in
 `user_point_history`. We also change slope and bias for the total voting
-power $W(t)$ and record in `point_history`. In addition, when
+power <img src="https://render.githubusercontent.com/render/math?math=W(t)"> and record in `point_history`. In addition, when
 user's lock is scheduled to end, we _schedule_ change of slopes of
-$W(t)$ in the future in `slope_changes`. Every change involves increasing the
+<img src="https://render.githubusercontent.com/render/math?math=W(t)"> in the future in `slope_changes`. Every change involves increasing the
 `epoch` by 1.
 
 This way we don't have to iterate over all users to figure out, how much should
-$W(t)$ change by, neither we require users to check in periodically. However,
+<img src="https://render.githubusercontent.com/render/math?math=W(t)"> change by, neither we require users to check in periodically. However,
 we limit the end of user locks to times rounded off by whole weeks.
 
 Slopes and biases change both when a user deposits and locks governance tokens,
@@ -58,19 +64,21 @@ missed weeks at most, not number of users (which can be potentially large).
 ## Inflation schedule. ERC20CRV
 
 Token _ERC20CRV_ is an ERC20 token which allows a piecewise linear inflation
-schedule. The inflation is dropping by $2^{1/4}$ every year.
+schedule. The inflation is dropping by <img src="https://render.githubusercontent.com/render/math?math=2^{1/4}"> every year.
 Only _Minter_ contract can directly mint _ERC20CRV_, but only within the limits
 defined by inflation.
 
 Each time the inflation changes, a new mining epoch starts.
 
-![CRV token inflation schedule](inflation.pdf){width=280px}
+<div align="center">
+<img src="inflation.svg" width=280/>
+</div>
 
-Initial supply of CRV is $1.273$ billion tokens, which is $42\%$ of the eventual
-($t\rightarrow\infty$) supply of $\approx 3.03$ billion tokens.
+Initial supply of CRV is <img src="https://render.githubusercontent.com/render/math?math=1.273"> billion tokens, which is $42\% of the eventual
+(<img src="https://render.githubusercontent.com/render/math?math=t\rightarrow\infty">) supply of <img src="https://render.githubusercontent.com/render/math?math=\approx 3.03"> billion tokens.
 All of those initial tokens tokens are gradually vested (with every block).
 The initial inflation rate which supports the above inflation schedule is
-$r=22.0\%$ (279.6 millions per year). All of the inflation is distributed to users of Curve,
+<img src="https://render.githubusercontent.com/render/math?math=r=22.0\%"> (279.6 millions per year). All of the inflation is distributed to users of Curve,
 according to measurements taken by _gauges_.
 During the first year, the approximate inflow into circulating supply is 2 millions
 CRV per day, starting from 0.
@@ -101,49 +109,49 @@ Gauges are per pool (each pool has an individual gauge).
 
 ### LiquidityGauge implementation details
 
-Suppose we have the inflation rate $r$ changing with every epoch (1 year),
-gauge weight $w_g$ and gauge type weight $w_t$. Then, all the gauge handles
-the stream of inflation with the rate $r^{\prime} = w_g w_t r$ which it can
-update every time $w_g$, $w_t$, or mining epoch changes.
+Suppose we have the inflation rate <img src="https://render.githubusercontent.com/render/math?math=r"> changing with every epoch (1 year),
+gauge weight <img src="https://render.githubusercontent.com/render/math?math=w_g"> and gauge type weight <img src="https://render.githubusercontent.com/render/math?math=w_t">. Then, all the gauge handles
+the stream of inflation with the rate <img src="https://render.githubusercontent.com/render/math?math=r^{\prime} = w_g w_t r"> which it can
+update every time <img src="https://render.githubusercontent.com/render/math?math=w_g, w_t">, or mining epoch changes.
 
-In order to calculate user's fair share of $r^{\prime}$, we essentially need to
+In order to calculate user's fair share of <img src="https://render.githubusercontent.com/render/math?math=r^{\prime}">, we essentially need to
 calculate the integral:
-$$I_u = \int \frac{r^{\prime}(t)\, b_u(t)}{S(t)}\,dt,$$
-where $b_u(t)$ is the balance supplied by user (measured in LP tokens) and
-$S(t)$ is total liquidity supplied by users, depending on the time $t$;
-the value $I_u$ gives the amount of tokens which user has to have minted
+<img src="https://render.githubusercontent.com/render/math?math=$I_u = \int \frac{r^{\prime}(t)\, b_u(t)}{S(t)}\,dt,">
+where <img src="https://render.githubusercontent.com/render/math?math=b_u(t)"> is the balance supplied by user (measured in LP tokens) and
+<img src="https://render.githubusercontent.com/render/math?math=S(t)"> is total liquidity supplied by users, depending on the time <img src="https://render.githubusercontent.com/render/math?math=t">;
+the value <img src="https://render.githubusercontent.com/render/math?math=I_u"> gives the amount of tokens which user has to have minted
 to him.
-The user's balance $b_u$ changes every time user $u$ makes a deposit or withdrawal,
-and $S$ changes every time _any_ user makes a deposit or withdrawal (so $S$
-can change many times in between two events for the user $u$).
-In _LiquidityGauge_ contract, the vaule of $I_u$ is recorded in the
+The user's balance <img src="https://render.githubusercontent.com/render/math?math=b_u"> changes every time user $u makes a deposit or withdrawal,
+and <img src="https://render.githubusercontent.com/render/math?math=S"> changes every time _any_ user makes a deposit or withdrawal (so $S
+can change many times in between two events for the user <img src="https://render.githubusercontent.com/render/math?math=u">).
+In _LiquidityGauge_ contract, the vaule of <img src="https://render.githubusercontent.com/render/math?math=I_u"> is recorded in the
 `integrate_fraction` map, per-user.
 
 In order to avoid all users to checkpoint periodically, we keep recording values
 of the following integral (named `integrate_inv_supply` in the contract):
-$$I_{is}(t) = \int_0^{t} \frac{r^{\prime}(t)}{S(t)}dt.$$
-The value of $I_{is}$ is recorded at any point any user deposits or withdraws,
-as well as every time the rate $r^{\prime}$ changes (either due to weight change
+<img src="https://render.githubusercontent.com/render/math?math=$I_{is}(t) = \int_0^{t} \frac{r^{\prime}(t)}{S(t)}dt.">
+The value of <img src="https://render.githubusercontent.com/render/math?math=I_{is}"> is recorded at any point any user deposits or withdraws,
+as well as every time the rate <img src="https://render.githubusercontent.com/render/math?math=r^{\prime}"> changes (either due to weight change
 or change of mining epoch).
 
-When a user deposits or withdraws, the change in $I_u$ can be calculated as
-the current (before user's action) value of $I_{is}$ multiplied by the
+When a user deposits or withdraws, the change in <img src="https://render.githubusercontent.com/render/math?math=I_u"> can be calculated as
+the current (before user's action) value of <img src="https://render.githubusercontent.com/render/math?math=I_{is}"> multiplied by the
 pre-action user's balance, and sumed up across user's balances:
-$$I_u(t_k) =\sum_k b_u(t_k) \left[I_{is}(t_k) - I_{is}(t_{k-1})\right].$$
-The per-user integral is possible to repalce with this sum because $b_u(t)$ is
-unchanged for all times between $t_{k-1}$ and $t_k$.
+<img src="https://render.githubusercontent.com/render/math?math=$I_u(t_k) =\sum_k b_u(t_k) \left[I_{is}(t_k) - I_{is}(t_{k-1})\right].">
+The per-user integral is possible to repalce with this sum because <img src="https://render.githubusercontent.com/render/math?math=b_u(t)"> is
+unchanged for all times between <img src="https://render.githubusercontent.com/render/math?math=t_{k-1}"> and <img src="https://render.githubusercontent.com/render/math?math=t_k">.
 
 In order to incentivize users to participate in governance, and additionally
 create stickiness for liquidity, we implement the following mechanism.
 User's balance counted in the _LiquidityGauge_ gets boosted by users locking
-CRV tokens in _VotingEscrow_, depending on their vote weight $w_i$:
-$$b_u^* = \min\left( 0.4\,b_u + 0.6\,S\frac{w_i}{W},\, b_u \right).$$
-The value of $w_i$ is taken at the time user performs any action (deposit,
+CRV tokens in _VotingEscrow_, depending on their vote weight <img src="https://render.githubusercontent.com/render/math?math=w_i">:
+<img src="https://render.githubusercontent.com/render/math?math=b_u^* = \min\left( 0.4\,b_u + 0.6\,S\frac{w_i}{W},\, b_u \right).">
+The value of <img src="https://render.githubusercontent.com/render/math?math=w_i"> is taken at the time user performs any action (deposit,
 withdrawal, withdrawal of minted CRV tokens) and is applied until the next
 action this user performs.
 
 If no users vote-lock any CRV (or simply don't have any), the inflation will
-simply be distributed proportionally to the liquidity $b_u$ each one of them
+simply be distributed proportionally to the liquidity <img src="https://render.githubusercontent.com/render/math?math=b_u"> each one of them
 provided. However, if a user stakes much enough CRV, he is able to boost his
 stream of CRV by up to factor of 2.5 (reducing it slightly for all users who are
 not doing that).
