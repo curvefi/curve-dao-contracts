@@ -65,7 +65,9 @@ defined by inflation.
 
 Each time the inflation changes, a new mining epoch starts.
 
-![CRV token inflation schedule](inflation.pdf){width=280px}
+<div align="center">
+<img src="inflation.svg" width=280/>
+</div>
 
 Initial supply of CRV is <img src="https://render.githubusercontent.com/render/math?math=1.273"> billion tokens, which is $42\% of the eventual
 (<img src="https://render.githubusercontent.com/render/math?math=t\rightarrow\infty">) supply of <img src="https://render.githubusercontent.com/render/math?math=\approx 3.03"> billion tokens.
