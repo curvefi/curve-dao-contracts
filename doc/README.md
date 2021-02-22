@@ -32,7 +32,10 @@ return the time-weighted voting weight <img src="https://render.githubuserconten
 <img src="https://render.githubusercontent.com/render/math?math=W = \sum w_i"> respectively. Aragon can interface _VotingEscrow_ as if it was
 a typical governance token.
 
-![Voting weight of vote-locked tokens](votelock.pdf){width=280px}
+
+<div align="center">
+<img src="votelock.svg" width=280>
+</div>
 
 Locks can be created with `create_lock()`,  extended in time with `increase_unlock_time()`
 or token amount with `increase_amount()`, and `withdraw()` can remove tokens
