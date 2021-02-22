@@ -1,7 +1,6 @@
 # Curve DAO
 
 Curve DAO consists of multiple smart contracts connected by Aragon. Apart from
-urve DAO consists of multiple smart contracts connected by Aragon. Apart from
 that, standard Aragon's 1 token = 1 vote method is replaced with the voting
 weight proportional to locktime, as will be described below.
 
