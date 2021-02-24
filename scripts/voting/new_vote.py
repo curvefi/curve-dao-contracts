@@ -100,6 +100,7 @@ def make_vote(sender=SENDER):
 
     vote_id = tx.events["StartVote"]["voteId"]
 
+    print(f"\nSuccess! Vote ID: {vote_id}")
     return vote_id
 
 
