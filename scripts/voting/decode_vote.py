@@ -5,15 +5,17 @@ from hexbytes import HexBytes
 
 warnings.filterwarnings("ignore")
 
-# this script is used to decode an ownership vote - one originating
-# from 0xe478de485ad2fe566d49342cbd03e49ed7db3356
-
 # the vote ID you wish to decrypt
 VOTE_ID = 29
 
+# address of the contract where the vote was created
+# ownership votes: 0xe478de485ad2fe566d49342cbd03e49ed7db3356
+# parameter votes: 0xbcff8b0b9419b9a88c44546519b1e909cf330399
+VOTING_ADDRESS = "0xe478de485ad2fe566d49342cbd03e49ed7db3356"
+
 
 def main(vote_id=VOTE_ID):
-    aragon = Contract("0xe478de485ad2fe566d49342cbd03e49ed7db3356")
+    aragon = Contract(VOTING_ADDRESS)
 
     script = HexBytes(aragon.getVote(vote_id)["script"])
 
