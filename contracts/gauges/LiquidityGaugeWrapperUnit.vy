@@ -1,4 +1,4 @@
-# @version 0.2.8
+# @version 0.2.11
 """
 @title Tokenized Liquidity Gauge Wrapper
 @author Curve Finance
@@ -10,6 +10,7 @@ from vyper.interfaces import ERC20
 
 implements: ERC20
 
+
 interface LiquidityGauge:
     def lp_token() -> address: view
     def minter() -> address: view
@@ -20,6 +21,9 @@ interface LiquidityGauge:
 
 interface Minter:
     def mint(gauge_addr: address): nonpayable
+
+interface UnitVault:
+    def collaterals(asset: address, user: address) -> uint256: nonpayable
 
 
 event Deposit:
@@ -53,6 +57,7 @@ lp_token: public(address)
 gauge: public(address)
 
 balanceOf: public(HashMap[address, uint256])
+depositedBalanceOf: public(HashMap[address, uint256])
 totalSupply: public(uint256)
 allowances: HashMap[address, HashMap[address, uint256]]
 
@@ -70,6 +75,11 @@ claimable_crv: public(HashMap[address, uint256])
 admin: public(address)
 future_admin: public(address)
 is_killed: public(bool)
+
+# [uint216 claimable balance][uint40 timestamp]
+last_claim_data: uint256
+
+UNIT_VAULT: constant(address) = 0xb1cFF81b9305166ff1EFc49A129ad2AfCd7BCf19
 
 
 @external
@@ -102,21 +112,28 @@ def __init__(
 
 
 @internal
-def _checkpoint(addr: address):
-    crv_token: address = self.crv_token
+def _checkpoint(_user_addresses: address[2]):
+    claim_data: uint256 = self.last_claim_data
+    I: uint256 = self.crv_integral
 
-    d_reward: uint256 = ERC20(crv_token).balanceOf(self)
-    Minter(self.minter).mint(self.gauge)
-    d_reward = ERC20(crv_token).balanceOf(self) - d_reward
+    if block.timestamp != claim_data % 2**40:
+        last_claimable: uint256 = shift(claim_data, -40)
+        claimable: uint256 = LiquidityGauge(self.gauge).claimable_tokens(self)
+        d_reward: uint256 = claimable - last_claimable
+        total_balance: uint256 = self.totalSupply
+        if total_balance > 0:
+            I += 10 ** 18 * d_reward / total_balance
+            self.crv_integral = I
+        self.last_claim_data = block.timestamp + shift(claimable, 40)
 
-    total_balance: uint256 = self.totalSupply
-    dI: uint256 = 0
-    if total_balance > 0:
-        dI = 10 ** 18 * d_reward / total_balance
-    I: uint256 = self.crv_integral + dI
-    self.crv_integral = I
-    self.claimable_crv[addr] += self.balanceOf[addr] * (I - self.crv_integral_for[addr]) / 10 ** 18
-    self.crv_integral_for[addr] = I
+    for addr in _user_addresses:
+        if addr in [ZERO_ADDRESS, UNIT_VAULT]:
+            continue
+        user_integral: uint256 = self.crv_integral_for[addr]
+        if user_integral < I:
+            user_balance: uint256 = self.balanceOf[addr] + self.depositedBalanceOf[addr]
+            self.claimable_crv[addr] += user_balance * (I - user_integral) / 10 ** 18
+            self.crv_integral_for[addr] = I
 
 
 @external
@@ -127,7 +144,7 @@ def user_checkpoint(addr: address) -> bool:
     @return bool success
     """
     assert msg.sender == addr or msg.sender == self.minter  # dev: unauthorized
-    self._checkpoint(addr)
+    self._checkpoint([addr, ZERO_ADDRESS])
     return True
 
 
@@ -138,15 +155,9 @@ def claimable_tokens(addr: address) -> uint256:
     @dev This function should be manually changed to "view" in the ABI
     @return uint256 number of claimable tokens per user
     """
-    d_reward: uint256 = LiquidityGauge(self.gauge).claimable_tokens(self)
+    self._checkpoint([addr, ZERO_ADDRESS])
 
-    total_balance: uint256 = self.totalSupply
-    dI: uint256 = 0
-    if total_balance > 0:
-        dI = 10 ** 18 * d_reward / total_balance
-    I: uint256 = self.crv_integral + dI
-
-    return self.claimable_crv[addr] + self.balanceOf[addr] * (I - self.crv_integral_for[addr]) / 10 ** 18
+    return self.claimable_crv[addr]
 
 
 @external
@@ -156,10 +167,17 @@ def claim_tokens(addr: address = msg.sender):
     @notice Claim mintable CR
     @param addr Address to claim for
     """
-    self._checkpoint(addr)
-    ERC20(self.crv_token).transfer(addr, self.claimable_crv[addr])
+    self._checkpoint([addr, ZERO_ADDRESS])
 
+    crv_token: address = self.crv_token
+    claimable: uint256 = self.claimable_crv[addr]
     self.claimable_crv[addr] = 0
+
+    if ERC20(crv_token).balanceOf(self) < claimable:
+        Minter(self.minter).mint(self.gauge)
+        self.last_claim_data = block.timestamp
+
+    ERC20(crv_token).transfer(addr, claimable)
 
 
 @external
@@ -185,7 +203,7 @@ def deposit(_value: uint256, addr: address = msg.sender):
     if addr != msg.sender:
         assert self.approved_to_deposit[msg.sender][addr], "Not approved"
 
-    self._checkpoint(addr)
+    self._checkpoint([addr, ZERO_ADDRESS])
 
     if _value != 0:
         self.balanceOf[addr] += _value
@@ -205,7 +223,7 @@ def withdraw(_value: uint256):
     @notice Withdraw `_value` LP tokens
     @param _value Number of tokens to withdraw
     """
-    self._checkpoint(msg.sender)
+    self._checkpoint([msg.sender, ZERO_ADDRESS])
 
     if _value != 0:
         self.balanceOf[msg.sender] -= _value
@@ -234,8 +252,7 @@ def allowance(_owner : address, _spender : address) -> uint256:
 def _transfer(_from: address, _to: address, _value: uint256):
     assert not self.is_killed
 
-    self._checkpoint(_from)
-    self._checkpoint(_to)
+    self._checkpoint([_from, _to])
 
     if _value != 0:
         self.balanceOf[_from] -= _value
@@ -254,6 +271,9 @@ def transfer(_to : address, _value : uint256) -> bool:
     """
     self._transfer(msg.sender, _to, _value)
 
+    if msg.sender == UNIT_VAULT:
+        self.depositedBalanceOf[_to] = UnitVault(UNIT_VAULT).collaterals(self, _to)
+
     return True
 
 
@@ -271,6 +291,9 @@ def transferFrom(_from : address, _to : address, _value : uint256) -> bool:
         self.allowances[_from][msg.sender] = _allowance - _value
 
     self._transfer(_from, _to, _value)
+
+    if _to == UNIT_VAULT:
+        self.depositedBalanceOf[_from] += _value
 
     return True
 
