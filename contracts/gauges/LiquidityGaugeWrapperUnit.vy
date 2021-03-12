@@ -74,7 +74,6 @@ claimable_crv: public(HashMap[address, uint256])
 
 admin: public(address)
 future_admin: public(address)
-is_killed: public(bool)
 
 # [uint216 claimable balance][uint40 timestamp]
 last_claim_data: uint256
@@ -143,7 +142,6 @@ def user_checkpoint(addr: address) -> bool:
     @param addr User address
     @return bool success
     """
-    assert msg.sender == addr or msg.sender == self.minter  # dev: unauthorized
     self._checkpoint([addr, ZERO_ADDRESS])
     return True
 
@@ -198,8 +196,6 @@ def deposit(_value: uint256, addr: address = msg.sender):
     @param _value Number of tokens to deposit
     @param addr Address to deposit for
     """
-    assert not self.is_killed
-
     if addr != msg.sender:
         assert self.approved_to_deposit[msg.sender][addr], "Not approved"
 
@@ -250,8 +246,6 @@ def allowance(_owner : address, _spender : address) -> uint256:
 
 @internal
 def _transfer(_from: address, _to: address, _value: uint256):
-    assert not self.is_killed
-
     self._checkpoint([_from, _to])
 
     if _value != 0:
@@ -352,12 +346,6 @@ def decreaseAllowance(_spender: address, _subtracted_value: uint256) -> bool:
     log Approval(msg.sender, _spender, allowance)
 
     return True
-
-
-@external
-def kill_me():
-    assert msg.sender == self.admin
-    self.is_killed = not self.is_killed
 
 
 @external
