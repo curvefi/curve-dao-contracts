@@ -30,9 +30,13 @@ def main():
         fees.append(fee * virtual_price / 1e18)
         print("{0}|\t${1:.2f}".format(d, fees[-1]))
 
-    pylab.bar(range(len(fees)), fees)
+    # pylab.bar(range(len(fees)), fees)
+    # pylab.xticks(range(len(dates)), [d.strftime("%d-%m-%y") for d in dates])
+
+    pylab.semilogy(dates, fees)
     pylab.xlabel("Distribution date")
-    pylab.ylabel("Fees distributed")
-    pylab.xticks(range(len(dates)), [d.strftime("%d-%m-%y") for d in dates])
+    pylab.ylabel("Fees distributed (USD)")
     pylab.ylim(0, max(fees) * 1.1)
+    pylab.yticks([0.2e6, 0.4e6, 0.6e6, 0.8e6, 1e6, 2e6], labels=['200k', '400k', '600k', '800k', '1M', '2M'])
+    pylab.grid()
     pylab.show()
