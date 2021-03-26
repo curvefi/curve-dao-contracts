@@ -35,12 +35,6 @@ event Withdraw:
     provider: indexed(address)
     value: uint256
 
-event CommitOwnership:
-    admin: address
-
-event ApplyOwnership:
-    admin: address
-
 event Transfer:
     _from: indexed(address)
     _to: indexed(address)
@@ -73,9 +67,6 @@ crv_integral: uint256
 crv_integral_for: HashMap[address, uint256]
 claimable_crv: public(HashMap[address, uint256])
 
-admin: public(address)
-future_admin: public(address)
-
 # [uint216 claimable balance][uint40 timestamp]
 last_claim_data: uint256
 
@@ -88,14 +79,12 @@ def __init__(
     _name: String[64],
     _symbol: String[32],
     _gauge: address,
-    _admin: address
 ):
     """
     @notice Contract constructor
     @param _name Token full name
     @param _symbol Token symbol
     @param _gauge Liquidity gauge contract address
-    @param _admin Admin who can kill the gauge
     """
 
     self.name = _name
@@ -109,7 +98,6 @@ def __init__(
     self.crv_token = LiquidityGauge(_gauge).crv_token()
     self.lp_token = lp_token
     self.gauge = _gauge
-    self.admin = _admin
 
 
 @internal
@@ -353,26 +341,3 @@ def decreaseAllowance(_spender: address, _subtracted_value: uint256) -> bool:
     log Approval(msg.sender, _spender, allowance)
 
     return True
-
-
-@external
-def commit_transfer_ownership(addr: address):
-    """
-    @notice Transfer ownership of GaugeController to `addr`
-    @param addr Address to have ownership transferred to
-    """
-    assert msg.sender == self.admin  # dev: admin only
-    self.future_admin = addr
-    log CommitOwnership(addr)
-
-
-@external
-def apply_transfer_ownership():
-    """
-    @notice Apply pending ownership transfer
-    """
-    assert msg.sender == self.admin  # dev: admin only
-    _admin: address = self.future_admin
-    assert _admin != ZERO_ADDRESS  # dev: admin not set
-    self.admin = _admin
-    log ApplyOwnership(_admin)
