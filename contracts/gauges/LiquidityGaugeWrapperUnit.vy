@@ -1,9 +1,10 @@
 # @version 0.2.11
 """
-@title Tokenized Liquidity Gauge Wrapper
+@title Tokenized Gauge Wrapper: Unit Protocol Edition
 @author Curve Finance
 @license MIT
-@notice Allows tokenized deposits and claiming from `LiquidityGauge`
+@notice Tokenizes gauge deposits to allow claiming of CRV when
+        deposited as a collateral within the unit.xyz Vault
 """
 
 from vyper.interfaces import ERC20
@@ -78,6 +79,7 @@ future_admin: public(address)
 # [uint216 claimable balance][uint40 timestamp]
 last_claim_data: uint256
 
+# https://github.com/unitprotocol/core/blob/master/contracts/Vault.sol
 UNIT_VAULT: constant(address) = 0xb1cFF81b9305166ff1EFc49A129ad2AfCd7BCf19
 
 
@@ -127,6 +129,7 @@ def _checkpoint(_user_addresses: address[2]):
 
     for addr in _user_addresses:
         if addr in [ZERO_ADDRESS, UNIT_VAULT]:
+            # do not calculate an integral for the vault to ensure it cannot ever claim
             continue
         user_integral: uint256 = self.crv_integral_for[addr]
         if user_integral < I:
@@ -162,7 +165,7 @@ def claimable_tokens(addr: address) -> uint256:
 @nonreentrant('lock')
 def claim_tokens(addr: address = msg.sender):
     """
-    @notice Claim mintable CR
+    @notice Claim mintable CRV
     @param addr Address to claim for
     """
     self._checkpoint([addr, ZERO_ADDRESS])
@@ -266,6 +269,8 @@ def transfer(_to : address, _value : uint256) -> bool:
     self._transfer(msg.sender, _to, _value)
 
     if msg.sender == UNIT_VAULT:
+        # when the transfer originates from the vault, consider it a withdrawal
+        # and adjust `depositedBalance` accordingly
         self.depositedBalanceOf[_to] = UnitVault(UNIT_VAULT).collaterals(self, _to)
 
     return True
@@ -287,6 +292,8 @@ def transferFrom(_from : address, _to : address, _value : uint256) -> bool:
     self._transfer(_from, _to, _value)
 
     if _to == UNIT_VAULT:
+        # when a `transferFrom` directs into the vault, consider it a deposited
+        # balance so that the recipient may still claim CRV from it
         self.depositedBalanceOf[_from] += _value
 
     return True
