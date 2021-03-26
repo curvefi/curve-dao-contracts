@@ -58,7 +58,6 @@ allowances: HashMap[address, HashMap[address, uint256]]
 
 name: public(String[64])
 symbol: public(String[32])
-decimals: public(uint256)
 
 # caller -> recipient -> can deposit?
 approved_to_deposit: public(HashMap[address, HashMap[address, bool]])
@@ -89,7 +88,6 @@ def __init__(
 
     self.name = _name
     self.symbol = _symbol
-    self.decimals = 18
 
     lp_token: address = LiquidityGauge(_gauge).lp_token()
     ERC20(lp_token).approve(_gauge, MAX_UINT256)
@@ -98,6 +96,11 @@ def __init__(
     self.crv_token = LiquidityGauge(_gauge).crv_token()
     self.lp_token = lp_token
     self.gauge = _gauge
+
+
+@external
+def decimals() -> uint256:
+    return 18
 
 
 @internal
