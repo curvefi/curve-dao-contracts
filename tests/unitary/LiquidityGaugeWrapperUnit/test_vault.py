@@ -1,4 +1,3 @@
-import brownie
 import pytest
 from brownie import chain
 
@@ -21,13 +20,13 @@ def deposit_setup(
 
     # approve gauge and wrapper
     for acct in accounts[:4]:
-        mock_lp_token.approve(unit_gauge, 2** 256 - 1, {"from": acct})
-        unit_gauge.approve(vault, 2 ** 256 - 1, {'from': acct})
+        mock_lp_token.approve(unit_gauge, 2 ** 256 - 1, {"from": acct})
+        unit_gauge.approve(vault, 2 ** 256 - 1, {"from": acct})
 
 
 def test_deposit(alice, unit_gauge, vault):
-    unit_gauge.deposit(100000, {'from': alice})
-    vault.deposit(25000, {'from': alice})
+    unit_gauge.deposit(100000, {"from": alice})
+    vault.deposit(25000, {"from": alice})
     assert unit_gauge.balanceOf(alice) == 75000
     assert unit_gauge.depositedBalanceOf(alice) == 25000
     assert unit_gauge.balanceOf(vault) == 25000
@@ -35,10 +34,10 @@ def test_deposit(alice, unit_gauge, vault):
 
 
 def test_deposit_multiple(alice, unit_gauge, vault):
-    unit_gauge.deposit(100000, {'from': alice})
-    vault.deposit(10000, {'from': alice})
     unit_gauge.deposit(100000, {"from": alice})
-    vault.deposit(30000, {'from': alice})
+    vault.deposit(10000, {"from": alice})
+    unit_gauge.deposit(100000, {"from": alice})
+    vault.deposit(30000, {"from": alice})
     assert unit_gauge.balanceOf(alice) == 160000
     assert unit_gauge.depositedBalanceOf(alice) == 40000
     assert unit_gauge.balanceOf(vault) == 40000
@@ -46,9 +45,9 @@ def test_deposit_multiple(alice, unit_gauge, vault):
 
 
 def test_withdraw_partial(alice, unit_gauge, vault):
-    unit_gauge.deposit(100000, {'from': alice})
-    vault.deposit(25000, {'from': alice})
-    vault.withdraw(15000, {'from': alice})
+    unit_gauge.deposit(100000, {"from": alice})
+    vault.deposit(25000, {"from": alice})
+    vault.withdraw(15000, {"from": alice})
 
     assert unit_gauge.balanceOf(alice) == 90000
     assert unit_gauge.depositedBalanceOf(alice) == 10000
@@ -57,9 +56,9 @@ def test_withdraw_partial(alice, unit_gauge, vault):
 
 
 def test_withdraw_full(alice, unit_gauge, vault):
-    unit_gauge.deposit(100000, {'from': alice})
-    vault.deposit(25000, {'from': alice})
-    vault.withdraw(25000, {'from': alice})
+    unit_gauge.deposit(100000, {"from": alice})
+    vault.deposit(25000, {"from": alice})
+    vault.withdraw(25000, {"from": alice})
 
     assert unit_gauge.balanceOf(alice) == 100000
     assert unit_gauge.depositedBalanceOf(alice) == 0
@@ -68,10 +67,10 @@ def test_withdraw_full(alice, unit_gauge, vault):
 
 
 def test_withdraw_multiple(alice, unit_gauge, vault):
-    unit_gauge.deposit(100000, {'from': alice})
-    vault.deposit(100000, {'from': alice})
-    vault.withdraw(15000, {'from': alice})
-    vault.withdraw(55000, {'from': alice})
+    unit_gauge.deposit(100000, {"from": alice})
+    vault.deposit(100000, {"from": alice})
+    vault.withdraw(15000, {"from": alice})
+    vault.withdraw(55000, {"from": alice})
 
     assert unit_gauge.balanceOf(alice) == 70000
     assert unit_gauge.depositedBalanceOf(alice) == 30000
@@ -80,8 +79,8 @@ def test_withdraw_multiple(alice, unit_gauge, vault):
 
 
 def test_claim_in_vault(bob, liquidity_gauge, unit_gauge, vault, token):
-    unit_gauge.deposit(100000, {'from': bob})
-    vault.deposit(100000, {'from': bob})
+    unit_gauge.deposit(100000, {"from": bob})
+    vault.deposit(100000, {"from": bob})
 
     chain.sleep(MONTH)
     unit_gauge.claim_tokens({"from": bob})
@@ -92,8 +91,8 @@ def test_claim_in_vault(bob, liquidity_gauge, unit_gauge, vault, token):
 
 
 def test_claim_partially_in_vault(bob, liquidity_gauge, unit_gauge, vault, token):
-    unit_gauge.deposit(100000, {'from': bob})
-    vault.deposit(40000, {'from': bob})
+    unit_gauge.deposit(100000, {"from": bob})
+    vault.deposit(40000, {"from": bob})
 
     chain.sleep(MONTH)
     unit_gauge.claim_tokens({"from": bob})
@@ -104,14 +103,14 @@ def test_claim_partially_in_vault(bob, liquidity_gauge, unit_gauge, vault, token
 
 
 def test_claim_multiple_depositors(bob, charlie, liquidity_gauge, unit_gauge, vault, token):
-    unit_gauge.deposit(100000, {'from': bob})
-    unit_gauge.deposit(100000, {'from': charlie})
-    vault.deposit(50000, {'from': bob})
+    unit_gauge.deposit(100000, {"from": bob})
+    unit_gauge.deposit(100000, {"from": charlie})
+    vault.deposit(50000, {"from": bob})
 
     chain.sleep(MONTH)
-    vault.withdraw(50000, {'from': bob})
-    unit_gauge.withdraw(100000, {'from': bob})
-    vault.deposit(50000, {'from': charlie})
+    vault.withdraw(50000, {"from": bob})
+    unit_gauge.withdraw(100000, {"from": bob})
+    vault.deposit(50000, {"from": charlie})
 
     chain.sleep(MONTH)
 
@@ -127,12 +126,12 @@ def test_claim_multiple_depositors(bob, charlie, liquidity_gauge, unit_gauge, va
 
 
 def test_vault_cannot_claim(bob, liquidity_gauge, unit_gauge, vault, token):
-    unit_gauge.deposit(100000, {'from': bob})
+    unit_gauge.deposit(100000, {"from": bob})
 
     # deposit into vault, and also directly transfer tokens into the vault
     # neither of these scenarios should allow the vault to claim!
-    vault.deposit(50000, {'from': bob})
-    unit_gauge.transfer(vault, 50000, {'from': bob})
+    vault.deposit(50000, {"from": bob})
+    unit_gauge.transfer(vault, 50000, {"from": bob})
 
     chain.sleep(MONTH)
     unit_gauge.claim_tokens(vault, {"from": bob})
@@ -143,10 +142,10 @@ def test_vault_cannot_claim(bob, liquidity_gauge, unit_gauge, vault, token):
 
 
 def test_liquidate(bob, charlie, unit_gauge, vault):
-    unit_gauge.deposit(100000, {'from': bob})
-    vault.deposit(50000, {'from': bob})
+    unit_gauge.deposit(100000, {"from": bob})
+    vault.deposit(50000, {"from": bob})
 
-    vault.liquidate(bob, 30000, {'from': charlie})
+    vault.liquidate(bob, 30000, {"from": charlie})
 
     assert unit_gauge.balanceOf(bob) == 70000
     assert unit_gauge.depositedBalanceOf(bob) == 0
@@ -158,12 +157,12 @@ def test_liquidate(bob, charlie, unit_gauge, vault):
 
 
 def test_liquidator_has_balances(bob, charlie, unit_gauge, vault):
-    unit_gauge.deposit(100000, {'from': bob})
-    unit_gauge.deposit(100000, {'from': charlie})
-    vault.deposit(50000, {'from': bob})
-    vault.deposit(50000, {'from': charlie})
+    unit_gauge.deposit(100000, {"from": bob})
+    unit_gauge.deposit(100000, {"from": charlie})
+    vault.deposit(50000, {"from": bob})
+    vault.deposit(50000, {"from": charlie})
 
-    vault.liquidate(bob, 30000, {'from': charlie})
+    vault.liquidate(bob, 30000, {"from": charlie})
 
     assert unit_gauge.balanceOf(bob) == 70000
     assert unit_gauge.depositedBalanceOf(bob) == 0

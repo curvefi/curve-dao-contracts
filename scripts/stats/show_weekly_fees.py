@@ -37,6 +37,8 @@ def main():
     pylab.xlabel("Distribution date")
     pylab.ylabel("Fees distributed (USD)")
     pylab.ylim(0, max(fees) * 1.1)
-    pylab.yticks([0.2e6, 0.4e6, 0.6e6, 0.8e6, 1e6, 2e6], labels=['200k', '400k', '600k', '800k', '1M', '2M'])
+    pylab.yticks(
+        [0.2e6, 0.4e6, 0.6e6, 0.8e6, 1e6, 2e6], labels=["200k", "400k", "600k", "800k", "1M", "2M"]
+    )
     pylab.grid()
     pylab.show()
