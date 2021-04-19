@@ -70,7 +70,6 @@ reward_integral_for: public(HashMap[address, HashMap[address, uint256]])
 
 admin: public(address)
 future_admin: public(address)  # Can and will be a smart contract
-is_killed: public(bool)
 
 
 @external
@@ -475,18 +474,6 @@ def set_rewards(_reward_contract: address, _sigs: bytes32, _reward_tokens: addre
     if _reward_contract != ZERO_ADDRESS:
         # do an initial checkpoint to verify that claims are working
         self._checkpoint_rewards(ZERO_ADDRESS, total_supply)
-
-
-@external
-def set_killed(_is_killed: bool):
-    """
-    @notice Set the killed status for this contract
-    @dev When killed, the gauge always yields a rate of 0 and so cannot mint CRV
-    @param _is_killed Killed status to set
-    """
-    assert msg.sender == self.admin
-
-    self.is_killed = _is_killed
 
 
 @external
