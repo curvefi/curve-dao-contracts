@@ -1,5 +1,5 @@
 import brownie
-from brownie import chain
+from brownie import ZERO_ADDRESS, chain
 from brownie.test import strategy
 
 from tests.conftest import approx
@@ -22,12 +22,12 @@ class StateMachine:
         self.token = mock_lp_token
         self.liquidity_gauge = rewards_only_gauge
         self.coin_reward = coin_reward
-        self.reward_contract = reward_contract
 
     def setup(self):
         self.balances = {i: 0 for i in self.accounts}
         self.rewards_total = 0
         self.total_balances = 0
+        self.is_rewards_set = False
 
     def rule_deposit(self, st_account, st_value):
         """
@@ -46,13 +46,19 @@ class StateMachine:
 
     def rule_notify_reward(self, st_reward):
         """
-        Add rewards only if at least someone has deposits
+        Add rewards only if at least someone has deposits.
         """
         if self.total_balances > 0:
-            self.coin_reward._mint_for_testing(st_reward)
-            self.coin_reward.transfer(self.reward_contract, st_reward)
-            self.reward_contract.notifyRewardAmount(st_reward)
+            pre_balance = self.coin_reward.balanceOf(self.liquidity_gauge)
+            if not self.is_rewards_set:
+                coin_rewards = [self.coin_reward] + [ZERO_ADDRESS] * 7
+                self.liquidity_gauge.set_rewards(
+                    ZERO_ADDRESS, b"0x", coin_rewards, {"from": self.accounts[0]}
+                )
+
+            self.coin_reward._mint_for_testing(st_reward, {"from": self.liquidity_gauge})
             self.rewards_total += st_reward
+            assert self.coin_reward.balanceOf(self.liquidity_gauge) == pre_balance + st_reward
 
     def rule_withdraw(self, st_account, st_value):
         """
@@ -84,12 +90,6 @@ class StateMachine:
         Advance the clock.
         """
         chain.sleep(st_time)
-
-    def rule_checkpoint(self, st_account):
-        """
-        Create a new user checkpoint.
-        """
-        self.liquidity_gauge.user_checkpoint(st_account, {"from": st_account})
 
     def invariant_balances(self):
         """
