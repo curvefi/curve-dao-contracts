@@ -16,11 +16,11 @@ class StateMachine:
     st_reward = strategy("uint64")
 
     def __init__(
-        self, accounts, liquidity_gauge_reward, mock_lp_token, reward_contract, coin_reward,
+        self, accounts, rewards_only_gauge, mock_lp_token, reward_contract, coin_reward,
     ):
         self.accounts = accounts
         self.token = mock_lp_token
-        self.liquidity_gauge = liquidity_gauge_reward
+        self.liquidity_gauge = rewards_only_gauge
         self.coin_reward = coin_reward
         self.reward_contract = reward_contract
 
@@ -123,7 +123,7 @@ class StateMachine:
 def test_state_machine(
     state_machine,
     accounts,
-    liquidity_gauge_reward,
+    rewards_only_gauge,
     mock_lp_token,
     reward_contract,
     coin_reward,
@@ -135,7 +135,7 @@ def test_state_machine(
 
     # approve liquidity_gauge from the funded accounts
     for acct in accounts[:5]:
-        mock_lp_token.approve(liquidity_gauge_reward, 2 ** 256 - 1, {"from": acct})
+        mock_lp_token.approve(rewards_only_gauge, 2 ** 256 - 1, {"from": acct})
 
     # because this is a simple state machine, we use more steps than normal
     settings = {"stateful_step_count": 25, "max_examples": 30}
@@ -143,7 +143,7 @@ def test_state_machine(
     state_machine(
         StateMachine,
         accounts[:5],
-        liquidity_gauge_reward,
+        rewards_only_gauge,
         mock_lp_token,
         reward_contract,
         coin_reward,
