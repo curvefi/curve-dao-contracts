@@ -50,12 +50,6 @@ class StateMachine:
         """
         if self.total_balances > 0:
             pre_balance = self.coin_reward.balanceOf(self.liquidity_gauge)
-            if not self.is_rewards_set:
-                coin_rewards = [self.coin_reward] + [ZERO_ADDRESS] * 7
-                self.liquidity_gauge.set_rewards(
-                    ZERO_ADDRESS, b"0x", coin_rewards, {"from": self.accounts[0]}
-                )
-
             self.coin_reward._mint_for_testing(st_reward, {"from": self.liquidity_gauge})
             self.rewards_total += st_reward
             assert self.coin_reward.balanceOf(self.liquidity_gauge) == pre_balance + st_reward
@@ -136,6 +130,10 @@ def test_state_machine(
     # approve liquidity_gauge from the funded accounts
     for acct in accounts[:5]:
         mock_lp_token.approve(rewards_only_gauge, 2 ** 256 - 1, {"from": acct})
+
+    # set rewards
+    coin_rewards = [coin_reward] + [ZERO_ADDRESS] * 7
+    rewards_only_gauge.set_rewards(ZERO_ADDRESS, b"0x", coin_rewards, {"from": accounts[0]})
 
     # because this is a simple state machine, we use more steps than normal
     settings = {"stateful_step_count": 25, "max_examples": 30}
