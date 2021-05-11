@@ -134,6 +134,7 @@ def checkpoint() -> bool:
         Controller(controller).checkpoint_gauge(self)
 
         emissions: uint256 = 0
+        last_period += 1
         for i in range(last_period, last_period+255):
             if i > current_period:
                 break
