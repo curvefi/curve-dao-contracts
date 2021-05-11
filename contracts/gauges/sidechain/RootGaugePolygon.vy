@@ -178,7 +178,7 @@ def set_killed(_is_killed: bool):
     @dev When killed, the gauge always yields a rate of 0 and so cannot mint CRV
     @param _is_killed Killed status to set
     """
-    assert msg.sender == self.admin
+    assert msg.sender == self.admin  # dev: admin only
 
     self.is_killed = _is_killed
 
