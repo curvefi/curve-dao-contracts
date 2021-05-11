@@ -3,6 +3,8 @@
 @title Root-Chain Gauge
 @author Curve Finance
 @license MIT
+@notice Calculates total allocated weekly CRV emission
+        mints and sends across a sidechain bridge
 """
 
 from vyper.interfaces import ERC20
@@ -26,6 +28,9 @@ interface Minter:
     def controller() -> address: view
     def minted(user: address, gauge: address) -> uint256: view
     def mint(gauge: address): nonpayable
+
+interface XDaiBridge:
+    def relayTokens(_token: address, _receiver: address, _amount: uint256): nonpayable
 
 
 event Deposit:
@@ -61,6 +66,8 @@ event Approval:
 
 
 WEEK: constant(uint256) = 604800
+XDAI_BRIDGE: constant(address) = 0x88ad09518695c6c3712AC10a214bE5109a655671
+
 
 minter: public(address)
 crv_token: public(address)
@@ -68,15 +75,13 @@ lp_token: public(address)
 controller: public(address)
 future_epoch_time: public(uint256)
 
-
-# The goal is to be able to calculate ∫(rate * balance / totalSupply dt) from 0 till checkpoint
-# All values are kept in units of being multiplied by 1e18
 period: public(uint256)
 emissions: public(uint256)
 inflation_rate: public(uint256)
 
 admin: public(address)
 future_admin: public(address)  # Can and will be a smart contract
+checkpoint_admin: public(address)
 is_killed: public(bool)
 
 
@@ -102,17 +107,21 @@ def __init__(_lp_token: address, _minter: address, _admin: address):
     self.inflation_rate = CRV20(crv_token).rate()
     self.future_epoch_time = CRV20(crv_token).future_epoch_time_write()
 
+    ERC20(crv_token).approve(XDAI_BRIDGE, MAX_UINT256)
+
 
 @external
-def checkpoint():
+def checkpoint() -> bool:
     """
-    @notice Checkpoint
+    @notice Mint all allocated CRV emissions and transfer across the bridge
+    @dev Should be called once per week, after the new epoch period has begun
     """
+    assert self.checkpoint_admin in [ZERO_ADDRESS, msg.sender]
     rate: uint256 = self.inflation_rate
     new_rate: uint256 = rate
     prev_future_epoch: uint256 = self.future_epoch_time
+    token: address = self.crv_token
     if prev_future_epoch < block.timestamp:
-        token: address = self.crv_token
         self.future_epoch_time = CRV20(token).future_epoch_time_write()
         new_rate = CRV20(token).rate()
         self.inflation_rate = new_rate
@@ -145,7 +154,9 @@ def checkpoint():
         self.emissions += emissions
         if emissions > 0 and not self.is_killed:
             Minter(self.minter).mint(self)
-            # TODO custom logic depending on which bridge we're using
+            XDaiBridge(XDAI_BRIDGE).relayTokens(token, self, emissions)
+
+    return True
 
 
 @external
@@ -188,3 +199,15 @@ def accept_transfer_ownership():
 
     self.admin = _admin
     log ApplyOwnership(_admin)
+
+
+@external
+def set_checkpoint_admin(_admin: address):
+    """
+    @notice Set the checkpoint admin address
+    @dev Setting to ZERO_ADDRESS allows anyone to call `checkpoint`
+    @param _admin Address of the checkpoint admin
+    """
+    assert msg.sender == self.admin  # dev: admin only
+
+    self.checkpoint_admin = _admin
