@@ -29,9 +29,6 @@ interface Minter:
     def minted(user: address, gauge: address) -> uint256: view
     def mint(gauge: address): nonpayable
 
-interface XDaiBridge:
-    def relayTokens(_token: address, _receiver: address, _amount: uint256): nonpayable
-
 
 event Deposit:
     provider: indexed(address)
@@ -155,7 +152,15 @@ def checkpoint() -> bool:
         self.emissions += emissions
         if emissions > 0 and not self.is_killed:
             Minter(self.minter).mint(self)
-            XDaiBridge(XDAI_BRIDGE).relayTokens(token, self, emissions)
+            raw_call(
+                XDAI_BRIDGE,
+                concat(
+                    method_id("relayTokens(address,address,uint256)"),
+                    convert(token, bytes32),
+                    convert(self, bytes32),
+                    convert(emissions, bytes32),
+                )
+            )
 
     return True
 
