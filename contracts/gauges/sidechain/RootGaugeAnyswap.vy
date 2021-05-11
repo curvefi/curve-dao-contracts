@@ -156,8 +156,15 @@ def checkpoint() -> bool:
     return True
 
 
+@view
 @external
-def integration_fraction(addr: address) -> uint256:
+def user_checkpoint(addr: address) -> bool:
+    return True
+
+
+@view
+@external
+def integrate_fraction(addr: address) -> uint256:
     assert addr == self, "Gauge can only mint for itself"
     return self.emissions
 
