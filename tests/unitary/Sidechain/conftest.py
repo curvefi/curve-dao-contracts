@@ -22,6 +22,11 @@ def child_chain_streamer(alice, ChildChainStreamer):
     return ChildChainStreamer.deploy(alice, {"from": alice})
 
 
+@pytest.fixture(scope="module")
+def checkpoint_proxy(alice, CheckpointProxy):
+    return CheckpointProxy.deploy({"from": alice})
+
+
 @pytest.fixture(scope="module", params=range(3), ids=["Anyswap", "Polygon", "XDAI"])
 def root_gauge(request, anyswap_root_gauge, polygon_root_gauge, xdai_root_gauge):
     if request.param == 0:
