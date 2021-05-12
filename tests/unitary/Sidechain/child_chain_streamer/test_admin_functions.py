@@ -44,4 +44,4 @@ def test_set_receiver_admin_only(alice, bob, charlie, child_chain_streamer):
         child_chain_streamer.set_receiver(bob, {"from": bob})
 
     child_chain_streamer.set_receiver(charlie, {"from": alice})
-    assert child_chain_streamer.reward_receiver == charlie
+    assert child_chain_streamer.reward_receiver() == charlie

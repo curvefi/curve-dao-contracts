@@ -1,7 +1,6 @@
 import brownie
-from brownie import ZERO_ADDRESS
 import pytest
-
+from brownie import ZERO_ADDRESS
 
 DAY = 86400
 

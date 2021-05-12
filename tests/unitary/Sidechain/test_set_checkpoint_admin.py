@@ -1,5 +1,5 @@
-import pytest
 import brownie
+import pytest
 
 
 @pytest.mark.parametrize("idx", range(1, 6))

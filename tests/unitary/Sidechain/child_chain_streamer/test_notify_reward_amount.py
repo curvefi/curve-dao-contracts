@@ -1,9 +1,7 @@
-from tests.conftest import bob
-from brownie.network.state import Chain
-import pytest
-import brownie
 import math
 
+import brownie
+import pytest
 
 DAY = 86400
 

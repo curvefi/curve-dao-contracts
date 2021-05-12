@@ -1,7 +1,7 @@
-import brownie
-import pytest
 import math
 
+import brownie
+import pytest
 
 DAY = 86400
 
@@ -34,4 +34,3 @@ def test_update_reward(bob, coin_reward, chain, child_chain_streamer):
     assert tx.subcalls[-1]["to"] == coin_reward
     assert tx.subcalls[-1]["function"] == "transfer(address,uint256)"
     assert math.isclose(coin_reward.balanceOf(bob), 3 * 100 * 10 ** 18 // 7, rel_tol=0.0001)
-

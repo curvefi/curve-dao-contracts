@@ -1,5 +1,6 @@
-import pytest
 import math
+
+import pytest
 
 WEEK = 7 * 86400
 

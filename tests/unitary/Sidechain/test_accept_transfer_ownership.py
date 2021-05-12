@@ -1,5 +1,5 @@
-import pytest
 import brownie
+import pytest
 
 
 @pytest.fixture(scope="module", autouse=True)

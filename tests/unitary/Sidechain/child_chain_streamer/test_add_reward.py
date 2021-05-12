@@ -21,4 +21,3 @@ def test_reverts_for_double_adding(alice, charlie, child_chain_streamer, token):
 
     with brownie.reverts("Reward token already added"):
         child_chain_streamer.add_reward(token, charlie, 86400 * 7, {"from": alice})
-
