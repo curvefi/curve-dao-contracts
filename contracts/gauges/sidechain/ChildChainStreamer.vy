@@ -40,7 +40,7 @@ def add_reward(_token: address, _distributor: address, _duration: uint256):
     @param _distributor Address permitted to call `notify_reward_amount` for this token
     @param _duration Number of seconds that rewards of this token are streamed over
     """
-    assert msg.sender == self.owner
+    assert msg.sender == self.owner  # dev: owner only
     assert self.reward_data[_token].distributor == ZERO_ADDRESS, "Reward token already added"
 
     idx: uint256 = self.reward_count
@@ -57,7 +57,7 @@ def remove_reward(_token: address):
     @dev Any remaining balance of the reward token is transferred to the owner
     @param _token Address of the reward token
     """
-    assert msg.sender == self.owner
+    assert msg.sender == self.owner  # dev: only owner
     assert self.reward_data[_token].distributor != ZERO_ADDRESS, "Reward token not added"
 
     self.reward_data[_token] = empty(RewardToken)
@@ -81,7 +81,7 @@ def remove_reward(_token: address):
             self.reward_tokens[idx] = ZERO_ADDRESS
             self.reward_count = idx
             return
-    raise
+    raise  # this should never be reached
 
 
 @internal
