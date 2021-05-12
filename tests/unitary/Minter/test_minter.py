@@ -12,8 +12,11 @@ WEEK = 7 * 86400
 
 
 @pytest.fixture(scope="module", autouse=True)
-def minter_setup(accounts, mock_lp_token, token, minter, gauge_controller, three_gauges):
+def minter_setup(accounts, mock_lp_token, token, minter, gauge_controller, three_gauges, chain):
     token.set_minter(minter, {"from": accounts[0]})
+
+    # ensure the tests all begin at the start of the epoch week
+    chain.mine(timestamp=(chain.time() / WEEK + 1) * WEEK)
 
     # set types
     for weight in TYPE_WEIGHTS:
