@@ -71,6 +71,7 @@ event Approval:
 MAX_REWARDS: constant(uint256) = 8
 TOKENLESS_PRODUCTION: constant(uint256) = 40
 WEEK: constant(uint256) = 604800
+CLAIM_FREQUENCY: constant(uint256) = 3600
 
 minter: public(address)
 crv_token: public(address)
@@ -111,7 +112,7 @@ integrate_fraction: public(HashMap[address, uint256])
 inflation_rate: public(uint256)
 
 # For tracking external rewards
-reward_contract: public(address)
+reward_data: uint256
 reward_tokens: public(address[MAX_REWARDS])
 
 # deposit / withdraw / claim
@@ -219,9 +220,8 @@ def _checkpoint_rewards(_addr: address, _total_supply: uint256):
         reward_tokens[i] = token
         reward_integrals[i] = self.reward_integral[token]
 
-    reward_contract: address = self.reward_contract
-    if reward_contract != ZERO_ADDRESS:
-
+    reward_data: uint256 = self.reward_data
+    if reward_data != 0 and block.timestamp > shift(reward_data, -160) + CLAIM_FREQUENCY:
         # track balances prior to claiming
         reward_balances: uint256[MAX_REWARDS] = empty(uint256[MAX_REWARDS])
         for i in range(MAX_REWARDS):
@@ -231,7 +231,9 @@ def _checkpoint_rewards(_addr: address, _total_supply: uint256):
             reward_balances[i] = ERC20(token).balanceOf(self)
 
         # claim from reward contract
+        reward_contract: address = convert(reward_data % 2**160, address)
         raw_call(reward_contract, slice(self.reward_sigs, 8, 4))  # dev: bad claim sig
+        self.reward_data = convert(reward_contract, uint256) + shift(block.timestamp, 160)
 
         # get balances after claim and calculate new reward integrals
         for i in range(MAX_REWARDS):
@@ -339,6 +341,18 @@ def _checkpoint(addr: address):
     self.integrate_fraction[addr] += _working_balance * (_integrate_inv_supply - self.integrate_inv_supply_of[addr]) / 10 ** 18
     self.integrate_inv_supply_of[addr] = _integrate_inv_supply
     self.integrate_checkpoint_of[addr] = block.timestamp
+
+
+@view
+@external
+def reward_contract() -> address:
+    return convert(self.reward_data % 2**160, address)
+
+
+@view
+@external
+def last_claim() -> uint256:
+    return shift(self.reward_data, -160)
 
 
 @external
@@ -463,7 +477,7 @@ def deposit(_value: uint256, _addr: address = msg.sender):
             deposit_sig: Bytes[4] = slice(self.reward_sigs, 0, 4)
             if convert(deposit_sig, uint256) != 0:
                 raw_call(
-                    self.reward_contract,
+                    convert(self.reward_data % 2**160, address),
                     concat(deposit_sig, convert(_value, bytes32))
                 )
 
@@ -498,7 +512,7 @@ def withdraw(_value: uint256):
             withdraw_sig: Bytes[4] = slice(self.reward_sigs, 4, 4)
             if convert(withdraw_sig, uint256) != 0:
                 raw_call(
-                    self.reward_contract,
+                    convert(self.reward_data % 2**160, address),
                     concat(withdraw_sig, convert(_value, bytes32))
                 )
         ERC20(self.lp_token).transfer(msg.sender, _value)
@@ -652,7 +666,7 @@ def set_rewards(_reward_contract: address, _sigs: bytes32, _reward_tokens: addre
     assert msg.sender == self.admin
 
     lp_token: address = self.lp_token
-    current_reward_contract: address = self.reward_contract
+    current_reward_contract: address = convert(self.reward_data % 2**160, address)
     total_supply: uint256 = self.totalSupply
     if self.reward_tokens[0] != ZERO_ADDRESS:
         self._checkpoint_rewards(ZERO_ADDRESS, total_supply)
@@ -667,6 +681,7 @@ def set_rewards(_reward_contract: address, _sigs: bytes32, _reward_tokens: addre
             ERC20(lp_token).approve(current_reward_contract, 0)
 
     if _reward_contract != ZERO_ADDRESS:
+        assert _reward_tokens[0] != ZERO_ADDRESS  # dev: no reward token
         assert _reward_contract.is_contract  # dev: not a contract
         deposit_sig: Bytes[4] = slice(_sigs, 0, 4)
         withdraw_sig: Bytes[4] = slice(_sigs, 4, 4)
@@ -697,14 +712,13 @@ def set_rewards(_reward_contract: address, _sigs: bytes32, _reward_tokens: addre
         else:
             assert convert(withdraw_sig, uint256) == 0  # dev: withdraw without deposit
 
-    self.reward_contract = _reward_contract
+    self.reward_data = convert(_reward_contract, uint256)
     self.reward_sigs = _sigs
     for i in range(MAX_REWARDS):
         current_token: address = self.reward_tokens[i]
         new_token: address = _reward_tokens[i]
         if current_token != ZERO_ADDRESS:
-            # old reward tokens cannot be removed
-            assert current_token == new_token
+            assert current_token == new_token  # dev: cannot modify existing reward token
         elif new_token != ZERO_ADDRESS:
             # store new reward token
             self.reward_tokens[i] = new_token
