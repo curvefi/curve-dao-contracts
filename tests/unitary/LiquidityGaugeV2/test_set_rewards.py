@@ -54,17 +54,29 @@ def test_modify_reward_tokens_less(alice, coin_reward, coin_a, coin_b, reward_co
         reward_contract, sigs, [coin_reward, coin_a, coin_b] + [ZERO_ADDRESS] * 5, {"from": alice},
     )
 
-    reward_tokens = [coin_a] + [ZERO_ADDRESS] * 7
-    gauge_v2.set_rewards(reward_contract, sigs, reward_tokens, {"from": alice})
+    reward_tokens = [coin_reward] + [ZERO_ADDRESS] * 7
+    with brownie.reverts("dev: cannot modify existing reward token"):
+        gauge_v2.set_rewards(reward_contract, sigs, reward_tokens, {"from": alice})
 
-    assert reward_tokens == [gauge_v2.reward_tokens(i) for i in range(8)]
+
+def test_modify_reward_tokens_different(
+    alice, coin_reward, coin_a, coin_b, reward_contract, gauge_v2
+):
+    sigs = f"0x{'00' * 4}{'00' * 4}{reward_contract.getReward.signature[2:]}{'00' * 20}"
+    gauge_v2.set_rewards(
+        reward_contract, sigs, [coin_reward, coin_a, coin_b] + [ZERO_ADDRESS] * 5, {"from": alice},
+    )
+
+    reward_tokens = [coin_reward, coin_b, coin_a] + [ZERO_ADDRESS] * 5
+    with brownie.reverts("dev: cannot modify existing reward token"):
+        gauge_v2.set_rewards(reward_contract, sigs, reward_tokens, {"from": alice})
 
 
 def test_modify_reward_tokens_more(alice, coin_reward, coin_a, coin_b, reward_contract, gauge_v2):
     sigs = f"0x{'00' * 4}{'00' * 4}{reward_contract.getReward.signature[2:]}{'00' * 20}"
     gauge_v2.set_rewards(reward_contract, sigs, [coin_a] + [ZERO_ADDRESS] * 7, {"from": alice})
 
-    reward_tokens = [coin_reward, coin_a, coin_b] + [ZERO_ADDRESS] * 5
+    reward_tokens = [coin_a, coin_reward, coin_b] + [ZERO_ADDRESS] * 5
     gauge_v2.set_rewards(reward_contract, sigs, reward_tokens, {"from": alice})
 
     assert reward_tokens == [gauge_v2.reward_tokens(i) for i in range(8)]
