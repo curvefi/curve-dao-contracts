@@ -57,7 +57,6 @@ approved_to_deposit: public(HashMap[address, HashMap[address, bool]])
 
 # For tracking external rewards
 reward_data: uint256
-reward_contract: public(address)
 reward_tokens: public(address[MAX_REWARDS])
 reward_balances: public(HashMap[address, uint256])
 
@@ -122,8 +121,9 @@ def _checkpoint_rewards(_addr: address, _total_supply: uint256):
         return
 
     # claim from reward contract
-    if self.reward_contract != ZERO_ADDRESS:
-        raw_call(self.reward_contract, slice(self.reward_sigs, 8, 4))  # dev: bad claim sig
+    reward_contract: address = convert(self.reward_data % 2**160, address)
+    if reward_contract != ZERO_ADDRESS:
+        raw_call(reward_contract, slice(self.reward_sigs, 8, 4))  # dev: bad claim sig
 
     user_balance: uint256 = self.balanceOf[_addr]
     for i in range(MAX_REWARDS):
@@ -250,7 +250,7 @@ def deposit(_value: uint256, _addr: address = msg.sender):
 
 
     if _value != 0:
-        reward_contract: address = self.reward_contract
+        reward_contract: address = convert(self.reward_data % 2**160, address)
         total_supply: uint256 = self.totalSupply
 
         self._checkpoint_rewards(_addr, total_supply)
@@ -283,7 +283,7 @@ def withdraw(_value: uint256):
     """
 
     if _value != 0:
-        reward_contract: address = self.reward_contract
+        reward_contract: address = convert(self.reward_data % 2**160, address)
         total_supply: uint256 = self.totalSupply
 
         self._checkpoint_rewards(msg.sender, total_supply)
@@ -308,7 +308,7 @@ def withdraw(_value: uint256):
 
 @internal
 def _transfer(_from: address, _to: address, _value: uint256):
-    reward_contract: address = self.reward_contract
+    reward_contract: address = convert(self.reward_data % 2**160, address)
 
     if _value != 0:
         total_supply: uint256 = self.totalSupply
@@ -429,7 +429,7 @@ def set_rewards(_reward_contract: address, _sigs: bytes32, _reward_tokens: addre
     assert msg.sender == self.admin
 
     lp_token: address = self.lp_token
-    current_reward_contract: address = self.reward_contract
+    current_reward_contract: address = convert(self.reward_data % 2**160, address)
     total_supply: uint256 = self.totalSupply
     self._checkpoint_rewards(ZERO_ADDRESS, total_supply)
     if current_reward_contract != ZERO_ADDRESS:
@@ -474,7 +474,7 @@ def set_rewards(_reward_contract: address, _sigs: bytes32, _reward_tokens: addre
         else:
             assert convert(withdraw_sig, uint256) == 0  # dev: withdraw without deposit
 
-    self.reward_contract = _reward_contract
+    self.reward_data = convert(_reward_contract, uint256)
     self.reward_sigs = _sigs
     for i in range(MAX_REWARDS):
         if _reward_tokens[i] != ZERO_ADDRESS:
