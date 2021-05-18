@@ -196,37 +196,6 @@ def claim_rewards(_addr: address = msg.sender):
 
 
 @external
-@nonreentrant('lock')
-def claim_historic_rewards(_reward_tokens: address[MAX_REWARDS], _addr: address = msg.sender):
-    """
-    @notice Claim reward tokens available from a previously-set staking contract
-    @param _reward_tokens Array of reward token addresses to claim
-    @param _addr Address to claim for
-    """
-    for token in _reward_tokens:
-        if token == ZERO_ADDRESS:
-            break
-        integral: uint256 = self.reward_integral[token]
-        integral_for: uint256 = self.reward_integral_for[token][_addr]
-
-        if integral_for < integral:
-            claimable: uint256 = self.balanceOf[_addr] * (integral - integral_for) / 10**18
-            self.reward_integral_for[token][_addr] = integral
-            response: Bytes[32] = raw_call(
-                token,
-                concat(
-                    method_id("transfer(address,uint256)"),
-                    convert(_addr, bytes32),
-                    convert(claimable, bytes32),
-                ),
-                max_outsize=32,
-            )
-            if len(response) != 0:
-                assert convert(response, bool)
-            self.reward_balances[token] -= claimable
-
-
-@external
 def set_approve_deposit(addr: address, can_deposit: bool):
     """
     @notice Set whether `addr` can deposit tokens for `msg.sender`
