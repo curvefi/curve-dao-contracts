@@ -125,7 +125,7 @@ reward_integral: public(HashMap[address, uint256])
 reward_integral_for: public(HashMap[address, HashMap[address, uint256]])
 
 # user -> [uint128 claimable amount][uint128 claimed amount]
-claim_data: HashMap[address, uint256[MAX_REWARDS]]
+claim_data: HashMap[address, HashMap[address, uint256]]
 
 admin: public(address)
 future_admin: public(address)  # Can and will be a smart contract
@@ -261,7 +261,7 @@ def _checkpoint_rewards(_addr: address, _total_supply: uint256, _claim: bool):
             integral_for: uint256 = self.reward_integral_for[token][_addr]
             if integral_for < integral:
                 self.reward_integral_for[token][_addr] = integral
-                claim_data: uint256 = self.claim_data[_addr][i]
+                claim_data: uint256 = self.claim_data[_addr][token]
 
                 new_claimable: uint256 = user_balance * (integral - integral_for) / 10**18
 
@@ -280,9 +280,9 @@ def _checkpoint_rewards(_addr: address, _total_supply: uint256, _claim: bool):
                     )
                     if len(response) != 0:
                         assert convert(response, bool)
-                    self.claim_data[_addr][i] = total_claimed + total_claimable
+                    self.claim_data[_addr][token] = total_claimed + total_claimable
                 elif new_claimable > 0:
-                    self.claim_data[_addr][i] = total_claimed + shift(total_claimable, 128)
+                    self.claim_data[_addr][token] = total_claimed + shift(total_claimable, 128)
 
 
 @internal
@@ -391,9 +391,21 @@ def claimable_tokens(addr: address) -> uint256:
     return self.integrate_fraction[addr] - Minter(self.minter).minted(addr, self)
 
 
+@view
+@external
+def claimable_reward(_addr: address, _token: address) -> uint256:
+    return shift(self.claim_data[_addr][_token], -128)
+
+
+@view
+@external
+def claimed_reward(_addr: address, _token: address) -> uint256:
+    return self.claim_data[_addr][_token] % 2**128
+
+
 @external
 @nonreentrant('lock')
-def claimable_reward(_addr: address, _token: address) -> uint256:
+def claimable_reward_write(_addr: address, _token: address) -> uint256:
     """
     @notice Get the number of claimable reward tokens for a user
     @dev This function should be manually changed to "view" in the ABI
@@ -402,18 +414,10 @@ def claimable_reward(_addr: address, _token: address) -> uint256:
     @param _token Token to get reward amount for
     @return uint256 Claimable reward token amount
     """
-    claimable: uint256 = ERC20(_token).balanceOf(_addr)
     if self.reward_tokens[0] != ZERO_ADDRESS:
-        self._checkpoint_rewards(_addr, self.totalSupply, True)
-    claimable = ERC20(_token).balanceOf(_addr) - claimable
+        self._checkpoint_rewards(_addr, self.totalSupply, False)
+    return shift(self.claim_data[_addr][_token], -128)
 
-    integral: uint256 = self.reward_integral[_token]
-    integral_for: uint256 = self.reward_integral_for[_token][_addr]
-
-    if integral_for < integral:
-        claimable += self.balanceOf[_addr] * (integral - integral_for) / 10**18
-
-    return claimable
 
 
 @external
