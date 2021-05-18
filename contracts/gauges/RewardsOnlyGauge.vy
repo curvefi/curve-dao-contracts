@@ -52,9 +52,6 @@ allowance: public(HashMap[address, HashMap[address, uint256]])
 name: public(String[64])
 symbol: public(String[32])
 
-# caller -> recipient -> can deposit?
-approved_to_deposit: public(HashMap[address, HashMap[address, bool]])
-
 # For tracking external rewards
 reward_data: uint256
 reward_tokens: public(address[MAX_REWARDS])
@@ -199,16 +196,6 @@ def claim_rewards(_addr: address = msg.sender):
 
 
 @external
-def set_approve_deposit(addr: address, can_deposit: bool):
-    """
-    @notice Set whether `addr` can deposit tokens for `msg.sender`
-    @param addr Address to set approval on
-    @param can_deposit bool - can this account deposit for `msg.sender`?
-    """
-    self.approved_to_deposit[addr][msg.sender] = can_deposit
-
-
-@external
 @nonreentrant('lock')
 def deposit(_value: uint256, _addr: address = msg.sender):
     """
@@ -217,10 +204,6 @@ def deposit(_value: uint256, _addr: address = msg.sender):
     @param _value Number of tokens to deposit
     @param _addr Address to deposit for
     """
-    if _addr != msg.sender:
-        assert self.approved_to_deposit[msg.sender][_addr], "Not approved"
-
-
     if _value != 0:
         reward_contract: address = convert(self.reward_data % 2**160, address)
         total_supply: uint256 = self.totalSupply
