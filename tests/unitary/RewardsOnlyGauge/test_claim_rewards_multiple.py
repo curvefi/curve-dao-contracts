@@ -23,8 +23,8 @@ def __init__(_first: address, _second: address):
 
 @external
 def claim_tokens() -> bool:
-    ERC20(self.first).transfer(msg.sender, ERC20(self.first).balanceOf(self))
-    ERC20(self.second).transfer(msg.sender, ERC20(self.second).balanceOf(self))
+    ERC20(self.first).transfer(msg.sender, ERC20(self.first).balanceOf(self) / 2)
+    ERC20(self.second).transfer(msg.sender, ERC20(self.second).balanceOf(self) / 2)
 
     return True
 """
@@ -33,8 +33,8 @@ def claim_tokens() -> bool:
 @pytest.fixture(scope="module")
 def reward_contract(alice, coin_a, coin_b):
     contract = compile_source(code).Vyper.deploy(coin_a, coin_b, {"from": alice})
-    coin_a._mint_for_testing(REWARD, {"from": contract})
-    coin_b._mint_for_testing(REWARD, {"from": contract})
+    coin_a._mint_for_testing(REWARD * 2, {"from": contract})
+    coin_b._mint_for_testing(REWARD * 2, {"from": contract})
 
     yield contract
 
@@ -130,3 +130,26 @@ def test_claim_two_lp(
         # Calculate rewards
         assert coin.balanceOf(bob) > coin.balanceOf(alice) > 0
         assert coin.balanceOf(rewards_only_gauge) == 0
+
+
+def test_claim_duration(bob, chain, rewards_only_gauge, coin_a, coin_b):
+    chain.sleep(86400)
+    rewards_only_gauge.claim_rewards({"from": bob})
+
+    claim_time = rewards_only_gauge.last_claim()
+    claimed = [i.balanceOf(bob) for i in (coin_a, coin_b)]
+
+    assert claim_time == chain[-1].timestamp
+
+    chain.sleep(1801)
+    rewards_only_gauge.claim_rewards({"from": bob})
+
+    assert rewards_only_gauge.last_claim() == claim_time
+    assert claimed == [i.balanceOf(bob) for i in (coin_a, coin_b)]
+
+    chain.sleep(1801)
+    rewards_only_gauge.claim_rewards({"from": bob})
+
+    assert rewards_only_gauge.last_claim() == chain[-1].timestamp > claim_time
+    assert coin_a.balanceOf(bob) > claimed[0]
+    assert coin_b.balanceOf(bob) > claimed[1]
