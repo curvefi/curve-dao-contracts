@@ -121,9 +121,12 @@ def _checkpoint_rewards(_addr: address, _total_supply: uint256):
         return
 
     # claim from reward contract
-    reward_contract: address = convert(self.reward_data % 2**160, address)
-    if reward_contract != ZERO_ADDRESS:
+    reward_data: uint256 = self.reward_data
+    if reward_data != 0 and block.timestamp > shift(reward_data, -160) + CLAIM_FREQUENCY:
+        reward_contract: address = convert(reward_data % 2**160, address)
         raw_call(reward_contract, slice(self.reward_sigs, 8, 4))  # dev: bad claim sig
+        self.reward_data = convert(reward_contract, uint256) + shift(block.timestamp, 160)
+
 
     user_balance: uint256 = self.balanceOf[_addr]
     for i in range(MAX_REWARDS):
