@@ -393,7 +393,11 @@ def set_rewards(_reward_contract: address, _sigs: bytes32, _reward_tokens: addre
                  right padded with zero bytes. If the reward contract can
                  be claimed from but does not require staking, the staking
                  and withdraw selectors should be set to 0x00
-    @param _reward_tokens List of claimable tokens for this reward contract
+    @param _reward_tokens List of claimable reward tokens. New reward tokens
+                          may be added but they cannot be removed. When calling
+                          this function to unset or modify a reward contract,
+                          this array must begin with the already-set reward
+                          token addresses.
     """
     assert msg.sender == self.admin
 
@@ -412,10 +416,10 @@ def set_rewards(_reward_contract: address, _sigs: bytes32, _reward_tokens: addre
             ERC20(lp_token).approve(current_reward_contract, 0)
 
     if _reward_contract != ZERO_ADDRESS:
+        assert _reward_tokens[0] != ZERO_ADDRESS  # dev: no reward token
         assert _reward_contract.is_contract  # dev: not a contract
-        sigs: bytes32 = _sigs
-        deposit_sig: Bytes[4] = slice(sigs, 0, 4)
-        withdraw_sig: Bytes[4] = slice(sigs, 4, 4)
+        deposit_sig: Bytes[4] = slice(_sigs, 0, 4)
+        withdraw_sig: Bytes[4] = slice(_sigs, 4, 4)
 
         if convert(deposit_sig, uint256) != 0:
             # need a non-zero total supply to verify the sigs
@@ -446,10 +450,12 @@ def set_rewards(_reward_contract: address, _sigs: bytes32, _reward_tokens: addre
     self.reward_data = convert(_reward_contract, uint256)
     self.reward_sigs = _sigs
     for i in range(MAX_REWARDS):
-        if _reward_tokens[i] != ZERO_ADDRESS:
-            self.reward_tokens[i] = _reward_tokens[i]
-        elif self.reward_tokens[i] != ZERO_ADDRESS:
-            self.reward_tokens[i] = ZERO_ADDRESS
+        current_token: address = self.reward_tokens[i]
+        new_token: address = _reward_tokens[i]
+        if current_token != ZERO_ADDRESS:
+            assert current_token == new_token  # dev: cannot modify existing reward token
+        elif new_token != ZERO_ADDRESS:
+            self.reward_tokens[i] = new_token
         else:
             assert i != 0  # dev: no reward token
             break
