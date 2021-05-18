@@ -443,7 +443,6 @@ def set_rewards(_reward_contract: address, _sigs: bytes32, _reward_tokens: addre
         elif new_token != ZERO_ADDRESS:
             self.reward_tokens[i] = new_token
         else:
-            assert i != 0  # dev: no reward token
             break
 
     if _reward_contract != ZERO_ADDRESS:
