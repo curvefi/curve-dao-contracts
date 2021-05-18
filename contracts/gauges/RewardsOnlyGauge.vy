@@ -56,6 +56,7 @@ symbol: public(String[32])
 approved_to_deposit: public(HashMap[address, HashMap[address, bool]])
 
 # For tracking external rewards
+reward_data: uint256
 reward_contract: public(address)
 reward_tokens: public(address[MAX_REWARDS])
 reward_balances: public(HashMap[address, uint256])
@@ -98,6 +99,18 @@ def decimals() -> uint256:
     @return uint256 decimal places
     """
     return 18
+
+
+@view
+@external
+def reward_contract() -> address:
+    return convert(self.reward_data % 2**160, address)
+
+
+@view
+@external
+def last_claim() -> uint256:
+    return shift(self.reward_data, -160)
 
 
 @internal
