@@ -87,9 +87,6 @@ allowances: HashMap[address, HashMap[address, uint256]]
 name: public(String[64])
 symbol: public(String[32])
 
-# caller -> recipient -> can deposit?
-approved_to_deposit: public(HashMap[address, HashMap[address, bool]])
-
 working_balances: public(HashMap[address, uint256])
 working_supply: public(uint256)
 
@@ -452,16 +449,6 @@ def kick(addr: address):
 
 
 @external
-def set_approve_deposit(addr: address, can_deposit: bool):
-    """
-    @notice Set whether `addr` can deposit tokens for `msg.sender`
-    @param addr Address to set approval on
-    @param can_deposit bool - can this account deposit for `msg.sender`?
-    """
-    self.approved_to_deposit[addr][msg.sender] = can_deposit
-
-
-@external
 @nonreentrant('lock')
 def deposit(_value: uint256, _addr: address = msg.sender, _claim_rewards: bool = False):
     """
@@ -470,8 +457,6 @@ def deposit(_value: uint256, _addr: address = msg.sender, _claim_rewards: bool =
     @param _value Number of tokens to deposit
     @param _addr Address to deposit for
     """
-    if _addr != msg.sender:
-        assert self.approved_to_deposit[msg.sender][_addr], "Not approved"
 
     self._checkpoint(_addr)
 
