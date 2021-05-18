@@ -424,7 +424,6 @@ def set_rewards(_reward_contract: address, _sigs: bytes32, _reward_tokens: addre
                 concat(withdraw_sig, convert(total_supply, bytes32))
             )  # dev: failed withdraw
             assert ERC20(lp_token).balanceOf(self) == total_supply
-
             # deposit and withdraw are good, time to make the actual deposit
             raw_call(
                 _reward_contract,
