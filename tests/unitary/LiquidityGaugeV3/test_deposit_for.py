@@ -1,39 +1,39 @@
-import brownie
+from brownie import ZERO_ADDRESS
+from math import isclose
 
 
-def test_deposit_for(accounts, gauge_v3, mock_lp_token):
-    mock_lp_token.approve(gauge_v3, 2 ** 256 - 1, {"from": accounts[0]})
-    balance = mock_lp_token.balanceOf(accounts[0])
-    gauge_v3.set_approve_deposit(accounts[0], True, {"from": accounts[1]})
-    gauge_v3.deposit(100000, accounts[1], {"from": accounts[0]})
-
-    assert mock_lp_token.balanceOf(gauge_v3) == 100000
-    assert mock_lp_token.balanceOf(accounts[0]) == balance - 100000
-    assert gauge_v3.totalSupply() == 100000
-    assert gauge_v3.balanceOf(accounts[1]) == 100000
+REWARD = 10 ** 20
+WEEK = 7 * 86400
+LP_AMOUNT = 10 ** 18
 
 
-def test_set_approve_deposit_initial(accounts, gauge_v3):
-    assert gauge_v3.approved_to_deposit(accounts[0], accounts[1]) is False
+def test_no_approval_needed(alice, bob, gauge_v3, mock_lp_token):
+    mock_lp_token.approve(gauge_v3, 2 ** 256 - 1, {"from": alice})
+    gauge_v3.deposit(100_000, bob, {"from": alice})
+
+    assert gauge_v3.balanceOf(bob) == 100_000
 
 
-def test_set_approve_deposit_true(accounts, gauge_v3):
-    gauge_v3.set_approve_deposit(accounts[0], True, {"from": accounts[1]})
-    assert gauge_v3.approved_to_deposit(accounts[0], accounts[1]) is True
+def test_deposit_for_and_claim_rewards(
+    alice, bob, chain, gauge_v3, mock_lp_token, reward_contract, coin_reward
+):
+    mock_lp_token.approve(gauge_v3, 2 ** 256 - 1, {"from": alice})
+    gauge_v3.deposit(LP_AMOUNT, bob, {"from": alice})
 
+    coin_reward._mint_for_testing(REWARD, {"from": alice})
+    coin_reward.transfer(reward_contract, REWARD, {"from": alice})
+    reward_contract.notifyRewardAmount(REWARD, {"from": alice})
 
-def test_set_approve_deposit_false(accounts, gauge_v3):
-    gauge_v3.set_approve_deposit(accounts[0], False, {"from": accounts[1]})
-    assert gauge_v3.approved_to_deposit(accounts[0], accounts[1]) is False
+    gauge_v3.set_rewards(
+        reward_contract,
+        "0xa694fc3a2e1a7d4d3d18b9120000000000000000000000000000000000000000",
+        [coin_reward] + [ZERO_ADDRESS] * 7,
+        {"from": alice},
+    )
 
+    chain.mine(timedelta=WEEK)
 
-def test_set_approve_deposit_toggle(accounts, gauge_v3):
-    for value in [True, True, False, False, True, False, True]:
-        gauge_v3.set_approve_deposit(accounts[0], value, {"from": accounts[1]})
-        assert gauge_v3.approved_to_deposit(accounts[0], accounts[1]) is value
+    # alice deposits for bob and claims rewards for him
+    gauge_v3.deposit(LP_AMOUNT, bob, True, {"from": alice})
 
-
-def test_not_approved(accounts, gauge_v3, mock_lp_token):
-    mock_lp_token.approve(gauge_v3, 2 ** 256 - 1, {"from": accounts[0]})
-    with brownie.reverts("Not approved"):
-        gauge_v3.deposit(100000, accounts[1], {"from": accounts[0]})
+    assert isclose(REWARD, coin_reward.balanceOf(bob))
