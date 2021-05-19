@@ -359,18 +359,6 @@ def _checkpoint(addr: address):
     self.integrate_checkpoint_of[addr] = block.timestamp
 
 
-@view
-@external
-def reward_contract() -> address:
-    return convert(self.reward_data % 2**160, address)
-
-
-@view
-@external
-def last_claim() -> uint256:
-    return shift(self.reward_data, -160)
-
-
 @external
 def user_checkpoint(addr: address) -> bool:
     """
@@ -397,14 +385,49 @@ def claimable_tokens(addr: address) -> uint256:
 
 @view
 @external
-def claimable_reward(_addr: address, _token: address) -> uint256:
-    return shift(self.claim_data[_addr][_token], -128)
+def reward_contract() -> address:
+    """
+    @notice Address of the reward contract providing non-CRV incentives for this gauge
+    @dev Returns `ZERO_ADDRESS` if there is no reward contract active
+    """
+    return convert(self.reward_data % 2**160, address)
+
+
+@view
+@external
+def last_claim() -> uint256:
+    """
+    @notice Epoch timestamp of the last call to claim from `reward_contract`
+    @dev Rewards are claimed at most once per hour in order to reduce gas costs
+    """
+    return shift(self.reward_data, -160)
 
 
 @view
 @external
 def claimed_reward(_addr: address, _token: address) -> uint256:
+    """
+    @notice Get the number of already-claimed reward tokens for a user
+    @param _addr Account to get reward amount for
+    @param _token Token to get reward amount for
+    @return uint256 Total amount of `_token` already claimed by `_addr`
+    """
     return self.claim_data[_addr][_token] % 2**128
+
+
+@view
+@external
+def claimable_reward(_addr: address, _token: address) -> uint256:
+    """
+    @notice Get the number of claimable reward tokens for a user
+    @dev This call does not consider pending claimable amount in `reward_contract`.
+         Off-chain callers should instead use `claimable_rewards_write` as a
+         view method.
+    @param _addr Account to get reward amount for
+    @param _token Token to get reward amount for
+    @return uint256 Claimable reward token amount
+    """
+    return shift(self.claim_data[_addr][_token], -128)
 
 
 @external
