@@ -561,7 +561,7 @@ def allowance(_owner : address, _spender : address) -> uint256:
 
 
 @internal
-def _transfer(_from: address, _to: address, _value: uint256, _claim_rewards: bool = False):
+def _transfer(_from: address, _to: address, _value: uint256):
     self._checkpoint(_from)
     self._checkpoint(_to)
 
@@ -569,13 +569,13 @@ def _transfer(_from: address, _to: address, _value: uint256, _claim_rewards: boo
         total_supply: uint256 = self.totalSupply
         is_rewards: bool = self.reward_tokens[0] != ZERO_ADDRESS
         if is_rewards:
-            self._checkpoint_rewards(_from, total_supply, _claim_rewards, ZERO_ADDRESS)
+            self._checkpoint_rewards(_from, total_supply, True, ZERO_ADDRESS)
         new_balance: uint256 = self.balanceOf[_from] - _value
         self.balanceOf[_from] = new_balance
         self._update_liquidity_limit(_from, new_balance, total_supply)
 
         if is_rewards:
-            self._checkpoint_rewards(_to, total_supply, _claim_rewards, ZERO_ADDRESS)
+            self._checkpoint_rewards(_to, total_supply, True, ZERO_ADDRESS)
         new_balance = self.balanceOf[_to] + _value
         self.balanceOf[_to] = new_balance
         self._update_liquidity_limit(_to, new_balance, total_supply)
