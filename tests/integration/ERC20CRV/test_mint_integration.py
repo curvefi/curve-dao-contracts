@@ -35,9 +35,7 @@ def test_overmint(accounts, chain, token, duration):
 
     with brownie.reverts("dev: exceeds allowable mint amount"):
         token.mint(
-            accounts[1],
-            (chain.time() - creation_time + 2) * rate,
-            {"from": accounts[0]},
+            accounts[1], (chain.time() - creation_time + 2) * rate, {"from": accounts[0]},
         )
 
 

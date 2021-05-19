@@ -70,4 +70,3 @@ def test_claim_one_lp(alice, bob, chain, gauge_v3, coin_a, coin_b):
         reward = coin.balanceOf(alice)
         assert reward <= REWARD
         assert approx(REWARD, reward, 1.001 / WEEK)  # ganache-cli jitter of 1 s
-

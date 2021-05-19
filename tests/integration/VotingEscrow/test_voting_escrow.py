@@ -74,14 +74,10 @@ def test_voting_powers(web3, chain, accounts, token, voting_escrow):
             chain.mine()
         dt = chain[-1].timestamp - t0
         assert approx(
-            voting_escrow.totalSupply(),
-            amount // MAXTIME * max(WEEK - 2 * H - dt, 0),
-            TOL,
+            voting_escrow.totalSupply(), amount // MAXTIME * max(WEEK - 2 * H - dt, 0), TOL,
         )
         assert approx(
-            voting_escrow.balanceOf(alice),
-            amount // MAXTIME * max(WEEK - 2 * H - dt, 0),
-            TOL,
+            voting_escrow.balanceOf(alice), amount // MAXTIME * max(WEEK - 2 * H - dt, 0), TOL,
         )
         assert voting_escrow.balanceOf(bob) == 0
         stages["alice_in_0"].append((web3.eth.blockNumber, chain[-1].timestamp))
