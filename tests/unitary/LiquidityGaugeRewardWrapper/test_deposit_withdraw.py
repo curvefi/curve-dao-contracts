@@ -21,7 +21,11 @@ def setup(
 
 
 def test_deposit(
-    accounts, liquidity_gauge_reward, reward_gauge_wrapper, reward_contract, mock_lp_token,
+    accounts,
+    liquidity_gauge_reward,
+    reward_gauge_wrapper,
+    reward_contract,
+    mock_lp_token,
 ):
     balance = mock_lp_token.balanceOf(accounts[0])
     reward_gauge_wrapper.deposit(100000, {"from": accounts[0]})
@@ -38,7 +42,11 @@ def test_deposit(
 
 
 def test_deposit_zero(
-    accounts, liquidity_gauge_reward, reward_gauge_wrapper, reward_contract, mock_lp_token,
+    accounts,
+    liquidity_gauge_reward,
+    reward_gauge_wrapper,
+    reward_contract,
+    mock_lp_token,
 ):
     balance = mock_lp_token.balanceOf(accounts[0])
     liquidity_gauge_reward.deposit(0, {"from": accounts[0]})
@@ -60,7 +68,11 @@ def test_deposit_insufficient_balance(accounts, reward_gauge_wrapper):
 
 
 def test_withdraw(
-    accounts, liquidity_gauge_reward, reward_gauge_wrapper, reward_contract, mock_lp_token,
+    accounts,
+    liquidity_gauge_reward,
+    reward_gauge_wrapper,
+    reward_contract,
+    mock_lp_token,
 ):
     balance = mock_lp_token.balanceOf(accounts[0])
 
@@ -79,7 +91,11 @@ def test_withdraw(
 
 
 def test_withdraw_zero(
-    accounts, liquidity_gauge_reward, reward_gauge_wrapper, reward_contract, mock_lp_token,
+    accounts,
+    liquidity_gauge_reward,
+    reward_gauge_wrapper,
+    reward_contract,
+    mock_lp_token,
 ):
     balance = mock_lp_token.balanceOf(accounts[0])
     reward_gauge_wrapper.deposit(100000, {"from": accounts[0]})
@@ -97,7 +113,12 @@ def test_withdraw_zero(
 
 
 def test_withdraw_new_epoch(
-    accounts, chain, liquidity_gauge_reward, reward_gauge_wrapper, reward_contract, mock_lp_token,
+    accounts,
+    chain,
+    liquidity_gauge_reward,
+    reward_gauge_wrapper,
+    reward_contract,
+    mock_lp_token,
 ):
     balance = mock_lp_token.balanceOf(accounts[0])
 

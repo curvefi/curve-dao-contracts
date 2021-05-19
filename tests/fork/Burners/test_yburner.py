@@ -55,7 +55,14 @@ def test_unwrap(MintableTestToken, alice, receiver, burner, token, burner_balanc
 @pytest.mark.parametrize("burner_balance", (True, False))
 @pytest.mark.parametrize("caller_balance", (True, False))
 def test_swap_and_unwrap(
-    MintableTestToken, USDC, alice, receiver, burner, token, burner_balance, caller_balance,
+    MintableTestToken,
+    USDC,
+    alice,
+    receiver,
+    burner,
+    token,
+    burner_balance,
+    caller_balance,
 ):
     wrapped = MintableTestToken(token)
     amount = 10 ** wrapped.decimals()

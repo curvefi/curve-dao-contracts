@@ -16,7 +16,12 @@ class StateMachine:
     st_reward = strategy("uint64")
 
     def __init__(
-        self, accounts, rewards_only_gauge, mock_lp_token, reward_contract, coin_reward,
+        self,
+        accounts,
+        rewards_only_gauge,
+        mock_lp_token,
+        reward_contract,
+        coin_reward,
     ):
         self.accounts = accounts
         self.token = mock_lp_token

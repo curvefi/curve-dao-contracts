@@ -134,16 +134,24 @@ def vest_tokens(admin, funding_admins, token_address, confs):
 
     tx = token.approve(vesting_escrow, TOTAL_AMOUNT, {"from": admin, "required_confs": confs})
     _log_tx(
-        txid=tx.txid, fn_name=tx.fn_name, spender=vesting_escrow.address, amount=TOTAL_AMOUNT,
+        txid=tx.txid,
+        fn_name=tx.fn_name,
+        spender=vesting_escrow.address,
+        amount=TOTAL_AMOUNT,
     )
     tx = vesting_escrow.add_tokens(TOTAL_AMOUNT, {"from": admin, "required_confs": confs})
     _log_tx(
-        txid=tx.txid, fn_name=tx.fn_name, amount=TOTAL_AMOUNT,
+        txid=tx.txid,
+        fn_name=tx.fn_name,
+        amount=TOTAL_AMOUNT,
     )
 
     # convert vested_amounts into input args for `VestingEscrow.fund` calls
     fund_arguments = [
-        ([x[0] for x in vested_amounts[i : i + 100]], [x[1] for x in vested_amounts[i : i + 100]],)
+        (
+            [x[0] for x in vested_amounts[i : i + 100]],
+            [x[1] for x in vested_amounts[i : i + 100]],
+        )
         for i in range(0, len(vested_amounts), 100)
     ]
 
@@ -158,7 +166,8 @@ def vest_tokens(admin, funding_admins, token_address, confs):
     funding_threads = []
     for acct in [admin] + funding_admins:
         thread = threading.Thread(
-            target=_fund_accounts, args=(acct, vesting_escrow, fund_arguments, confs),
+            target=_fund_accounts,
+            args=(acct, vesting_escrow, fund_arguments, confs),
         )
         funding_threads.append(thread)
         thread.start()
@@ -169,17 +178,21 @@ def vest_tokens(admin, funding_admins, token_address, confs):
     # burn all the admin accounts!
     tx = vesting_escrow.disable_fund_admins({"from": admin, "required_confs": confs})
     _log_tx(
-        txid=tx.txid, fn_name=tx.fn_name,
+        txid=tx.txid,
+        fn_name=tx.fn_name,
     )
     vesting_escrow.commit_transfer_ownership(
-        "0x000000000000000000000000000000000000dead", {"from": admin, "required_confs": confs},
+        "0x000000000000000000000000000000000000dead",
+        {"from": admin, "required_confs": confs},
     )
     _log_tx(
-        txid=tx.txid, fn_name=tx.fn_name,
+        txid=tx.txid,
+        fn_name=tx.fn_name,
     )
     vesting_escrow.apply_transfer_ownership({"from": admin, "required_confs": confs})
     _log_tx(
-        txid=tx.txid, fn_name=tx.fn_name,
+        txid=tx.txid,
+        fn_name=tx.fn_name,
     )
 
     gas_used = sum(i.gas_used for i in history[start_idx:])

@@ -20,7 +20,11 @@ def test_set_rewards(alice, gauge_proxy, gauge_v2, reward_contract, coin_reward)
     sigs = f"0x{sigs[0]}{sigs[1]}{sigs[2]}{'00' * 20}"
 
     gauge_proxy.set_rewards(
-        gauge_v2, reward_contract, sigs, [coin_reward] + [ZERO_ADDRESS] * 7, {"from": alice},
+        gauge_v2,
+        reward_contract,
+        sigs,
+        [coin_reward] + [ZERO_ADDRESS] * 7,
+        {"from": alice},
     )
     assert gauge_v2.reward_contract() == reward_contract
     assert gauge_v2.reward_tokens(0) == coin_reward
@@ -31,5 +35,9 @@ def test_only_ownership_admin(accounts, gauge_proxy, gauge_v2, reward_contract, 
 
     with brownie.reverts("Access denied"):
         gauge_proxy.set_rewards(
-            gauge_v2, reward_contract, "0x00", [ZERO_ADDRESS] * 8, {"from": accounts[idx]},
+            gauge_v2,
+            reward_contract,
+            "0x00",
+            [ZERO_ADDRESS] * 8,
+            {"from": accounts[idx]},
         )

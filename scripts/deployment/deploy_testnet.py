@@ -59,15 +59,24 @@ def save_abi(contract, name):
 def deploy_erc20s_and_pool(deployer):
     coin_a = repeat(ERC20.deploy, "Coin A", "USDA", 18, {"from": deployer, "required_confs": CONFS})
     repeat(
-        coin_a._mint_for_testing, 10 ** 9 * 10 ** 18, {"from": deployer, "required_confs": CONFS},
+        coin_a._mint_for_testing,
+        10 ** 9 * 10 ** 18,
+        {"from": deployer, "required_confs": CONFS},
     )
     coin_b = repeat(ERC20.deploy, "Coin B", "USDB", 18, {"from": deployer, "required_confs": CONFS})
     repeat(
-        coin_b._mint_for_testing, 10 ** 9 * 10 ** 18, {"from": deployer, "required_confs": CONFS},
+        coin_b._mint_for_testing,
+        10 ** 9 * 10 ** 18,
+        {"from": deployer, "required_confs": CONFS},
     )
 
     lp_token = repeat(
-        ERC20LP.deploy, "Some pool", "cPool", 18, 0, {"from": deployer, "required_confs": CONFS},
+        ERC20LP.deploy,
+        "Some pool",
+        "cPool",
+        18,
+        0,
+        {"from": deployer, "required_confs": CONFS},
     )
     save_abi(lp_token, "lp_token")
     pool = repeat(
@@ -101,7 +110,9 @@ def deploy_erc20s_and_pool(deployer):
         )
 
     repeat(
-        pool.commit_transfer_ownership, ARAGON_AGENT, {"from": deployer, "required_confs": CONFS},
+        pool.commit_transfer_ownership,
+        ARAGON_AGENT,
+        {"from": deployer, "required_confs": CONFS},
     )
     repeat(pool.apply_transfer_ownership, {"from": deployer, "required_confs": CONFS})
 
@@ -130,15 +141,24 @@ def main():
 
     coin_a = repeat(ERC20.deploy, "Coin A", "USDA", 18, {"from": deployer, "required_confs": CONFS})
     repeat(
-        coin_a._mint_for_testing, 10 ** 9 * 10 ** 18, {"from": deployer, "required_confs": CONFS},
+        coin_a._mint_for_testing,
+        10 ** 9 * 10 ** 18,
+        {"from": deployer, "required_confs": CONFS},
     )
     coin_b = repeat(ERC20.deploy, "Coin B", "USDB", 18, {"from": deployer, "required_confs": CONFS})
     repeat(
-        coin_b._mint_for_testing, 10 ** 9 * 10 ** 18, {"from": deployer, "required_confs": CONFS},
+        coin_b._mint_for_testing,
+        10 ** 9 * 10 ** 18,
+        {"from": deployer, "required_confs": CONFS},
     )
 
     lp_token = repeat(
-        ERC20LP.deploy, "Some pool", "cPool", 18, 0, {"from": deployer, "required_confs": CONFS},
+        ERC20LP.deploy,
+        "Some pool",
+        "cPool",
+        18,
+        0,
+        {"from": deployer, "required_confs": CONFS},
     )
     save_abi(lp_token, "lp_token")
     pool = repeat(
@@ -166,13 +186,21 @@ def main():
     )
 
     contract = repeat(
-        CurveRewards.deploy, lp_token, coin_a, {"from": accounts[0], "required_confs": CONFS},
+        CurveRewards.deploy,
+        lp_token,
+        coin_a,
+        {"from": accounts[0], "required_confs": CONFS},
     )
     repeat(
-        contract.setRewardDistribution, accounts[0], {"from": accounts[0], "required_confs": CONFS},
+        contract.setRewardDistribution,
+        accounts[0],
+        {"from": accounts[0], "required_confs": CONFS},
     )
     repeat(
-        coin_a.transfer, contract, 100e18, {"from": accounts[0], "required_confs": CONFS},
+        coin_a.transfer,
+        contract,
+        100e18,
+        {"from": accounts[0], "required_confs": CONFS},
     )
 
     liquidity_gauge_rewards = repeat(
@@ -190,7 +218,11 @@ def main():
     coin_a = coins[1]
 
     token = repeat(
-        ERC20CRV.deploy, "Curve DAO Token", "CRV", 18, {"from": deployer, "required_confs": CONFS},
+        ERC20CRV.deploy,
+        "Curve DAO Token",
+        "CRV",
+        18,
+        {"from": deployer, "required_confs": CONFS},
     )
     save_abi(token, "token_crv")
 
@@ -205,7 +237,9 @@ def main():
     save_abi(escrow, "voting_escrow")
 
     repeat(
-        escrow.changeController, ARAGON_AGENT, {"from": deployer, "required_confs": CONFS},
+        escrow.changeController,
+        ARAGON_AGENT,
+        {"from": deployer, "required_confs": CONFS},
     )
 
     for account in DISTRIBUTION_ADDRESSES:
@@ -217,28 +251,45 @@ def main():
         )
 
     gauge_controller = repeat(
-        GaugeController.deploy, token, escrow, {"from": deployer, "required_confs": CONFS},
+        GaugeController.deploy,
+        token,
+        escrow,
+        {"from": deployer, "required_confs": CONFS},
     )
     save_abi(gauge_controller, "gauge_controller")
 
     minter = repeat(
-        Minter.deploy, token, gauge_controller, {"from": deployer, "required_confs": CONFS},
+        Minter.deploy,
+        token,
+        gauge_controller,
+        {"from": deployer, "required_confs": CONFS},
     )
     save_abi(minter, "minter")
 
     liquidity_gauge = repeat(
-        LiquidityGauge.deploy, lp_token, minter, {"from": deployer, "required_confs": CONFS},
+        LiquidityGauge.deploy,
+        lp_token,
+        minter,
+        {"from": deployer, "required_confs": CONFS},
     )
     save_abi(liquidity_gauge, "liquidity_gauge")
 
     contract = repeat(
-        CurveRewards.deploy, lp_token, coin_a, {"from": accounts[0], "required_confs": CONFS},
+        CurveRewards.deploy,
+        lp_token,
+        coin_a,
+        {"from": accounts[0], "required_confs": CONFS},
     )
     repeat(
-        contract.setRewardDistribution, accounts[0], {"from": accounts[0], "required_confs": CONFS},
+        contract.setRewardDistribution,
+        accounts[0],
+        {"from": accounts[0], "required_confs": CONFS},
     )
     repeat(
-        coin_a.transfer, contract, 100e18, {"from": accounts[0], "required_confs": CONFS},
+        coin_a.transfer,
+        contract,
+        100e18,
+        {"from": accounts[0], "required_confs": CONFS},
     )
 
     liquidity_gauge_rewards = repeat(
@@ -252,7 +303,9 @@ def main():
 
     repeat(token.set_minter, minter, {"from": deployer, "required_confs": CONFS})
     repeat(
-        gauge_controller.add_type, b"Liquidity", {"from": deployer, "required_confs": CONFS},
+        gauge_controller.add_type,
+        b"Liquidity",
+        {"from": deployer, "required_confs": CONFS},
     )
     repeat(
         gauge_controller.change_type_weight,
@@ -269,7 +322,9 @@ def main():
     )
 
     repeat(
-        gauge_controller.add_type, b"LiquidityRewards", {"from": deployer, "required_confs": CONFS},
+        gauge_controller.add_type,
+        b"LiquidityRewards",
+        {"from": deployer, "required_confs": CONFS},
     )
     repeat(
         gauge_controller.change_type_weight,
@@ -291,10 +346,13 @@ def main():
         {"from": deployer, "required_confs": CONFS},
     )
     repeat(
-        gauge_controller.apply_transfer_ownership, {"from": deployer, "required_confs": CONFS},
+        gauge_controller.apply_transfer_ownership,
+        {"from": deployer, "required_confs": CONFS},
     )
     repeat(
-        escrow.commit_transfer_ownership, ARAGON_AGENT, {"from": deployer, "required_confs": CONFS},
+        escrow.commit_transfer_ownership,
+        ARAGON_AGENT,
+        {"from": deployer, "required_confs": CONFS},
     )
     repeat(escrow.apply_transfer_ownership, {"from": deployer, "required_confs": CONFS})
 
