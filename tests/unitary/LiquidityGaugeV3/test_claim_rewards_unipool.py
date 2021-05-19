@@ -89,7 +89,7 @@ def test_claim_two_lp(alice, bob, chain, gauge_v3, mock_lp_token, coin_reward, n
 
     # Calculate rewards
     claimable_rewards = [
-        gauge_v3.claimable_reward.call(acc, coin_reward, {"from": acc}) for acc in (alice, bob)
+        gauge_v3.claimable_reward_write.call(acc, coin_reward, {"from": acc}) for acc in (alice, bob)
     ]
 
     # Claim rewards
