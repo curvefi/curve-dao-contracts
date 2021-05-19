@@ -227,6 +227,16 @@ def claim_rewards(_addr: address = msg.sender, _receiver: address = ZERO_ADDRESS
 
 
 @external
+def set_rewards_receiver(_receiver: address):
+    """
+    @notice Set the default reward receiver for the caller.
+    @dev When set to ZERO_ADDRESS, rewards are sent to the caller
+    @param _receiver Receiver address for any rewards claimed via `claim_rewards`
+    """
+    self.rewards_receiver[msg.sender] = _receiver
+
+
+@external
 @nonreentrant('lock')
 def deposit(_value: uint256, _addr: address = msg.sender, _claim_rewards: bool = False):
     """
