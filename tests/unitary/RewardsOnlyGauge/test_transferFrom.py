@@ -49,13 +49,9 @@ def test_caller_approval_affected(accounts, rewards_only_gauge):
     transfer_amount = approval_amount // 4
 
     rewards_only_gauge.approve(accounts[1], approval_amount, {"from": accounts[0]})
-    rewards_only_gauge.transferFrom(
-        accounts[0], accounts[2], transfer_amount, {"from": accounts[1]}
-    )
+    rewards_only_gauge.transferFrom(accounts[0], accounts[2], transfer_amount, {"from": accounts[1]})
 
-    assert (
-        rewards_only_gauge.allowance(accounts[0], accounts[1]) == approval_amount - transfer_amount
-    )
+    assert rewards_only_gauge.allowance(accounts[0], accounts[1]) == approval_amount - transfer_amount
 
 
 def test_receiver_approval_not_affected(accounts, rewards_only_gauge):
@@ -64,9 +60,7 @@ def test_receiver_approval_not_affected(accounts, rewards_only_gauge):
 
     rewards_only_gauge.approve(accounts[1], approval_amount, {"from": accounts[0]})
     rewards_only_gauge.approve(accounts[2], approval_amount, {"from": accounts[0]})
-    rewards_only_gauge.transferFrom(
-        accounts[0], accounts[2], transfer_amount, {"from": accounts[1]}
-    )
+    rewards_only_gauge.transferFrom(accounts[0], accounts[2], transfer_amount, {"from": accounts[1]})
 
     assert rewards_only_gauge.allowance(accounts[0], accounts[2]) == approval_amount
 
@@ -126,9 +120,7 @@ def test_insufficient_balance(accounts, rewards_only_gauge):
 
     rewards_only_gauge.approve(accounts[1], balance + 1, {"from": accounts[0]})
     with brownie.reverts():
-        rewards_only_gauge.transferFrom(
-            accounts[0], accounts[2], balance + 1, {"from": accounts[1]}
-        )
+        rewards_only_gauge.transferFrom(accounts[0], accounts[2], balance + 1, {"from": accounts[1]})
 
 
 def test_insufficient_approval(accounts, rewards_only_gauge):

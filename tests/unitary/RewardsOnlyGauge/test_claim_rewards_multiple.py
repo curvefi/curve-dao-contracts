@@ -1,3 +1,4 @@
+import brownie
 import pytest
 from brownie import ZERO_ADDRESS, compile_source
 
@@ -79,6 +80,19 @@ def test_claim_one_lp(bob, chain, rewards_only_gauge, coin_a, coin_b):
         assert approx(REWARD, reward, 1.001 / WEEK)  # ganache-cli jitter of 1 s
 
 
+def test_claim_updates_claimed_reward(bob, chain, rewards_only_gauge, coin_a, coin_b):
+    chain.sleep(WEEK)
+
+    rewards_only_gauge.withdraw(LP_AMOUNT, {"from": bob})
+    rewards_only_gauge.claim_rewards({"from": bob})
+
+    for coin in (coin_a, coin_b):
+        reward = coin.balanceOf(bob)
+        assert reward <= REWARD
+        assert approx(REWARD, reward, 1.001 / WEEK)  # ganache-cli jitter of 1 s
+        assert rewards_only_gauge.claimed_reward(bob, coin) == reward
+
+
 def test_claim_for_other(bob, charlie, chain, rewards_only_gauge, coin_a, coin_b):
     chain.sleep(WEEK)
 
@@ -156,3 +170,25 @@ def test_claim_duration(bob, chain, rewards_only_gauge, coin_a, coin_b):
     assert rewards_only_gauge.last_claim() == chain[-1].timestamp > claim_time
     assert coin_a.balanceOf(bob) > claimed[0]
     assert coin_b.balanceOf(bob) > claimed[1]
+
+
+def test_claim_set_alt_receiver(bob, charlie, chain, rewards_only_gauge, coin_a, coin_b):
+    chain.sleep(WEEK)
+
+    rewards_only_gauge.claim_rewards(bob, charlie, {"from": bob})
+
+    assert coin_a.balanceOf(bob) == 0
+    assert coin_b.balanceOf(bob) == 0
+
+    for coin in (coin_a, coin_b):
+        reward = coin.balanceOf(charlie)
+        assert reward <= REWARD
+        assert approx(REWARD, reward, 1.001 / WEEK)  # ganache-cli jitter of 1 s
+
+
+def test_claim_for_other_changing_receiver_reverts(bob, charlie, chain, rewards_only_gauge):
+    chain.sleep(WEEK)
+
+    rewards_only_gauge.withdraw(LP_AMOUNT, {"from": bob})
+    with brownie.reverts("dev: cannot redirect when claiming for another user"):
+        rewards_only_gauge.claim_rewards(bob, charlie, {"from": charlie})
