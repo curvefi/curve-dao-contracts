@@ -524,9 +524,7 @@ def withdraw(_value: uint256, _claim_rewards: bool = False):
         is_rewards: bool = self.reward_tokens[0] != ZERO_ADDRESS
         total_supply: uint256 = self.totalSupply
         if is_rewards:
-            # needed for the last person in the pool to not get rugged
-            force_claim_rewards: bool = (total_supply - _value == 0) or _claim_rewards
-            self._checkpoint_rewards(msg.sender, total_supply, force_claim_rewards, ZERO_ADDRESS)
+            self._checkpoint_rewards(msg.sender, total_supply, _claim_rewards, ZERO_ADDRESS)
 
         total_supply -= _value
         new_balance: uint256 = self.balanceOf[msg.sender] - _value
