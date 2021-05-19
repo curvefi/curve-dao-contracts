@@ -41,24 +41,13 @@ def reward_contract(alice, coin_a, coin_b):
 
 @pytest.fixture(scope="module", autouse=True)
 def initial_setup(
-    alice,
-    bob,
-    chain,
-    gauge_v3,
-    reward_contract,
-    coin_reward,
-    coin_a,
-    coin_b,
-    mock_lp_token,
+    alice, bob, chain, gauge_v3, reward_contract, coin_reward, coin_a, coin_b, mock_lp_token,
 ):
 
     sigs = f"0x{'00' * 4}{'00' * 4}{reward_contract.claim_tokens.signature[2:]}{'00' * 20}"
 
     gauge_v3.set_rewards(
-        reward_contract,
-        sigs,
-        [coin_a, coin_reward, coin_b] + [ZERO_ADDRESS] * 5,
-        {"from": alice},
+        reward_contract, sigs, [coin_a, coin_reward, coin_b] + [ZERO_ADDRESS] * 5, {"from": alice},
     )
 
     # Deposit
@@ -77,6 +66,19 @@ def test_claim_one_lp(bob, chain, gauge_v3, coin_a, coin_b):
         reward = coin.balanceOf(bob)
         assert reward <= REWARD
         assert approx(REWARD, reward, 1.001 / WEEK)  # ganache-cli jitter of 1 s
+
+
+def test_claim_updates_claimed_reward(bob, chain, gauge_v3, coin_a, coin_b):
+    chain.sleep(WEEK)
+
+    gauge_v3.withdraw(LP_AMOUNT, {"from": bob})
+    gauge_v3.claim_rewards({"from": bob})
+
+    for coin in (coin_a, coin_b):
+        reward = coin.balanceOf(bob)
+        assert reward <= REWARD
+        assert approx(REWARD, reward, 1.001 / WEEK)  # ganache-cli jitter of 1 s
+        assert gauge_v3.claimed_reward(bob, coin) == reward
 
 
 def test_claim_for_other(bob, charlie, chain, gauge_v3, coin_a, coin_b):
@@ -105,15 +107,7 @@ def test_claim_for_other_no_reward(bob, charlie, chain, gauge_v3, coin_a, coin_b
 
 
 def test_claim_two_lp(
-    alice,
-    bob,
-    chain,
-    gauge_v3,
-    mock_lp_token,
-    coin_a,
-    coin_b,
-    reward_contract,
-    no_call_coverage,
+    alice, bob, chain, gauge_v3, mock_lp_token, coin_a, coin_b, reward_contract, no_call_coverage,
 ):
 
     # Deposit
