@@ -1,3 +1,4 @@
+import brownie
 import pytest
 from brownie import ZERO_ADDRESS, compile_source
 
@@ -150,3 +151,25 @@ def test_claim_duration(bob, chain, gauge_v3, coin_a, coin_b):
     assert gauge_v3.last_claim() == chain[-1].timestamp > claim_time
     assert coin_a.balanceOf(bob) > claimed[0]
     assert coin_b.balanceOf(bob) > claimed[1]
+
+
+def test_claim_set_alt_receiver(bob, charlie, chain, gauge_v3, coin_a, coin_b):
+    chain.sleep(WEEK)
+
+    gauge_v3.claim_rewards(bob, charlie, {"from": bob})
+
+    assert coin_a.balanceOf(bob) == 0
+    assert coin_b.balanceOf(bob) == 0
+
+    for coin in (coin_a, coin_b):
+        reward = coin.balanceOf(charlie)
+        assert reward <= REWARD
+        assert approx(REWARD, reward, 1.001 / WEEK)  # ganache-cli jitter of 1 s
+
+
+def test_claim_for_other_changing_receiver_reverts(bob, charlie, chain, gauge_v3):
+    chain.sleep(WEEK)
+
+    gauge_v3.withdraw(LP_AMOUNT, {"from": bob})
+    with brownie.reverts("dev: cannot redirect when claiming for another user"):
+        gauge_v3.claim_rewards(bob, charlie, {"from": charlie})
