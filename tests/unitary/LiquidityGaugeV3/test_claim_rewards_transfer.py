@@ -1,7 +1,7 @@
 import pytest
 from brownie import ZERO_ADDRESS
 
-from tests.conftest import approx
+import math
 
 REWARD = 10 ** 20
 WEEK = 7 * 86400
@@ -46,87 +46,36 @@ def initial_setup(
     chain.sleep(int(86400 * 3.5))
 
 
-def test_transfer_triggers_claim_for_sender(alice, bob, chain, gauge_v3, coin_reward):
+def test_transfer_does_not_trigger_claim_for_sender(alice, bob, chain, gauge_v3, coin_reward):
     amount = gauge_v3.balanceOf(alice)
 
     gauge_v3.transfer(bob, amount, {"from": alice})
 
     reward = coin_reward.balanceOf(alice)
-    assert approx(REWARD // 2, reward, 1e-4)
+    assert reward == 0
 
 
-def test_transfer_triggers_claim_for_receiver(alice, bob, chain, gauge_v3, coin_reward):
+def test_transfer_does_not_trigger_claim_for_receiver(alice, bob, chain, gauge_v3, coin_reward):
     amount = gauge_v3.balanceOf(alice) // 2
 
     gauge_v3.transfer(bob, amount, {"from": alice})
     chain.sleep(WEEK)
     gauge_v3.transfer(alice, amount, {"from": bob})
 
-    rewards = []
     for acct in (alice, bob):
         gauge_v3.claim_rewards({"from": acct})
-        rewards += [coin_reward.balanceOf(acct)]
-
-    assert sum(rewards) <= REWARD
-    assert approx(rewards[0] / rewards[1], 3, 1e-4)
-    assert approx(REWARD, sum(rewards), 1.001 / WEEK)
+        assert coin_reward.balanceOf(acct) == 0
 
 
-def test_transfer_partial_balance(alice, bob, chain, gauge_v3, coin_reward):
-    amount = gauge_v3.balanceOf(alice) // 2
-
-    gauge_v3.transfer(bob, amount, {"from": alice})
-    chain.sleep(WEEK)
-
-    rewards = []
-    for acct in (alice, bob):
-        gauge_v3.claim_rewards({"from": acct})
-        rewards += [coin_reward.balanceOf(acct)]
-
-    assert sum(rewards) <= REWARD
-    assert approx(rewards[0] / rewards[1], 3, 1e-4)
-    assert approx(REWARD, sum(rewards), 1.001 / WEEK)
-
-
-def test_transfer_full_balance(alice, bob, chain, gauge_v3, coin_reward):
+def test_claim_rewards_stil_accurate(alice, bob, chain, gauge_v3, coin_reward):
     amount = gauge_v3.balanceOf(alice)
 
     gauge_v3.transfer(bob, amount, {"from": alice})
-    chain.sleep(WEEK)
 
-    rewards = []
-    for acct in (alice, bob):
-        gauge_v3.claim_rewards({"from": acct})
-        rewards += [coin_reward.balanceOf(acct)]
-
-    assert sum(rewards) <= REWARD
-    assert approx(rewards[0], rewards[1], 1e-4)
-    assert approx(REWARD, sum(rewards), 1.001 / WEEK)
-
-
-def test_transfer_zero_tokens(alice, bob, chain, gauge_v3, coin_reward):
-    gauge_v3.transfer(bob, 0, {"from": alice})
-    chain.sleep(WEEK)
+    # sleep half way through the reward period
+    chain.sleep(int(86400 * 3.5))
 
     for acct in (alice, bob):
         gauge_v3.claim_rewards({"from": acct})
 
-    reward = coin_reward.balanceOf(alice)
-
-    assert coin_reward.balanceOf(bob) == 0
-    assert reward <= REWARD
-    assert approx(REWARD, reward, 1.001 / WEEK)
-
-
-def test_transfer_to_self(alice, chain, gauge_v3, coin_reward):
-    sender_balance = gauge_v3.balanceOf(alice)
-    amount = sender_balance // 4
-
-    gauge_v3.transfer(alice, amount, {"from": alice})
-    chain.sleep(WEEK)
-
-    gauge_v3.claim_rewards({"from": alice})
-    reward = coin_reward.balanceOf(alice)
-
-    assert reward <= REWARD
-    assert approx(REWARD, reward, 1.001 / WEEK)
+        assert math.isclose(coin_reward.balanceOf(acct), REWARD // 2, rel_tol=0.01)
