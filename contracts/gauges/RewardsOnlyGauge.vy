@@ -119,12 +119,10 @@ def _checkpoint_rewards(_user: address, _total_supply: uint256, _claim: bool, _r
     """
     @notice Claim pending rewards and checkpoint rewards for a user
     """
-    if _total_supply == 0:
-        return
-
     # claim from reward contract
+    
     reward_data: uint256 = self.reward_data
-    if reward_data != 0 and block.timestamp > shift(reward_data, -160) + CLAIM_FREQUENCY:
+    if _total_supply != 0 and reward_data != 0 and block.timestamp > shift(reward_data, -160) + CLAIM_FREQUENCY:
         reward_contract: address = convert(reward_data % 2**160, address)
         raw_call(reward_contract, slice(self.reward_sigs, 8, 4))  # dev: bad claim sig
         self.reward_data = convert(reward_contract, uint256) + shift(block.timestamp, 160)
@@ -142,20 +140,22 @@ def _checkpoint_rewards(_user: address, _total_supply: uint256, _claim: bool, _r
         token: address = self.reward_tokens[i]
         if token == ZERO_ADDRESS:
             break
-        token_balance: uint256 = ERC20(token).balanceOf(self)
-        dI: uint256 = 10**18 * (token_balance - self.reward_balances[token]) / _total_supply
-        self.reward_balances[token] = token_balance
-        if _user == ZERO_ADDRESS:
-            if dI != 0:
-                self.reward_integral[token] += dI
-            continue
+        dI: uint256 = 0
+        if _total_supply != 0:
+            token_balance: uint256 = ERC20(token).balanceOf(self)
+            dI = 10**18 * (token_balance - self.reward_balances[token]) / _total_supply
+            self.reward_balances[token] = token_balance
+            if _user == ZERO_ADDRESS:
+                if dI != 0:
+                    self.reward_integral[token] += dI
+                continue
 
         integral: uint256 = self.reward_integral[token] + dI
         if dI != 0:
             self.reward_integral[token] = integral
 
         integral_for: uint256 = self.reward_integral_for[token][_user]
-        if integral_for < integral:
+        if integral_for < integral or _total_supply == 0:
             new_claimable: uint256 = user_balance * (integral - integral_for) / 10**18
             self.reward_integral_for[token][_user] = integral
 
