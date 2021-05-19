@@ -1,7 +1,7 @@
 import pytest
 from brownie import ZERO_ADDRESS
 
-from tests.conftest import approx
+import math
 
 REWARD = 10 ** 20
 WEEK = 7 * 86400
@@ -28,7 +28,7 @@ def initial_setup(
     # deposit into gauge
     mock_lp_token.approve(gauge_v3, 2 ** 256 - 1, {"from": alice})
 
-    for acct in accounts:
+    for acct in accounts[:10]:
         gauge_v3.deposit(10 ** 18, acct, {"from": alice})
 
     # add rewards
@@ -50,11 +50,11 @@ def initial_setup(
 
 
 def test_mass_withdraw_claim_rewards(accounts, gauge_v3, coin_reward, mock_lp_token):
-    for account in accounts:
+    for account in accounts[:10]:
         gauge_v3.withdraw(gauge_v3.balanceOf(account), {"from": account})
+        assert gauge_v3.claimed_reward(account, coin_reward) == 0
+        assert gauge_v3.claimable_reward_write.call(account, coin_reward) > 0
 
-    assert mock_lp_token.balanceOf(gauge_v3) == 0
-
-    for account in accounts:
+    for account in accounts[:10]:
         gauge_v3.claim_rewards({"from": account})
-    assert min([coin_reward.balanceOf(account) for account in accounts]) > 0
+        assert math.isclose(coin_reward.balanceOf(account), REWARD / 10)
