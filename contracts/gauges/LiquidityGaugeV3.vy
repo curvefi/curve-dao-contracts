@@ -210,9 +210,6 @@ def _checkpoint_rewards( _user: address, _total_supply: uint256, _claim: bool, _
     """
     @notice Claim pending rewards and checkpoint rewards for a user
     """
-    if _total_supply == 0:
-        return
-
     # load reward tokens and integrals into memory
     reward_tokens: address[MAX_REWARDS] = empty(address[MAX_REWARDS])
     reward_integrals: uint256[MAX_REWARDS] = empty(uint256[MAX_REWARDS])
@@ -224,7 +221,7 @@ def _checkpoint_rewards( _user: address, _total_supply: uint256, _claim: bool, _
         reward_integrals[i] = self.reward_integral[token]
 
     reward_data: uint256 = self.reward_data
-    if reward_data != 0 and block.timestamp > shift(reward_data, -160) + CLAIM_FREQUENCY:
+    if _total_supply != 0 and reward_data != 0 and block.timestamp > shift(reward_data, -160) + CLAIM_FREQUENCY:
         # track balances prior to claiming
         reward_balances: uint256[MAX_REWARDS] = empty(uint256[MAX_REWARDS])
         for i in range(MAX_REWARDS):
@@ -266,7 +263,7 @@ def _checkpoint_rewards( _user: address, _total_supply: uint256, _claim: bool, _
 
             integral: uint256 = reward_integrals[i]
             integral_for: uint256 = self.reward_integral_for[token][_user]
-            if integral_for < integral:
+            if integral_for < integral or _total_supply == 0:
                 self.reward_integral_for[token][_user] = integral
                 claim_data: uint256 = self.claim_data[_user][token]
 
