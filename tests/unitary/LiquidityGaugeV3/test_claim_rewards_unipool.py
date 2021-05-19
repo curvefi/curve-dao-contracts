@@ -89,7 +89,8 @@ def test_claim_two_lp(alice, bob, chain, gauge_v3, mock_lp_token, coin_reward, n
 
     # Calculate rewards
     claimable_rewards = [
-        gauge_v3.claimable_reward_write.call(acc, coin_reward, {"from": acc}) for acc in (alice, bob)
+        gauge_v3.claimable_reward_write.call(acc, coin_reward, {"from": acc})
+        for acc in (alice, bob)
     ]
 
     # Claim rewards
@@ -105,3 +106,19 @@ def test_claim_two_lp(alice, bob, chain, gauge_v3, mock_lp_token, coin_reward, n
     assert sum(rewards) <= REWARD
     assert approx(sum(rewards), REWARD, 1.001 / WEEK)  # ganache-cli jitter of 1 s
     assert approx(rewards[0], rewards[1], 2.002 * WEEK)
+
+
+def test_claimable_rewards_write_retrieves_rewards(
+    alice, chain, gauge_v3, mock_lp_token, coin_reward, no_call_coverage
+):
+
+    # Deposit
+    mock_lp_token.approve(gauge_v3, LP_AMOUNT, {"from": alice})
+    gauge_v3.deposit(LP_AMOUNT, {"from": alice})
+
+    chain.sleep(WEEK)
+    chain.mine()
+
+    before = coin_reward.balanceOf(gauge_v3)
+    gauge_v3.claimable_reward_write(alice, coin_reward, {"from": alice})
+    assert before < coin_reward.balanceOf(gauge_v3)
