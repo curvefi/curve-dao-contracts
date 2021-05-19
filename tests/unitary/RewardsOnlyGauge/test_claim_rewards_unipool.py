@@ -39,7 +39,9 @@ def initial_setup(
     ]
     sigs = f"0x{sigs[0]}{sigs[1]}{sigs[2]}{'00' * 20}"
 
-    rewards_only_gauge.set_rewards(reward_contract, sigs, [coin_reward] + [ZERO_ADDRESS] * 7, {"from": alice})
+    rewards_only_gauge.set_rewards(
+        reward_contract, sigs, [coin_reward] + [ZERO_ADDRESS] * 7, {"from": alice}
+    )
 
     # fund rewards
     coin_reward._mint_for_testing(REWARD, {"from": reward_contract})
@@ -78,7 +80,9 @@ def test_claim_for_other_no_reward(bob, charlie, chain, rewards_only_gauge, coin
     assert coin_reward.balanceOf(charlie) == 0
 
 
-def test_claim_two_lp(alice, bob, chain, rewards_only_gauge, mock_lp_token, coin_reward, no_call_coverage):
+def test_claim_two_lp(
+    alice, bob, chain, rewards_only_gauge, mock_lp_token, coin_reward, no_call_coverage
+):
 
     # Deposit
     mock_lp_token.approve(rewards_only_gauge, LP_AMOUNT, {"from": alice})
@@ -89,7 +93,8 @@ def test_claim_two_lp(alice, bob, chain, rewards_only_gauge, mock_lp_token, coin
 
     # Calculate rewards
     claimable_rewards = [
-        rewards_only_gauge.claimable_reward.call(acc, coin_reward, {"from": acc}) for acc in (alice, bob)
+        rewards_only_gauge.claimable_reward.call(acc, coin_reward, {"from": acc})
+        for acc in (alice, bob)
     ]
 
     # Claim rewards

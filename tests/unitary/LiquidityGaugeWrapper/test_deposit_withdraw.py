@@ -4,7 +4,13 @@ import pytest
 
 @pytest.fixture(scope="module", autouse=True)
 def deposit_setup(
-    accounts, gauge_controller, minter, liquidity_gauge, gauge_wrapper, token, mock_lp_token,
+    accounts,
+    gauge_controller,
+    minter,
+    liquidity_gauge,
+    gauge_wrapper,
+    token,
+    mock_lp_token,
 ):
     token.set_minter(minter, {"from": accounts[0]})
 

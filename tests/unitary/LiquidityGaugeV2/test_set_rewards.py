@@ -51,7 +51,10 @@ def test_multiple_reward_tokens(alice, coin_reward, coin_a, coin_b, reward_contr
 def test_modify_reward_tokens_less(alice, coin_reward, coin_a, coin_b, reward_contract, gauge_v2):
     sigs = f"0x{'00' * 4}{'00' * 4}{reward_contract.getReward.signature[2:]}{'00' * 20}"
     gauge_v2.set_rewards(
-        reward_contract, sigs, [coin_reward, coin_a, coin_b] + [ZERO_ADDRESS] * 5, {"from": alice},
+        reward_contract,
+        sigs,
+        [coin_reward, coin_a, coin_b] + [ZERO_ADDRESS] * 5,
+        {"from": alice},
     )
 
     reward_tokens = [coin_reward] + [ZERO_ADDRESS] * 7
