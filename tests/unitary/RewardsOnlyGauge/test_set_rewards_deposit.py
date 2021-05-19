@@ -27,27 +27,41 @@ def initial_setup(rewards_only_gauge, mock_lp_token, alice, reward_contract, coi
         reward_contract.getReward.signature[2:],
     ]
     sigs = f"0x{sigs[0]}{sigs[1]}{sigs[2]}{'00' * 20}"
-    rewards_only_gauge.set_rewards(reward_contract, sigs, [coin_reward] + [ZERO_ADDRESS] * 7, {"from": alice})
+    rewards_only_gauge.set_rewards(
+        reward_contract, sigs, [coin_reward] + [ZERO_ADDRESS] * 7, {"from": alice}
+    )
 
     rewards_only_gauge.withdraw(1, {"from": alice})
 
 
-def test_unset_no_totalsupply(alice, coin_reward, reward_contract, rewards_only_gauge, mock_lp_token):
-    rewards_only_gauge.set_rewards(ZERO_ADDRESS, "0x00", [coin_reward] + [ZERO_ADDRESS] * 7, {"from": alice})
+def test_unset_no_totalsupply(
+    alice, coin_reward, reward_contract, rewards_only_gauge, mock_lp_token
+):
+    rewards_only_gauge.set_rewards(
+        ZERO_ADDRESS, "0x00", [coin_reward] + [ZERO_ADDRESS] * 7, {"from": alice}
+    )
 
     assert mock_lp_token.allowance(rewards_only_gauge, reward_contract) == 0
     assert rewards_only_gauge.reward_contract() == ZERO_ADDRESS
-    assert [rewards_only_gauge.reward_tokens(i) for i in range(8)] == [coin_reward] + [ZERO_ADDRESS] * 7
+    assert [rewards_only_gauge.reward_tokens(i) for i in range(8)] == [coin_reward] + [
+        ZERO_ADDRESS
+    ] * 7
 
 
-def test_unset_with_totalsupply(alice, coin_reward, reward_contract, rewards_only_gauge, mock_lp_token):
+def test_unset_with_totalsupply(
+    alice, coin_reward, reward_contract, rewards_only_gauge, mock_lp_token
+):
     rewards_only_gauge.deposit(LP_AMOUNT, {"from": alice})
-    rewards_only_gauge.set_rewards(ZERO_ADDRESS, "0x00", [coin_reward] + [ZERO_ADDRESS] * 7, {"from": alice})
+    rewards_only_gauge.set_rewards(
+        ZERO_ADDRESS, "0x00", [coin_reward] + [ZERO_ADDRESS] * 7, {"from": alice}
+    )
 
     assert mock_lp_token.allowance(rewards_only_gauge, reward_contract) == 0
     assert mock_lp_token.balanceOf(rewards_only_gauge) == LP_AMOUNT
     assert rewards_only_gauge.reward_contract() == ZERO_ADDRESS
-    assert [rewards_only_gauge.reward_tokens(i) for i in range(8)] == [coin_reward] + [ZERO_ADDRESS] * 7
+    assert [rewards_only_gauge.reward_tokens(i) for i in range(8)] == [coin_reward] + [
+        ZERO_ADDRESS
+    ] * 7
 
 
 def test_unsetting_claims(alice, chain, coin_reward, reward_contract, rewards_only_gauge):
@@ -58,7 +72,9 @@ def test_unsetting_claims(alice, chain, coin_reward, reward_contract, rewards_on
 
     chain.sleep(WEEK)
 
-    rewards_only_gauge.set_rewards(ZERO_ADDRESS, "0x00", [coin_reward] + [ZERO_ADDRESS] * 7, {"from": alice})
+    rewards_only_gauge.set_rewards(
+        ZERO_ADDRESS, "0x00", [coin_reward] + [ZERO_ADDRESS] * 7, {"from": alice}
+    )
 
     reward = coin_reward.balanceOf(rewards_only_gauge)
     assert reward <= REWARD
@@ -72,7 +88,11 @@ def test_modify_no_deposit_no_ts(reward_contract_2, alice, rewards_only_gauge, c
     )
 
     assert rewards_only_gauge.reward_contract() == reward_contract_2
-    assert [rewards_only_gauge.reward_tokens(i) for i in range(3)] == [coin_reward, coin_a, ZERO_ADDRESS]
+    assert [rewards_only_gauge.reward_tokens(i) for i in range(3)] == [
+        coin_reward,
+        coin_a,
+        ZERO_ADDRESS,
+    ]
 
 
 def test_modify_no_deposit(
@@ -97,7 +117,11 @@ def test_modify_no_deposit(
 
     assert mock_lp_token.balanceOf(rewards_only_gauge) == LP_AMOUNT
     assert rewards_only_gauge.reward_contract() == reward_contract_2
-    assert [rewards_only_gauge.reward_tokens(i) for i in range(3)] == [coin_reward, coin_a, ZERO_ADDRESS]
+    assert [rewards_only_gauge.reward_tokens(i) for i in range(3)] == [
+        coin_reward,
+        coin_a,
+        ZERO_ADDRESS,
+    ]
     assert coin_reward.balanceOf(rewards_only_gauge) > 0
 
 
@@ -128,7 +152,11 @@ def test_modify_deposit(
 
     assert mock_lp_token.balanceOf(reward_contract_2) == LP_AMOUNT
     assert rewards_only_gauge.reward_contract() == reward_contract_2
-    assert [rewards_only_gauge.reward_tokens(i) for i in range(3)] == [coin_reward, coin_a, ZERO_ADDRESS]
+    assert [rewards_only_gauge.reward_tokens(i) for i in range(3)] == [
+        coin_reward,
+        coin_a,
+        ZERO_ADDRESS,
+    ]
     assert coin_reward.balanceOf(rewards_only_gauge) > 0
 
 

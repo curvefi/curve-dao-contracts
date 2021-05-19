@@ -1,7 +1,7 @@
+import math
+
 import pytest
 from brownie import ZERO_ADDRESS
-
-import math
 
 REWARD = 10 ** 20
 WEEK = 7 * 86400
@@ -36,7 +36,9 @@ def initial_setup(
     ]
     sigs = f"0x{sigs[0]}{sigs[1]}{sigs[2]}{'00' * 20}"
 
-    rewards_only_gauge.set_rewards(reward_contract, sigs, [coin_reward] + [ZERO_ADDRESS] * 7, {"from": alice})
+    rewards_only_gauge.set_rewards(
+        reward_contract, sigs, [coin_reward] + [ZERO_ADDRESS] * 7, {"from": alice}
+    )
 
     # fund rewards
     coin_reward._mint_for_testing(REWARD, {"from": reward_contract})
@@ -46,7 +48,9 @@ def initial_setup(
     chain.sleep(int(86400 * 3.5))
 
 
-def test_transfer_does_not_trigger_claim_for_sender(alice, bob, chain, rewards_only_gauge, coin_reward):
+def test_transfer_does_not_trigger_claim_for_sender(
+    alice, bob, chain, rewards_only_gauge, coin_reward
+):
     amount = rewards_only_gauge.balanceOf(alice)
 
     rewards_only_gauge.transfer(bob, amount, {"from": alice})
@@ -55,7 +59,9 @@ def test_transfer_does_not_trigger_claim_for_sender(alice, bob, chain, rewards_o
     assert reward == 0
 
 
-def test_transfer_does_not_trigger_claim_for_receiver(alice, bob, chain, rewards_only_gauge, coin_reward):
+def test_transfer_does_not_trigger_claim_for_receiver(
+    alice, bob, chain, rewards_only_gauge, coin_reward
+):
     amount = rewards_only_gauge.balanceOf(alice) // 2
 
     rewards_only_gauge.transfer(bob, amount, {"from": alice})

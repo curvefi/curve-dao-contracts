@@ -61,11 +61,7 @@ def live_part_two():
     voting_escrow = VotingEscrow.at(deployments["VotingEscrow"])
 
     deploy_part_two(
-        admin,
-        token,
-        voting_escrow,
-        config.REQUIRED_CONFIRMATIONS,
-        config.DEPLOYMENTS_JSON,
+        admin, token, voting_escrow, config.REQUIRED_CONFIRMATIONS, config.DEPLOYMENTS_JSON,
     )
 
 
@@ -120,16 +116,9 @@ def deploy_part_two(admin, token, voting_escrow, confs=1, deployments_json=None)
         gauge_controller.add_gauge(gauge, 0, weight, {"from": admin, "required_confs": confs})
         deployments["LiquidityGauge"][name] = gauge.address
 
-    for (
-        name,
-        (lp_token, reward_claim, reward_token, weight),
-    ) in REWARD_POOL_TOKENS.items():
+    for (name, (lp_token, reward_claim, reward_token, weight),) in REWARD_POOL_TOKENS.items():
         gauge = LiquidityGaugeReward.deploy(
-            lp_token,
-            minter,
-            reward_claim,
-            reward_token,
-            {"from": admin, "required_confs": confs},
+            lp_token, minter, reward_claim, reward_token, {"from": admin, "required_confs": confs},
         )
         gauge_controller.add_gauge(gauge, 0, weight, {"from": admin, "required_confs": confs})
         deployments["LiquidityGaugeReward"][name] = gauge.address

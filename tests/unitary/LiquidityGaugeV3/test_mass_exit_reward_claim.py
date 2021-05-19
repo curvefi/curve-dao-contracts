@@ -1,7 +1,7 @@
+import math
+
 import pytest
 from brownie import ZERO_ADDRESS
-
-import math
 
 REWARD = 10 ** 20
 WEEK = 7 * 86400

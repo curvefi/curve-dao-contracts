@@ -29,13 +29,7 @@ def setup(gauge_controller, accounts, three_gauges, token, voting_escrow):
 )
 @settings(max_examples=10)
 def test_gauge_weight_vote(
-    accounts,
-    gauge_controller,
-    three_gauges,
-    voting_escrow,
-    st_deposits,
-    st_length,
-    st_votes,
+    accounts, gauge_controller, three_gauges, voting_escrow, st_deposits, st_length, st_votes,
 ):
     """
     Test that gauge weights correctly adjust over time.

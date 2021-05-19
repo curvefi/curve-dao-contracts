@@ -1,6 +1,6 @@
-from brownie import ZERO_ADDRESS
 from math import isclose
 
+from brownie import ZERO_ADDRESS
 
 REWARD = 10 ** 20
 WEEK = 7 * 86400

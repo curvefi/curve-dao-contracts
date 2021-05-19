@@ -22,14 +22,7 @@ tokens = (
 @pytest.mark.parametrize("burner_balance", (True, False))
 @pytest.mark.parametrize("caller_balance", (True, False))
 def test_swap(
-    MintableTestToken,
-    ThreeCRV,
-    alice,
-    receiver,
-    burner,
-    token,
-    burner_balance,
-    caller_balance,
+    MintableTestToken, ThreeCRV, alice, receiver, burner, token, burner_balance, caller_balance,
 ):
     wrapped = MintableTestToken(token)
     amount = 10 ** wrapped.decimals()

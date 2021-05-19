@@ -76,14 +76,7 @@ def test_modify_no_deposit_no_ts(reward_contract_2, alice, gauge_v3, coin_a, coi
 
 
 def test_modify_no_deposit(
-    reward_contract,
-    reward_contract_2,
-    alice,
-    gauge_v3,
-    chain,
-    coin_a,
-    coin_reward,
-    mock_lp_token,
+    reward_contract, reward_contract_2, alice, gauge_v3, chain, coin_a, coin_reward, mock_lp_token,
 ):
     gauge_v3.deposit(LP_AMOUNT, {"from": alice})
     coin_reward._mint_for_testing(REWARD, {"from": reward_contract})
@@ -102,14 +95,7 @@ def test_modify_no_deposit(
 
 
 def test_modify_deposit(
-    reward_contract,
-    reward_contract_2,
-    alice,
-    gauge_v3,
-    chain,
-    coin_a,
-    coin_reward,
-    mock_lp_token,
+    reward_contract, reward_contract_2, alice, gauge_v3, chain, coin_a, coin_reward, mock_lp_token,
 ):
     gauge_v3.deposit(LP_AMOUNT, {"from": alice})
     coin_reward._mint_for_testing(REWARD, {"from": reward_contract})

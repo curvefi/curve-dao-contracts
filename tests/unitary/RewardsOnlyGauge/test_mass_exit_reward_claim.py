@@ -1,7 +1,7 @@
+import math
+
 import pytest
 from brownie import ZERO_ADDRESS
-
-import math
 
 REWARD = 10 ** 20
 WEEK = 7 * 86400
@@ -39,7 +39,9 @@ def initial_setup(
     ]
     sigs = f"0x{sigs[0]}{sigs[1]}{sigs[2]}{'00' * 20}"
 
-    rewards_only_gauge.set_rewards(reward_contract, sigs, [coin_reward] + [ZERO_ADDRESS] * 7, {"from": alice})
+    rewards_only_gauge.set_rewards(
+        reward_contract, sigs, [coin_reward] + [ZERO_ADDRESS] * 7, {"from": alice}
+    )
 
     # fund rewards
     coin_reward._mint_for_testing(REWARD, {"from": reward_contract})

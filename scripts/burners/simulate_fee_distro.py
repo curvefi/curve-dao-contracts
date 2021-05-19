@@ -17,9 +17,7 @@ def main():
 
     # transfer 2m USD of 3CRV
     fee_token.mint(
-        distributor,
-        2000000 * 10 ** 18,
-        {"from": "0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7"},
+        distributor, 2000000 * 10 ** 18, {"from": "0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7"},
     )
 
     distributor.checkpoint_token()

@@ -5,7 +5,9 @@ WEEK = 7 * 86400
 LP_AMOUNT = 10 ** 18
 
 
-def test_claim_no_deposit(alice, bob, chain, rewards_only_gauge, mock_lp_token, reward_contract, coin_reward):
+def test_claim_no_deposit(
+    alice, bob, chain, rewards_only_gauge, mock_lp_token, reward_contract, coin_reward
+):
     # Fund
     mock_lp_token.approve(rewards_only_gauge, LP_AMOUNT, {"from": alice})
     rewards_only_gauge.deposit(LP_AMOUNT, {"from": alice})
@@ -28,7 +30,9 @@ def test_claim_no_deposit(alice, bob, chain, rewards_only_gauge, mock_lp_token, 
     assert coin_reward.balanceOf(bob) == 0
 
 
-def test_claim_no_rewards(alice, bob, chain, rewards_only_gauge, mock_lp_token, reward_contract, coin_reward):
+def test_claim_no_rewards(
+    alice, bob, chain, rewards_only_gauge, mock_lp_token, reward_contract, coin_reward
+):
     # Deposit
     mock_lp_token.transfer(bob, LP_AMOUNT, {"from": alice})
     mock_lp_token.approve(rewards_only_gauge, LP_AMOUNT, {"from": bob})

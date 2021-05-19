@@ -128,10 +128,7 @@ def main(deployer=DEPLOYER):
 
     # approve USDN burner to donate to USDN pool
     proxy.set_donate_approval(
-        "0x0f9cb53Ebe405d49A0bbdBD291A65Ff571bC83e1",
-        usdn_burner,
-        True,
-        {"from": deployer},
+        "0x0f9cb53Ebe405d49A0bbdBD291A65Ff571bC83e1", usdn_burner, True, {"from": deployer},
     )
 
     # set PoolProxy ownership

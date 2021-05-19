@@ -64,6 +64,5 @@ def test_burn_not_exists(accounts, pool_proxy):
 def test_burn_many_not_exists(accounts, pool_proxy, burner, coin_a):
     with brownie.reverts("dev: should implement burn()"):
         pool_proxy.burn_many(
-            [coin_a, ETH_ADDRESS, accounts[1]] + [ZERO_ADDRESS] * 17,
-            {"from": accounts[0]},
+            [coin_a, ETH_ADDRESS, accounts[1]] + [ZERO_ADDRESS] * 17, {"from": accounts[0]},
         )

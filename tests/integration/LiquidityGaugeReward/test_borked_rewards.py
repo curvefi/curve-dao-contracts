@@ -19,13 +19,7 @@ def initial_setup(accounts, reward_contract, mock_lp_token, liquidity_gauge_rewa
 )
 @settings(max_examples=10)
 def test_withdraw_borked_rewards(
-    accounts,
-    chain,
-    reward_contract,
-    mock_lp_token,
-    liquidity_gauge_reward,
-    amounts,
-    durations,
+    accounts, chain, reward_contract, mock_lp_token, liquidity_gauge_reward, amounts, durations,
 ):
     for i, (amount, duration) in enumerate(zip(amounts, durations), start=1):
         liquidity_gauge_reward.deposit(amount, {"from": accounts[i]})
