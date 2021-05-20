@@ -1,8 +1,8 @@
+import math
+
 import brownie
 from brownie import ZERO_ADDRESS, chain
 from brownie.test import strategy
-
-from tests.conftest import approx
 
 
 class StateMachine:
@@ -16,7 +16,7 @@ class StateMachine:
     st_reward = strategy("uint64")
 
     def __init__(
-        self, accounts, rewards_only_gauge, mock_lp_token, reward_contract, coin_reward,
+        self, accounts, rewards_only_gauge, mock_lp_token, coin_reward,
     ):
         self.accounts = accounts
         self.token = mock_lp_token
@@ -110,8 +110,7 @@ class StateMachine:
             rewards_claimed += self.coin_reward.balanceOf(act)
 
         if self.rewards_total > 7 * 86400:  # Otherwise we may have 0 claimed
-            precision = max(7 * 86400 / self.rewards_total * 2, 1e-10)
-            assert approx(rewards_claimed, self.rewards_total, precision)
+            assert math.isclose(rewards_claimed, self.rewards_total, rel_tol=0.001, abs_tol=1)
 
 
 def test_state_machine(
@@ -143,7 +142,6 @@ def test_state_machine(
         accounts[:5],
         rewards_only_gauge,
         mock_lp_token,
-        reward_contract,
         coin_reward,
         settings=settings,
     )

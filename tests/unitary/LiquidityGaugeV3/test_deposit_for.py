@@ -36,4 +36,4 @@ def test_deposit_for_and_claim_rewards(
     # alice deposits for bob and claims rewards for him
     gauge_v3.deposit(LP_AMOUNT, bob, True, {"from": alice})
 
-    assert isclose(REWARD, coin_reward.balanceOf(bob))
+    assert isclose(REWARD, coin_reward.balanceOf(bob), rel_tol=0.001)

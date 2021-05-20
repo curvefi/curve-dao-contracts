@@ -1,3 +1,5 @@
+import math
+
 import brownie
 import pytest
 from brownie import ZERO_ADDRESS, compile_source
@@ -153,18 +155,19 @@ def test_claim_duration(bob, chain, rewards_only_gauge, coin_a, coin_b):
     claim_time = rewards_only_gauge.last_claim()
     claimed = [i.balanceOf(bob) for i in (coin_a, coin_b)]
 
-    assert claim_time == chain[-1].timestamp
+    assert math.isclose(claim_time, chain[-1].timestamp, abs_tol=1)
 
     chain.sleep(1801)
     rewards_only_gauge.claim_rewards({"from": bob})
 
-    assert rewards_only_gauge.last_claim() == claim_time
+    assert math.isclose(rewards_only_gauge.last_claim(), claim_time, abs_tol=1)
     assert claimed == [i.balanceOf(bob) for i in (coin_a, coin_b)]
 
     chain.sleep(1801)
     rewards_only_gauge.claim_rewards({"from": bob})
 
-    assert rewards_only_gauge.last_claim() == chain[-1].timestamp > claim_time
+    assert math.isclose(rewards_only_gauge.last_claim(), chain[-1].timestamp, abs_tol=1)
+    assert chain[-1].timestamp > claim_time
     assert coin_a.balanceOf(bob) > claimed[0]
     assert coin_b.balanceOf(bob) > claimed[1]
 
