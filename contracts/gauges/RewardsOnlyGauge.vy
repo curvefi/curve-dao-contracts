@@ -155,7 +155,7 @@ def _checkpoint_rewards(_user: address, _total_supply: uint256, _claim: bool, _r
             self.reward_integral[token] = integral
 
         integral_for: uint256 = self.reward_integral_for[token][_user]
-        if integral_for < integral or _total_supply == 0:
+        if integral_for <= integral or _total_supply == 0:
             new_claimable: uint256 = user_balance * (integral - integral_for) / 10**18
             self.reward_integral_for[token][_user] = integral
 
