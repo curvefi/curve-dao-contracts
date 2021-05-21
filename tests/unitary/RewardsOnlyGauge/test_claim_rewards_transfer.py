@@ -69,7 +69,7 @@ def test_transfer_does_not_trigger_claim_for_receiver(
     rewards_only_gauge.transfer(alice, amount, {"from": bob})
 
     for acct in (alice, bob):
-        rewards_only_gauge.claim_rewards({"from": acct})
+        # rewards_only_gauge.claim_rewards({"from": acct})
         assert coin_reward.balanceOf(acct) == 0
 
 
