@@ -133,6 +133,11 @@ def gauge_v2(LiquidityGaugeV2, alice, mock_lp_token, minter):
 
 
 @pytest.fixture(scope="module")
+def gauge_v3(LiquidityGaugeV3, alice, mock_lp_token, minter):
+    yield LiquidityGaugeV3.deploy(mock_lp_token, minter, alice, {"from": alice})
+
+
+@pytest.fixture(scope="module")
 def rewards_only_gauge(RewardsOnlyGauge, alice, mock_lp_token):
     yield RewardsOnlyGauge.deploy(mock_lp_token, alice, {"from": alice})
 

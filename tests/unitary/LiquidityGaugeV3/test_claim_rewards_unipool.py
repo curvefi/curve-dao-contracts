@@ -17,19 +17,19 @@ def initial_setup(
     reward_contract,
     token,
     mock_lp_token,
-    rewards_only_gauge,
+    gauge_v3,
     gauge_controller,
     minter,
 ):
     # gauge setup
     token.set_minter(minter, {"from": alice})
     gauge_controller.add_type(b"Liquidity", 10 ** 10, {"from": alice})
-    gauge_controller.add_gauge(rewards_only_gauge, 0, 0, {"from": alice})
+    gauge_controller.add_gauge(gauge_v3, 0, 0, {"from": alice})
 
     # deposit into gauge
     mock_lp_token.transfer(bob, LP_AMOUNT, {"from": alice})
-    mock_lp_token.approve(rewards_only_gauge, LP_AMOUNT, {"from": bob})
-    rewards_only_gauge.deposit(LP_AMOUNT, {"from": bob})
+    mock_lp_token.approve(gauge_v3, LP_AMOUNT, {"from": bob})
+    gauge_v3.deposit(LP_AMOUNT, {"from": bob})
 
     # add rewards
     sigs = [
@@ -39,31 +39,29 @@ def initial_setup(
     ]
     sigs = f"0x{sigs[0]}{sigs[1]}{sigs[2]}{'00' * 20}"
 
-    rewards_only_gauge.set_rewards(
-        reward_contract, sigs, [coin_reward] + [ZERO_ADDRESS] * 7, {"from": alice}
-    )
+    gauge_v3.set_rewards(reward_contract, sigs, [coin_reward] + [ZERO_ADDRESS] * 7, {"from": alice})
 
     # fund rewards
     coin_reward._mint_for_testing(REWARD, {"from": reward_contract})
     reward_contract.notifyRewardAmount(REWARD, {"from": alice})
 
 
-def test_claim_one_lp(bob, chain, rewards_only_gauge, coin_reward):
+def test_claim_one_lp(bob, chain, gauge_v3, coin_reward):
     chain.sleep(WEEK)
 
-    rewards_only_gauge.withdraw(LP_AMOUNT, {"from": bob})
-    rewards_only_gauge.claim_rewards({"from": bob})
+    gauge_v3.withdraw(LP_AMOUNT, {"from": bob})
+    gauge_v3.claim_rewards({"from": bob})
 
     reward = coin_reward.balanceOf(bob)
     assert reward <= REWARD
     assert approx(REWARD, reward, 1.001 / WEEK)  # ganache-cli jitter of 1 s
 
 
-def test_claim_for_other(bob, charlie, chain, rewards_only_gauge, coin_reward):
+def test_claim_for_other(bob, charlie, chain, gauge_v3, coin_reward):
     chain.sleep(WEEK)
 
-    rewards_only_gauge.withdraw(LP_AMOUNT, {"from": bob})
-    rewards_only_gauge.claim_rewards(bob, {"from": charlie})
+    gauge_v3.withdraw(LP_AMOUNT, {"from": bob})
+    gauge_v3.claim_rewards(bob, {"from": charlie})
 
     assert coin_reward.balanceOf(charlie) == 0
 
@@ -72,35 +70,33 @@ def test_claim_for_other(bob, charlie, chain, rewards_only_gauge, coin_reward):
     assert approx(REWARD, reward, 1.001 / WEEK)  # ganache-cli jitter of 1 s
 
 
-def test_claim_for_other_no_reward(bob, charlie, chain, rewards_only_gauge, coin_reward):
+def test_claim_for_other_no_reward(bob, charlie, chain, gauge_v3, coin_reward):
     chain.sleep(WEEK)
-    rewards_only_gauge.claim_rewards(charlie, {"from": bob})
+    gauge_v3.claim_rewards(charlie, {"from": bob})
 
     assert coin_reward.balanceOf(bob) == 0
     assert coin_reward.balanceOf(charlie) == 0
 
 
-def test_claim_two_lp(
-    alice, bob, chain, rewards_only_gauge, mock_lp_token, coin_reward, no_call_coverage
-):
+def test_claim_two_lp(alice, bob, chain, gauge_v3, mock_lp_token, coin_reward, no_call_coverage):
 
     # Deposit
-    mock_lp_token.approve(rewards_only_gauge, LP_AMOUNT, {"from": alice})
-    rewards_only_gauge.deposit(LP_AMOUNT, {"from": alice})
+    mock_lp_token.approve(gauge_v3, LP_AMOUNT, {"from": alice})
+    gauge_v3.deposit(LP_AMOUNT, {"from": alice})
 
     chain.sleep(WEEK)
     chain.mine()
 
     # Calculate rewards
     claimable_rewards = [
-        rewards_only_gauge.claimable_reward_write.call(acc, coin_reward, {"from": acc})
+        gauge_v3.claimable_reward_write.call(acc, coin_reward, {"from": acc})
         for acc in (alice, bob)
     ]
 
     # Claim rewards
     rewards = []
     for acct in (alice, bob):
-        rewards_only_gauge.claim_rewards({"from": acct})
+        gauge_v3.claim_rewards({"from": acct})
         rewards += [coin_reward.balanceOf(acct)]
 
     # Calculation == results
@@ -113,16 +109,16 @@ def test_claim_two_lp(
 
 
 def test_claimable_rewards_write_retrieves_rewards(
-    alice, chain, rewards_only_gauge, mock_lp_token, coin_reward, no_call_coverage
+    alice, chain, gauge_v3, mock_lp_token, coin_reward, no_call_coverage
 ):
 
     # Deposit
-    mock_lp_token.approve(rewards_only_gauge, LP_AMOUNT, {"from": alice})
-    rewards_only_gauge.deposit(LP_AMOUNT, {"from": alice})
+    mock_lp_token.approve(gauge_v3, LP_AMOUNT, {"from": alice})
+    gauge_v3.deposit(LP_AMOUNT, {"from": alice})
 
     chain.sleep(WEEK)
     chain.mine()
 
-    before = coin_reward.balanceOf(rewards_only_gauge)
-    rewards_only_gauge.claimable_reward_write(alice, coin_reward, {"from": alice})
-    assert before < coin_reward.balanceOf(rewards_only_gauge)
+    before = coin_reward.balanceOf(gauge_v3)
+    gauge_v3.claimable_reward_write(alice, coin_reward, {"from": alice})
+    assert before < coin_reward.balanceOf(gauge_v3)

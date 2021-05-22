@@ -66,7 +66,7 @@ def test_claim_two_lp(
 
     # Calculate rewards
     claimable_rewards = [
-        rewards_only_gauge.claimable_reward.call(acc, coin_reward, {"from": acc})
+        rewards_only_gauge.claimable_reward_write.call(acc, coin_reward, {"from": acc})
         for acc in (alice, bob)
     ]
 

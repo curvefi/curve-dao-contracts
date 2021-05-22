@@ -1,8 +1,8 @@
-import math
-
 import brownie
 from brownie import ZERO_ADDRESS, chain
 from brownie.test import strategy
+
+from tests.conftest import approx
 
 
 class StateMachine:
@@ -15,19 +15,19 @@ class StateMachine:
     st_time = strategy("uint", max_value=365 * 86400)
     st_reward = strategy("uint64")
 
-    def __init__(
-        self, accounts, rewards_only_gauge, mock_lp_token, coin_reward,
-    ):
+    def __init__(self, accounts, gauge_v3, mock_lp_token, reward_contract, coin_reward, sigs):
         self.accounts = accounts
         self.token = mock_lp_token
-        self.liquidity_gauge = rewards_only_gauge
+        self.liquidity_gauge = gauge_v3
         self.coin_reward = coin_reward
+        self.reward_contract = reward_contract
+        self.sigs = sigs
 
     def setup(self):
         self.balances = {i: 0 for i in self.accounts}
         self.rewards_total = 0
         self.total_balances = 0
-        self.is_rewards_set = False
+        self.flag = False
 
     def rule_deposit(self, st_account, st_value):
         """
@@ -46,13 +46,22 @@ class StateMachine:
 
     def rule_notify_reward(self, st_reward):
         """
-        Add rewards only if at least someone has deposits.
+        Add rewards only if at least someone has deposits
         """
         if self.total_balances > 0:
-            pre_balance = self.coin_reward.balanceOf(self.liquidity_gauge)
-            self.coin_reward._mint_for_testing(st_reward, {"from": self.liquidity_gauge})
+            if not self.flag:
+                self.liquidity_gauge.set_rewards(
+                    self.reward_contract,
+                    self.sigs,
+                    [self.coin_reward] + [ZERO_ADDRESS] * 7,
+                    {"from": self.accounts[0]},
+                )
+                self.flag = True
+
+            self.coin_reward._mint_for_testing(st_reward)
+            self.coin_reward.transfer(self.reward_contract, st_reward)
+            self.reward_contract.notifyRewardAmount(st_reward)
             self.rewards_total += st_reward
-            assert self.coin_reward.balanceOf(self.liquidity_gauge) == pre_balance + st_reward
 
     def rule_withdraw(self, st_account, st_value):
         """
@@ -85,6 +94,12 @@ class StateMachine:
         """
         chain.sleep(st_time)
 
+    def rule_checkpoint(self, st_account):
+        """
+        Create a new user checkpoint.
+        """
+        self.liquidity_gauge.user_checkpoint(st_account, {"from": st_account})
+
     def invariant_balances(self):
         """
         Validate expected balances against actual balances.
@@ -110,13 +125,14 @@ class StateMachine:
             rewards_claimed += self.coin_reward.balanceOf(act)
 
         if self.rewards_total > 7 * 86400:  # Otherwise we may have 0 claimed
-            assert math.isclose(rewards_claimed, self.rewards_total, rel_tol=0.001, abs_tol=1)
+            precision = max(7 * 86400 / self.rewards_total * 2, 1e-10)
+            assert approx(rewards_claimed, self.rewards_total, precision)
 
 
 def test_state_machine(
     state_machine,
     accounts,
-    rewards_only_gauge,
+    gauge_v3,
     mock_lp_token,
     reward_contract,
     coin_reward,
@@ -128,11 +144,14 @@ def test_state_machine(
 
     # approve liquidity_gauge from the funded accounts
     for acct in accounts[:5]:
-        mock_lp_token.approve(rewards_only_gauge, 2 ** 256 - 1, {"from": acct})
+        mock_lp_token.approve(gauge_v3, 2 ** 256 - 1, {"from": acct})
 
-    # set rewards
-    coin_rewards = [coin_reward] + [ZERO_ADDRESS] * 7
-    rewards_only_gauge.set_rewards(ZERO_ADDRESS, b"0x", coin_rewards, {"from": accounts[0]})
+    sigs = [
+        reward_contract.stake.signature[2:],
+        reward_contract.withdraw.signature[2:],
+        reward_contract.getReward.signature[2:],
+    ]
+    sigs = f"0x{sigs[0]}{sigs[1]}{sigs[2]}{'00' * 20}"
 
     # because this is a simple state machine, we use more steps than normal
     settings = {"stateful_step_count": 25, "max_examples": 30}
@@ -140,8 +159,10 @@ def test_state_machine(
     state_machine(
         StateMachine,
         accounts[:5],
-        rewards_only_gauge,
+        gauge_v3,
         mock_lp_token,
+        reward_contract,
         coin_reward,
+        sigs,
         settings=settings,
     )

@@ -26,36 +26,43 @@ def initial_setup(rewards_only_gauge, mock_lp_token, alice, reward_contract, coi
 def test_unset_no_totalsupply(
     alice, coin_reward, reward_contract, rewards_only_gauge, mock_lp_token
 ):
-    rewards_only_gauge.set_rewards(ZERO_ADDRESS, "0x00", [ZERO_ADDRESS] * 8, {"from": alice})
+    rewards_only_gauge.set_rewards(
+        ZERO_ADDRESS, "0x00", [coin_reward] + [ZERO_ADDRESS] * 7, {"from": alice}
+    )
 
     assert mock_lp_token.allowance(rewards_only_gauge, reward_contract) == 0
     assert rewards_only_gauge.reward_contract() == ZERO_ADDRESS
-    assert [rewards_only_gauge.reward_tokens(i) for i in range(8)] == [ZERO_ADDRESS] * 8
+    assert [rewards_only_gauge.reward_tokens(i) for i in range(8)] == [coin_reward] + [
+        ZERO_ADDRESS
+    ] * 7
 
 
 def test_unset_with_totalsupply(
     alice, coin_reward, reward_contract, rewards_only_gauge, mock_lp_token
 ):
     rewards_only_gauge.deposit(LP_AMOUNT, {"from": alice})
-    rewards_only_gauge.set_rewards(ZERO_ADDRESS, "0x00", [ZERO_ADDRESS] * 8, {"from": alice})
+    rewards_only_gauge.set_rewards(
+        ZERO_ADDRESS, "0x00", [coin_reward] + [ZERO_ADDRESS] * 7, {"from": alice}
+    )
 
     assert mock_lp_token.allowance(rewards_only_gauge, reward_contract) == 0
     assert mock_lp_token.balanceOf(rewards_only_gauge) == LP_AMOUNT
     assert rewards_only_gauge.reward_contract() == ZERO_ADDRESS
-    assert [rewards_only_gauge.reward_tokens(i) for i in range(8)] == [ZERO_ADDRESS] * 8
+    assert [rewards_only_gauge.reward_tokens(i) for i in range(8)] == [coin_reward] + [
+        ZERO_ADDRESS
+    ] * 7
 
 
-def test_modify_no_deposit_no_ts(
-    reward_contract_2, alice, rewards_only_gauge, coin_a, mock_lp_token
-):
+def test_modify_no_deposit_no_ts(reward_contract_2, alice, rewards_only_gauge, coin_a, coin_reward):
     sigs = f"0x{'00' * 4}{'00' * 4}{reward_contract_2.getReward.signature[2:]}{'00' * 20}"
     rewards_only_gauge.set_rewards(
-        reward_contract_2, sigs, [coin_a] + [ZERO_ADDRESS] * 7, {"from": alice}
+        reward_contract_2, sigs, [coin_reward, coin_a] + [ZERO_ADDRESS] * 6, {"from": alice}
     )
 
     assert rewards_only_gauge.reward_contract() == reward_contract_2
-    assert rewards_only_gauge.reward_tokens(0) == coin_a
-    assert rewards_only_gauge.reward_tokens(1) == ZERO_ADDRESS
+    assert [rewards_only_gauge.reward_tokens(i) for i in range(8)] == [coin_reward, coin_a] + [
+        ZERO_ADDRESS
+    ] * 6
 
 
 def test_modify_no_deposit(
@@ -75,13 +82,14 @@ def test_modify_no_deposit(
 
     sigs = f"0x{'00' * 4}{'00' * 4}{reward_contract_2.getReward.signature[2:]}{'00' * 20}"
     rewards_only_gauge.set_rewards(
-        reward_contract_2, sigs, [coin_a] + [ZERO_ADDRESS] * 7, {"from": alice}
+        reward_contract_2, sigs, [coin_reward, coin_a] + [ZERO_ADDRESS] * 6, {"from": alice}
     )
 
     assert mock_lp_token.balanceOf(rewards_only_gauge) == LP_AMOUNT
     assert rewards_only_gauge.reward_contract() == reward_contract_2
-    assert rewards_only_gauge.reward_tokens(0) == coin_a
-    assert rewards_only_gauge.reward_tokens(1) == ZERO_ADDRESS
+    assert [rewards_only_gauge.reward_tokens(i) for i in range(8)] == [coin_reward, coin_a] + [
+        ZERO_ADDRESS
+    ] * 6
 
 
 def test_modify_deposit(
@@ -106,16 +114,17 @@ def test_modify_deposit(
     ]
     sigs = f"0x{sigs[0]}{sigs[1]}{sigs[2]}{'00' * 20}"
     rewards_only_gauge.set_rewards(
-        reward_contract_2, sigs, [coin_a] + [ZERO_ADDRESS] * 7, {"from": alice}
+        reward_contract_2, sigs, [coin_reward, coin_a] + [ZERO_ADDRESS] * 6, {"from": alice}
     )
 
     assert mock_lp_token.balanceOf(reward_contract_2) == LP_AMOUNT
     assert rewards_only_gauge.reward_contract() == reward_contract_2
-    assert rewards_only_gauge.reward_tokens(0) == coin_a
-    assert rewards_only_gauge.reward_tokens(1) == ZERO_ADDRESS
+    assert [rewards_only_gauge.reward_tokens(i) for i in range(8)] == [coin_reward, coin_a] + [
+        ZERO_ADDRESS
+    ] * 6
 
 
-def test_modify_deposit_no_ts(reward_contract_2, alice, rewards_only_gauge, coin_a):
+def test_modify_deposit_no_ts(reward_contract_2, alice, rewards_only_gauge, coin_a, coin_reward):
     sigs = [
         reward_contract_2.stake.signature[2:],
         reward_contract_2.withdraw.signature[2:],
@@ -124,5 +133,5 @@ def test_modify_deposit_no_ts(reward_contract_2, alice, rewards_only_gauge, coin
     sigs = f"0x{sigs[0]}{sigs[1]}{sigs[2]}{'00' * 20}"
     with brownie.reverts("dev: zero total supply"):
         rewards_only_gauge.set_rewards(
-            reward_contract_2, sigs, [coin_a] + [ZERO_ADDRESS] * 7, {"from": alice}
+            reward_contract_2, sigs, [coin_reward, coin_a] + [ZERO_ADDRESS] * 6, {"from": alice}
         )
