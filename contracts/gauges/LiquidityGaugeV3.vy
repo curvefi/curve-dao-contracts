@@ -82,7 +82,7 @@ future_epoch_time: public(uint256)
 
 balanceOf: public(HashMap[address, uint256])
 totalSupply: public(uint256)
-allowances: HashMap[address, HashMap[address, uint256]]
+allowance: public(HashMap[address, HashMap[address, uint256]])
 
 name: public(String[64])
 symbol: public(String[32])
@@ -566,18 +566,6 @@ def withdraw(_value: uint256, _claim_rewards: bool = False):
     log Transfer(msg.sender, ZERO_ADDRESS, _value)
 
 
-@view
-@external
-def allowance(_owner : address, _spender : address) -> uint256:
-    """
-    @notice Check the amount of tokens that an owner allowed to a spender
-    @param _owner The address which owns the funds
-    @param _spender The address which will spend the funds
-    @return uint256 Amount of tokens still available for the spender
-    """
-    return self.allowances[_owner][_spender]
-
-
 @internal
 def _transfer(_from: address, _to: address, _value: uint256):
     self._checkpoint(_from)
@@ -625,9 +613,9 @@ def transferFrom(_from : address, _to : address, _value : uint256) -> bool:
      @param _to address The address which you want to transfer to
      @param _value uint256 the amount of tokens to be transferred
     """
-    _allowance: uint256 = self.allowances[_from][msg.sender]
+    _allowance: uint256 = self.allowance[_from][msg.sender]
     if _allowance != MAX_UINT256:
-        self.allowances[_from][msg.sender] = _allowance - _value
+        self.allowance[_from][msg.sender] = _allowance - _value
 
     self._transfer(_from, _to, _value)
 
@@ -648,7 +636,7 @@ def approve(_spender : address, _value : uint256) -> bool:
     @param _value The amount of tokens that may be transferred
     @return bool success
     """
-    self.allowances[msg.sender][_spender] = _value
+    self.allowance[msg.sender][_spender] = _value
     log Approval(msg.sender, _spender, _value)
 
     return True
@@ -664,8 +652,8 @@ def increaseAllowance(_spender: address, _added_value: uint256) -> bool:
     @param _added_value The amount of to increase the allowance
     @return bool success
     """
-    allowance: uint256 = self.allowances[msg.sender][_spender] + _added_value
-    self.allowances[msg.sender][_spender] = allowance
+    allowance: uint256 = self.allowance[msg.sender][_spender] + _added_value
+    self.allowance[msg.sender][_spender] = allowance
 
     log Approval(msg.sender, _spender, allowance)
 
@@ -682,8 +670,8 @@ def decreaseAllowance(_spender: address, _subtracted_value: uint256) -> bool:
     @param _subtracted_value The amount of to decrease the allowance
     @return bool success
     """
-    allowance: uint256 = self.allowances[msg.sender][_spender] - _subtracted_value
-    self.allowances[msg.sender][_spender] = allowance
+    allowance: uint256 = self.allowance[msg.sender][_spender] - _subtracted_value
+    self.allowance[msg.sender][_spender] = allowance
 
     log Approval(msg.sender, _spender, allowance)
 
