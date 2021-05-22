@@ -558,11 +558,11 @@ def withdraw(_value: uint256, _claim_rewards: bool = False):
         if is_rewards:
             reward_data: uint256 = self.reward_data
             if reward_data > 0:
-                deposit_sig: Bytes[4] = slice(self.reward_sigs, 0, 4)
-                if convert(deposit_sig, uint256) != 0:
+                withdraw_sig: Bytes[4] = slice(self.reward_sigs, 4, 4)
+                if convert(withdraw_sig, uint256) != 0:
                     raw_call(
                         convert(reward_data % 2**160, address),
-                        concat(deposit_sig, convert(_value, bytes32))
+                        concat(withdraw_sig, convert(_value, bytes32))
                     )
         ERC20(self.lp_token).transfer(msg.sender, _value)
 
