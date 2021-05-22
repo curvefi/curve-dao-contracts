@@ -39,9 +39,8 @@ event Approval:
     _spender: indexed(address)
     _value: uint256
 
-
-CLAIM_FREQUENCY: constant(uint256) = 3600
 MAX_REWARDS: constant(uint256) = 8
+CLAIM_FREQUENCY: constant(uint256) = 3600
 
 lp_token: public(address)
 
@@ -102,25 +101,13 @@ def decimals() -> uint256:
     return 18
 
 
-@view
-@external
-def reward_contract() -> address:
-    return convert(self.reward_data % 2**160, address)
-
-
-@view
-@external
-def last_claim() -> uint256:
-    return shift(self.reward_data, -160)
-
-
 @internal
 def _checkpoint_rewards(_user: address, _total_supply: uint256, _claim: bool, _receiver: address):
     """
     @notice Claim pending rewards and checkpoint rewards for a user
     """
     # claim from reward contract
-    
+
     reward_data: uint256 = self.reward_data
     if _total_supply != 0 and reward_data != 0 and block.timestamp > shift(reward_data, -160) + CLAIM_FREQUENCY:
         reward_contract: address = convert(reward_data % 2**160, address)
@@ -185,14 +172,49 @@ def _checkpoint_rewards(_user: address, _total_supply: uint256, _claim: bool, _r
 
 @view
 @external
-def claimable_reward(_addr: address, _token: address) -> uint256:
-    return shift(self.claim_data[_addr][_token], -128)
+def reward_contract() -> address:
+    """
+    @notice Address of the reward contract providing non-CRV incentives for this gauge
+    @dev Returns `ZERO_ADDRESS` if there is no reward contract active
+    """
+    return convert(self.reward_data % 2**160, address)
+
+
+@view
+@external
+def last_claim() -> uint256:
+    """
+    @notice Epoch timestamp of the last call to claim from `reward_contract`
+    @dev Rewards are claimed at most once per hour in order to reduce gas costs
+    """
+    return shift(self.reward_data, -160)
 
 
 @view
 @external
 def claimed_reward(_addr: address, _token: address) -> uint256:
+    """
+    @notice Get the number of already-claimed reward tokens for a user
+    @param _addr Account to get reward amount for
+    @param _token Token to get reward amount for
+    @return uint256 Total amount of `_token` already claimed by `_addr`
+    """
     return self.claim_data[_addr][_token] % 2**128
+
+
+@view
+@external
+def claimable_reward(_addr: address, _token: address) -> uint256:
+    """
+    @notice Get the number of claimable reward tokens for a user
+    @dev This call does not consider pending claimable amount in `reward_contract`.
+         Off-chain callers should instead use `claimable_rewards_write` as a
+         view method.
+    @param _addr Account to get reward amount for
+    @param _token Token to get reward amount for
+    @return uint256 Claimable reward token amount
+    """
+    return shift(self.claim_data[_addr][_token], -128)
 
 
 @external
@@ -212,6 +234,16 @@ def claimable_reward_write(_addr: address, _token: address) -> uint256:
 
 
 @external
+def set_rewards_receiver(_receiver: address):
+    """
+    @notice Set the default reward receiver for the caller.
+    @dev When set to ZERO_ADDRESS, rewards are sent to the caller
+    @param _receiver Receiver address for any rewards claimed via `claim_rewards`
+    """
+    self.rewards_receiver[msg.sender] = _receiver
+
+
+@external
 @nonreentrant('lock')
 def claim_rewards(_addr: address = msg.sender, _receiver: address = ZERO_ADDRESS):
     """
@@ -224,16 +256,6 @@ def claim_rewards(_addr: address = msg.sender, _receiver: address = ZERO_ADDRESS
     if _receiver != ZERO_ADDRESS:
         assert _addr == msg.sender  # dev: cannot redirect when claiming for another user
     self._checkpoint_rewards(_addr, self.totalSupply, True, _receiver)
-
-
-@external
-def set_rewards_receiver(_receiver: address):
-    """
-    @notice Set the default reward receiver for the caller.
-    @dev When set to ZERO_ADDRESS, rewards are sent to the caller
-    @param _receiver Receiver address for any rewards claimed via `claim_rewards`
-    """
-    self.rewards_receiver[msg.sender] = _receiver
 
 
 @external
@@ -277,7 +299,6 @@ def withdraw(_value: uint256, _claim_rewards: bool = False):
     @dev Withdrawing also claims pending reward tokens
     @param _value Number of tokens to withdraw
     """
-
     if _value != 0:
         reward_contract: address = convert(self.reward_data % 2**160, address)
         total_supply: uint256 = self.totalSupply
