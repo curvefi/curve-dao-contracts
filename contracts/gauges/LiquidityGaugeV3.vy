@@ -519,12 +519,14 @@ def deposit(_value: uint256, _addr: address = msg.sender, _claim_rewards: bool =
 
         ERC20(self.lp_token).transferFrom(msg.sender, self, _value)
         if is_rewards:
-            deposit_sig: Bytes[4] = slice(self.reward_sigs, 0, 4)
-            if convert(deposit_sig, uint256) != 0:
-                raw_call(
-                    convert(self.reward_data % 2**160, address),
-                    concat(deposit_sig, convert(_value, bytes32))
-                )
+            reward_data: uint256 = self.reward_data
+            if reward_data > 0:
+                deposit_sig: Bytes[4] = slice(self.reward_sigs, 0, 4)
+                if convert(deposit_sig, uint256) != 0:
+                    raw_call(
+                        convert(reward_data % 2**160, address),
+                        concat(deposit_sig, convert(_value, bytes32))
+                    )
 
     log Deposit(_addr, _value)
     log Transfer(ZERO_ADDRESS, _addr, _value)
@@ -554,12 +556,14 @@ def withdraw(_value: uint256, _claim_rewards: bool = False):
         self._update_liquidity_limit(msg.sender, new_balance, total_supply)
 
         if is_rewards:
-            withdraw_sig: Bytes[4] = slice(self.reward_sigs, 4, 4)
-            if convert(withdraw_sig, uint256) != 0:
-                raw_call(
-                    convert(self.reward_data % 2**160, address),
-                    concat(withdraw_sig, convert(_value, bytes32))
-                )
+            reward_data: uint256 = self.reward_data
+            if reward_data > 0:
+                deposit_sig: Bytes[4] = slice(self.reward_sigs, 0, 4)
+                if convert(deposit_sig, uint256) != 0:
+                    raw_call(
+                        convert(reward_data % 2**160, address),
+                        concat(deposit_sig, convert(_value, bytes32))
+                    )
         ERC20(self.lp_token).transfer(msg.sender, _value)
 
     log Withdraw(msg.sender, _value)
