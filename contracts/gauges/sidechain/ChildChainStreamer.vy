@@ -136,36 +136,43 @@ def get_reward():
 def notify_reward_amount(_token: address):
     """
     @notice Notify the contract of a newly received reward
-    @dev Only callable by the distributor. The reward tokens must be transferred
-         into the contract prior to calling this function. Rewards are distributed
-         over `reward_duration` seconds. Updating the reward amount while an existing
-         reward period is still active causes the remaining rewards to be evenly
-         distributed over the new reward period.
+    @dev Only callable by the distributor if there is an active reward period.
+         The reward tokens must be transferred into the contract prior to calling
+         this function. Rewards are distributed over `reward_duration` seconds.
+         Updating the reward amount while an existing reward period is still active
+         causes the remaining rewards to be evenly distributed over the new period.
     @param _token Address of the reward token
     """
-    assert msg.sender == self.reward_data[_token].distributor  # dev: only distributor
     last_update: uint256 = self.last_update_time
+    is_updated: bool = False
     for token in self.reward_tokens:
         if token == ZERO_ADDRESS:
             break
+
         self._update_reward(token, last_update)
         if token == _token:
             received: uint256 = self.reward_data[token].received
             expected_balance: uint256 = received - self.reward_data[token].paid
             actual_balance: uint256 = ERC20(token).balanceOf(self)
+
             if actual_balance > expected_balance:
                 new_amount: uint256 = actual_balance - expected_balance
                 duration: uint256 = self.reward_data[token].duration
+
                 if block.timestamp >= self.reward_data[token].period_finish:
                     self.reward_data[token].rate = new_amount / duration
                 else:
+                    assert msg.sender == self.reward_data[_token].distributor, "Reward period still active"
                     remaining: uint256 = self.reward_data[token].period_finish - block.timestamp
                     leftover: uint256 = remaining * self.reward_data[token].rate
                     self.reward_data[token].rate = (new_amount + leftover) / duration
+
                 self.reward_data[token].period_finish = block.timestamp + duration
                 self.reward_data[token].received = received + new_amount
-    self.last_update_time = block.timestamp
+                is_updated = True
 
+    assert is_updated, "Invalid token or no new reward"
+    self.last_update_time = block.timestamp
 
 
 @external
