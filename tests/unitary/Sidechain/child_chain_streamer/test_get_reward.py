@@ -1,6 +1,5 @@
 import math
 
-import brownie
 import pytest
 
 DAY = 86400
@@ -15,9 +14,9 @@ def local_setup(alice, bob, charlie, coin_reward, child_chain_streamer):
     child_chain_streamer.notify_reward_amount(coin_reward, {"from": charlie})
 
 
-def test_receiver_only(alice, child_chain_streamer):
-    with brownie.reverts("Caller is not receiver"):
-        child_chain_streamer.get_reward({"from": alice})
+@pytest.mark.parametrize("idx", range(5))
+def test_unguarded(accounts, child_chain_streamer, idx):
+    child_chain_streamer.get_reward({"from": accounts[idx]})
 
 
 def test_last_update_time(bob, chain, child_chain_streamer):
