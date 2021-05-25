@@ -120,10 +120,8 @@ def set_receiver(_receiver: address):
 @external
 def get_reward():
     """
-    @notice Claim pending rewards
-    @dev Only callable by the reward receiver
+    @notice Claim pending rewards for `reward_receiver`
     """
-    assert msg.sender == self.reward_receiver, "Caller is not receiver"
     last_update: uint256 = self.last_update_time
     for token in self.reward_tokens:
         if token == ZERO_ADDRESS:
