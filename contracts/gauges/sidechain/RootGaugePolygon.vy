@@ -68,7 +68,6 @@ POLYGON_BRIDGE_RECEIVER: constant(address) = 0x40ec5B33f54e0E8A33A975908C5BA1c14
 
 minter: public(address)
 crv_token: public(address)
-lp_token: public(address)
 controller: public(address)
 future_epoch_time: public(uint256)
 
@@ -83,10 +82,9 @@ is_killed: public(bool)
 
 
 @external
-def __init__(_lp_token: address, _minter: address, _admin: address):
+def __init__(_minter: address, _admin: address):
     """
     @notice Contract constructor
-    @param _lp_token Liquidity Pool contract address
     @param _minter Minter contract address
     @param _admin Admin who can kill the gauge
     """
@@ -94,7 +92,6 @@ def __init__(_lp_token: address, _minter: address, _admin: address):
     crv_token: address = Minter(_minter).token()
     controller: address = Minter(_minter).controller()
 
-    self.lp_token = _lp_token
     self.minter = _minter
     self.admin = _admin
     self.crv_token = crv_token

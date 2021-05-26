@@ -3,18 +3,18 @@ from brownie import ETH_ADDRESS
 
 
 @pytest.fixture(scope="module")
-def anyswap_root_gauge(RootGaugeAnyswap, mock_lp_token, minter, alice):
-    return RootGaugeAnyswap.deploy(mock_lp_token, minter, alice, ETH_ADDRESS, {"from": alice})
+def anyswap_root_gauge(RootGaugeAnyswap, minter, alice):
+    return RootGaugeAnyswap.deploy(minter, alice, ETH_ADDRESS, {"from": alice})
 
 
 @pytest.fixture(scope="module")
-def polygon_root_gauge(RootGaugePolygon, mock_lp_token, minter, alice):
-    return RootGaugePolygon.deploy(mock_lp_token, minter, alice, {"from": alice})
+def polygon_root_gauge(RootGaugePolygon, minter, alice):
+    return RootGaugePolygon.deploy(minter, alice, {"from": alice})
 
 
 @pytest.fixture(scope="module")
-def xdai_root_gauge(RootGaugeXdai, mock_lp_token, minter, alice):
-    return RootGaugeXdai.deploy(mock_lp_token, minter, alice, {"from": alice})
+def xdai_root_gauge(RootGaugeXdai, minter, alice):
+    return RootGaugeXdai.deploy(minter, alice, {"from": alice})
 
 
 @pytest.fixture(scope="module")
