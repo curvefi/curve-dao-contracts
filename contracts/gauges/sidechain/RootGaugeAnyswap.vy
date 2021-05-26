@@ -66,7 +66,6 @@ WEEK: constant(uint256) = 604800
 
 minter: public(address)
 crv_token: public(address)
-lp_token: public(address)
 controller: public(address)
 future_epoch_time: public(uint256)
 
@@ -83,18 +82,17 @@ anyswap_bridge: public(address)
 
 
 @external
-def __init__(_lp_token: address, _minter: address, _admin: address, _anyswap_bridge: address):
+def __init__(_minter: address, _admin: address, _anyswap_bridge: address):
     """
     @notice Contract constructor
-    @param _lp_token Liquidity Pool contract address
     @param _minter Minter contract address
     @param _admin Admin who can kill the gauge
+    @param _anyswap_bridge Address of the AnySwap bridge where CRV is transferred
     """
 
     crv_token: address = Minter(_minter).token()
     controller: address = Minter(_minter).controller()
 
-    self.lp_token = _lp_token
     self.minter = _minter
     self.admin = _admin
     self.crv_token = crv_token
