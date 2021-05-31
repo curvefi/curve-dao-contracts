@@ -11,39 +11,20 @@ from vyper.interfaces import ERC20
 
 
 interface CRV20:
-    def future_epoch_time_write() -> uint256: nonpayable
+    def start_epoch_time_write() -> uint256: nonpayable
     def rate() -> uint256: view
 
 interface Controller:
     def period() -> int128: view
-    def period_write() -> int128: nonpayable
-    def period_timestamp(p: int128) -> uint256: view
     def gauge_relative_weight(addr: address, time: uint256) -> uint256: view
-    def voting_escrow() -> address: view
     def checkpoint(): nonpayable
     def checkpoint_gauge(addr: address): nonpayable
 
 interface Minter:
     def token() -> address: view
     def controller() -> address: view
-    def minted(user: address, gauge: address) -> uint256: view
     def mint(gauge: address): nonpayable
 
-
-event Deposit:
-    provider: indexed(address)
-    value: uint256
-
-event Withdraw:
-    provider: indexed(address)
-    value: uint256
-
-event UpdateLiquidityLimit:
-    user: address
-    original_balance: uint256
-    original_supply: uint256
-    working_balance: uint256
-    working_supply: uint256
 
 event CommitOwnership:
     admin: address
@@ -51,25 +32,21 @@ event CommitOwnership:
 event ApplyOwnership:
     admin: address
 
-event Transfer:
-    _from: indexed(address)
-    _to: indexed(address)
-    _value: uint256
-
-event Approval:
-    _owner: indexed(address)
-    _spender: indexed(address)
-    _value: uint256
-
 
 WEEK: constant(uint256) = 604800
+YEAR: constant(uint256) = 86400 * 365
+RATE_DENOMINATOR: constant(uint256) = 10 ** 18
+RATE_REDUCTION_COEFFICIENT: constant(uint256) = 1189207115002721024  # 2 ** (1/4) * 1e18
+RATE_REDUCTION_TIME: constant(uint256) = YEAR
+
 POLYGON_BRIDGE_MANAGER: constant(address) = 0xA0c68C638235ee32657e8f720a23ceC1bFc77C77
 POLYGON_BRIDGE_RECEIVER: constant(address) = 0x40ec5B33f54e0E8A33A975908C5BA1c14e5BbbDf
+
 
 minter: public(address)
 crv_token: public(address)
 controller: public(address)
-future_epoch_time: public(uint256)
+start_epoch_time: public(uint256)
 
 period: public(uint256)
 emissions: public(uint256)
@@ -90,18 +67,20 @@ def __init__(_minter: address, _admin: address):
     """
 
     crv_token: address = Minter(_minter).token()
-    controller: address = Minter(_minter).controller()
 
     self.minter = _minter
     self.admin = _admin
     self.crv_token = crv_token
-    self.controller = controller
+    self.controller = Minter(_minter).controller()
+
+    # because we calculate the rate locally, this gauge cannot
+    # be used prior to the start of the first emission period
+    rate: uint256 = CRV20(crv_token).rate()
+    assert rate != 0
+    self.inflation_rate = rate
 
     self.period = block.timestamp / WEEK
-    self.inflation_rate = CRV20(crv_token).rate()
-    self.future_epoch_time = CRV20(crv_token).future_epoch_time_write()
-
-    ERC20(crv_token).approve(POLYGON_BRIDGE_RECEIVER, MAX_UINT256)
+    self.start_epoch_time = CRV20(crv_token).start_epoch_time_write()
 
 
 @external
@@ -111,15 +90,6 @@ def checkpoint() -> bool:
     @dev Should be called once per week, after the new epoch period has begun
     """
     assert self.checkpoint_admin in [ZERO_ADDRESS, msg.sender]
-    rate: uint256 = self.inflation_rate
-    new_rate: uint256 = rate
-    prev_future_epoch: uint256 = self.future_epoch_time
-    token: address = self.crv_token
-    if prev_future_epoch < block.timestamp:
-        self.future_epoch_time = CRV20(token).future_epoch_time_write()
-        new_rate = CRV20(token).rate()
-        self.inflation_rate = new_rate
-
     last_period: uint256 = self.period
     current_period: uint256 = block.timestamp / WEEK
 
@@ -127,23 +97,31 @@ def checkpoint() -> bool:
         controller: address = self.controller
         Controller(controller).checkpoint_gauge(self)
 
+        rate: uint256 = self.inflation_rate
         emissions: uint256 = 0
         last_period += 1
-        for i in range(last_period, last_period+255):
+        next_epoch_time: uint256 = self.start_epoch_time + RATE_REDUCTION_TIME
+        for i in range(last_period, last_period + 255):
             if i > current_period:
                 break
             week_time: uint256 = i * WEEK
             gauge_weight: uint256 = Controller(controller).gauge_relative_weight(self, i * WEEK)
-            emissions += gauge_weight * rate * WEEK / 10**18
 
-            if prev_future_epoch < week_time:
-                # If we went across one or multiple epochs, apply the rate
-                # of the first epoch until it ends, and then the rate of
-                # the last epoch.
-                # If more than one epoch is crossed - the gauge gets less,
-                # but that'd meen it wasn't called for more than 1 year
-                rate = new_rate
-                prev_future_epoch = MAX_UINT256
+            if next_epoch_time >= week_time and next_epoch_time < week_time + WEEK:
+                # If the period crosses an epoch, we calculate a reduction in the rate
+                # using the same formula as used in `ERC20CRV`. We perform the calculation
+                # locally instead of calling to `ERC20CRV.rate()` because we are generating
+                # the emissions for the upcoming week, so there is a possibility the new
+                # rate has not yet been applied.
+                emissions += gauge_weight * rate * (next_epoch_time - week_time) / 10**18
+                rate = rate * RATE_DENOMINATOR / RATE_REDUCTION_COEFFICIENT
+                emissions += gauge_weight * rate * (week_time + WEEK - next_epoch_time) / 10**18
+
+                self.inflation_rate = rate
+                self.start_epoch_time = next_epoch_time
+                next_epoch_time += RATE_REDUCTION_TIME
+            else:
+                emissions += gauge_weight * rate * WEEK / 10**18
 
         self.period = current_period
         self.emissions += emissions
@@ -154,13 +132,19 @@ def checkpoint() -> bool:
                 concat(
                     method_id("depositFor(address,address,bytes)"),
                     convert(self, bytes32),
-                    convert(token, bytes32),
+                    convert(self.crv_token, bytes32),
                     convert(96, bytes32),
                     convert(32, bytes32),
                     convert(emissions, bytes32),
                 )
             )
     return True
+
+
+@view
+@external
+def future_epoch_time() -> uint256:
+    return self.start_epoch_time + YEAR
 
 
 @view
