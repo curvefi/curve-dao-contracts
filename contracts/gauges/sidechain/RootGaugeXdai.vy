@@ -27,6 +27,10 @@ interface Minter:
     def mint(gauge: address): nonpayable
 
 
+event PeriodEmission:
+    period_start: uint256
+    mint_amount: uint256
+
 event CommitOwnership:
     admin: address
 
@@ -97,34 +101,38 @@ def checkpoint() -> bool:
         Controller(controller).checkpoint_gauge(self)
 
         rate: uint256 = self.inflation_rate
-        emissions: uint256 = 0
+        new_emissions: uint256 = 0
         last_period += 1
         next_epoch_time: uint256 = self.start_epoch_time + RATE_REDUCTION_TIME
         for i in range(last_period, last_period + 255):
             if i > current_period:
                 break
-            week_time: uint256 = i * WEEK
+            period_time: uint256 = i * WEEK
+            period_emission: uint256 = 0
             gauge_weight: uint256 = Controller(controller).gauge_relative_weight(self, i * WEEK)
 
-            if next_epoch_time >= week_time and next_epoch_time < week_time + WEEK:
+            if next_epoch_time >= period_time and next_epoch_time < period_time + WEEK:
                 # If the period crosses an epoch, we calculate a reduction in the rate
                 # using the same formula as used in `ERC20CRV`. We perform the calculation
                 # locally instead of calling to `ERC20CRV.rate()` because we are generating
                 # the emissions for the upcoming week, so there is a possibility the new
                 # rate has not yet been applied.
-                emissions += gauge_weight * rate * (next_epoch_time - week_time) / 10**18
+                period_emission = gauge_weight * rate * (next_epoch_time - period_time) / 10**18
                 rate = rate * RATE_DENOMINATOR / RATE_REDUCTION_COEFFICIENT
-                emissions += gauge_weight * rate * (week_time + WEEK - next_epoch_time) / 10**18
+                period_emission += gauge_weight * rate * (period_time + WEEK - next_epoch_time) / 10**18
 
                 self.inflation_rate = rate
                 self.start_epoch_time = next_epoch_time
                 next_epoch_time += RATE_REDUCTION_TIME
             else:
-                emissions += gauge_weight * rate * WEEK / 10**18
+                period_emission = gauge_weight * rate * WEEK / 10**18
+
+            log PeriodEmission(period_time, period_emission)
+            new_emissions += period_emission
 
         self.period = current_period
-        self.emissions += emissions
-        if emissions > 0 and not self.is_killed:
+        self.emissions += new_emissions
+        if new_emissions > 0 and not self.is_killed:
             Minter(self.minter).mint(self)
             raw_call(
                 XDAI_BRIDGE,
@@ -132,7 +140,7 @@ def checkpoint() -> bool:
                     method_id("relayTokens(address,address,uint256)"),
                     convert(self.crv_token, bytes32),
                     convert(self, bytes32),
-                    convert(emissions, bytes32),
+                    convert(new_emissions, bytes32),
                 )
             )
 
