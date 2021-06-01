@@ -9,7 +9,7 @@ def test_anyswap_root_gauge_transfer_crv(alice, chain, gauge_controller, anyswap
     gauge_controller.add_type("Test", 10 ** 18, {"from": alice})
     gauge_controller.add_gauge(anyswap_root_gauge, 0, 1, {"from": alice})
 
-    chain.mine(timedelta=WEEK)
+    chain.mine(timedelta=2 * WEEK)
 
     amount = token.rate() * WEEK
 
@@ -28,7 +28,7 @@ def test_polygon_root_gauge_transfer_crv(alice, chain, gauge_controller, polygon
     gauge_controller.add_type("Test", 10 ** 18, {"from": alice})
     gauge_controller.add_gauge(polygon_root_gauge, 0, 1, {"from": alice})
 
-    chain.mine(timedelta=WEEK)
+    chain.mine(timedelta=2 * WEEK)
 
     amount = token.rate() * WEEK
 
@@ -60,7 +60,7 @@ def test_xdai_root_gauge_transfer_crv(alice, chain, gauge_controller, xdai_root_
     gauge_controller.add_type("Test", 10 ** 18, {"from": alice})
     gauge_controller.add_gauge(xdai_root_gauge, 0, 1, {"from": alice})
 
-    chain.mine(timedelta=WEEK)
+    chain.mine(timedelta=2 * WEEK)
 
     amount = token.rate() * WEEK
 

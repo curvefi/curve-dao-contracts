@@ -19,6 +19,9 @@ def test_emissions_against_expected(alice, gauge_controller, liquidity_gauge, ro
     total_emissions = 0
     assert rate > 0
 
+    # we now have a one week delay in the emission of rewards, so new emissions from
+    # the root gauge should equal the emissions of 1 week prior not 1 week ahead
+    last_week_expected = 0
     # 110 weeks ensures we see 2 reductions in the rate
     for i in range(1, 110):
 
@@ -39,9 +42,10 @@ def test_emissions_against_expected(alice, gauge_controller, liquidity_gauge, ro
 
         # actual emissions should equal expected emissions
         new_emissions = root_gauge.emissions() - total_emissions
-        assert math.isclose(new_emissions, expected)
+        assert math.isclose(new_emissions, last_week_expected)
 
         total_emissions += new_emissions
+        last_week_expected = expected
 
         # increasing the gauge weight on `liquidity_gauge` each week reducees
         # the expected emission for `root_gauge` in the following week
@@ -66,15 +70,17 @@ def test_emissions_against_other_gauge(
     # sleep until the start of the next epoch week
     chain.mine(timestamp=(tx.timestamp // WEEK + 1) * WEEK)
 
+    last_week_claimable = 0
     # 110 weeks ensures we see 2 reductions in the rate
     for i in range(1, 110):
         # checkpointing the root gauge mints all the allocated emissions for the next week
         tx = root_gauge.checkpoint()
-        emissions = root_gauge.emissions()
+        emissions = root_gauge.emissions()  # emissions this week are delayed by a week so
 
         # now we time travel one week, and get the claimable rewards from the regular gauge
         chain.mine(timestamp=(tx.timestamp // WEEK + 1) * WEEK)
         claimable = liquidity_gauge.claimable_tokens(alice, {"from": alice}).return_value
 
         # root gauge emissions should be equal to regular gauge claimable amount
-        assert math.isclose(emissions, claimable, rel_tol=1e-6)
+        assert math.isclose(emissions, last_week_claimable, rel_tol=1e-6)
+        last_week_claimable = claimable
