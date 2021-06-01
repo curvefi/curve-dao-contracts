@@ -82,7 +82,7 @@ def __init__(_minter: address, _admin: address):
     assert rate != 0
     self.inflation_rate = rate
 
-    self.period = block.timestamp / WEEK
+    self.period = block.timestamp / WEEK - 1
     self.start_epoch_time = CRV20(crv_token).start_epoch_time_write()
 
     ERC20(crv_token).approve(XDAI_BRIDGE, MAX_UINT256)
@@ -96,7 +96,7 @@ def checkpoint() -> bool:
     """
     assert self.checkpoint_admin in [ZERO_ADDRESS, msg.sender]
     last_period: uint256 = self.period
-    current_period: uint256 = block.timestamp / WEEK
+    current_period: uint256 = block.timestamp / WEEK - 1
 
     if last_period < current_period:
         controller: address = self.controller
