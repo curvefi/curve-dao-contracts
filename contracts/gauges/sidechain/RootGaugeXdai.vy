@@ -85,6 +85,8 @@ def __init__(_minter: address, _admin: address):
     self.period = block.timestamp / WEEK
     self.start_epoch_time = CRV20(crv_token).start_epoch_time_write()
 
+    ERC20(crv_token).approve(XDAI_BRIDGE, MAX_UINT256)
+
 
 @external
 def checkpoint() -> bool:
