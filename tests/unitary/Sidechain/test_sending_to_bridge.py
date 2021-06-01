@@ -1,6 +1,6 @@
-from hexbytes import HexBytes
+from brownie import ETH_ADDRESS, web3
 from brownie.convert import to_bytes
-from brownie import web3, ETH_ADDRESS
+from hexbytes import HexBytes
 
 WEEK = 86400 * 7
 
