@@ -43,7 +43,8 @@ def test_random_range_year_one(token, chain, accounts, time1, time2):
 
 
 @given(
-    start=strategy("uint", max_value=YEAR * 6), duration=strategy("uint", max_value=YEAR),
+    start=strategy("uint", max_value=YEAR * 6),
+    duration=strategy("uint", max_value=YEAR),
 )
 def test_random_range_multiple_epochs(token, chain, accounts, start, duration):
     creation_time = token.start_epoch_time()
