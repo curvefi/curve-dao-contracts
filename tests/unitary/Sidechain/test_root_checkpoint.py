@@ -77,17 +77,16 @@ def test_emissions_against_other_gauge(
     # sleep until the start of the next epoch week
     chain.mine(timestamp=(tx.timestamp // WEEK + 1) * WEEK)
 
-    last_week_claimable = 0
     # 110 weeks ensures we see 2 reductions in the rate
     for i in range(1, 110):
         # checkpointing the root gauge mints all the allocated emissions for the next week
         tx = root_gauge.checkpoint()
-        emissions = root_gauge.emissions()  # emissions this week are delayed by a week so
+        emissions = root_gauge.emissions()  # emissions this week are delayed y a week so
 
-        # now we time travel one week, and get the claimable rewards from the regular gauge
-        chain.mine(timestamp=(tx.timestamp // WEEK + 1) * WEEK)
         claimable = liquidity_gauge.claimable_tokens(alice, {"from": alice}).return_value
 
         # root gauge emissions should be equal to regular gauge claimable amount
-        assert math.isclose(emissions, last_week_claimable, rel_tol=1e-6)
-        last_week_claimable = claimable
+        assert math.isclose(emissions, claimable, rel_tol=1e-6)
+
+        # now we time travel one week, and get the claimable rewards from the regular gauge
+        chain.mine(timestamp=(tx.timestamp // WEEK + 1) * WEEK)
