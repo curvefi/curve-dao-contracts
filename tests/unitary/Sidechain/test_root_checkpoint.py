@@ -26,19 +26,21 @@ def test_emissions_against_expected(alice, gauge_controller, liquidity_gauge, ro
     for i in range(1, 110):
 
         this_week = chain[-1].timestamp // WEEK * WEEK
-        next_week = this_week + WEEK
+        last_week = this_week - WEEK
         start_epoch_time = root_gauge.start_epoch_time()
         future_epoch_time = start_epoch_time + YEAR
+        gauge_weight = gauge_controller.gauge_relative_weight(root_gauge, last_week)
 
         # calculate the expected emissions, and checkpoint to update actual emissions
-        if next_week > future_epoch_time:
-            expected = rate * (future_epoch_time - this_week) // i
-            root_gauge.checkpoint()
-            rate = token.rate()
-            expected += rate * (next_week - future_epoch_time) // i
+        if last_week <= future_epoch_time < this_week:
+            # the core of the maff, q
+            expected = gauge_weight * rate * (future_epoch_time - last_week) / 10 ** 18
+            rate = rate * 10 ** 18 // 1189207115002721024
+            expected += gauge_weight * rate * (this_week - future_epoch_time) / 10 ** 18
         else:
-            expected = rate * WEEK // i
-            root_gauge.checkpoint()
+            expected = gauge_weight * rate * WEEK // 10 ** 18
+
+        root_gauge.checkpoint()
 
         # actual emissions should equal expected emissions
         new_emissions = root_gauge.emissions() - total_emissions
@@ -52,7 +54,12 @@ def test_emissions_against_expected(alice, gauge_controller, liquidity_gauge, ro
         gauge_controller.change_gauge_weight(liquidity_gauge, i, {"from": alice})
         chain.mine(timedelta=WEEK)
 
-        assert rate == token.rate()
+        # crossing over epochs our the rate should be the same as prior to the
+        # epoch transition
+        if this_week < future_epoch_time < this_week + WEEK:
+            assert rate > token.rate()
+        else:
+            assert rate == token.rate()
 
 
 @pytest.mark.skip_coverage
