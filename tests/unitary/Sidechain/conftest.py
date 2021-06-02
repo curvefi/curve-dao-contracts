@@ -3,17 +3,24 @@ from brownie import ETH_ADDRESS
 
 
 @pytest.fixture(scope="module")
-def anyswap_root_gauge(RootGaugeAnyswap, minter, alice):
+def _root_gauge_setup(token, minter, chain, alice):
+    token.set_minter(minter, {"from": alice})
+    chain.mine(timedelta=604800)
+    token.update_mining_parameters({"from": alice})
+
+
+@pytest.fixture(scope="module")
+def anyswap_root_gauge(_root_gauge_setup, RootGaugeAnyswap, minter, alice):
     return RootGaugeAnyswap.deploy(minter, alice, ETH_ADDRESS, {"from": alice})
 
 
 @pytest.fixture(scope="module")
-def polygon_root_gauge(RootGaugePolygon, minter, alice):
+def polygon_root_gauge(_root_gauge_setup, RootGaugePolygon, minter, alice):
     return RootGaugePolygon.deploy(minter, alice, {"from": alice})
 
 
 @pytest.fixture(scope="module")
-def xdai_root_gauge(RootGaugeXdai, minter, alice):
+def xdai_root_gauge(_root_gauge_setup, RootGaugeXdai, minter, alice):
     return RootGaugeXdai.deploy(minter, alice, {"from": alice})
 
 
