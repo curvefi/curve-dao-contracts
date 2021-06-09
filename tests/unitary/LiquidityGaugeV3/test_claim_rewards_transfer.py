@@ -63,7 +63,6 @@ def test_transfer_does_not_trigger_claim_for_receiver(alice, bob, chain, gauge_v
     gauge_v3.transfer(alice, amount, {"from": bob})
 
     for acct in (alice, bob):
-        gauge_v3.claim_rewards({"from": acct})
         assert coin_reward.balanceOf(acct) == 0
 
 
