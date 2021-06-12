@@ -63,12 +63,18 @@ anyswap_bridge: public(address)
 
 
 @external
-def __init__(_minter: address, _admin: address, _anyswap_bridge: address):
+def __init__(
+    _minter: address,
+    _admin: address,
+    _anyswap_bridge: address,
+    _checkpoint_admin: address,
+):
     """
     @notice Contract constructor
     @param _minter Minter contract address
     @param _admin Admin who can kill the gauge
     @param _anyswap_bridge Address of the AnySwap bridge where CRV is transferred
+    @param _checkpoint_admin Address of the checkpoint admin
     """
 
     crv_token: address = Minter(_minter).token()
@@ -78,6 +84,7 @@ def __init__(_minter: address, _admin: address, _anyswap_bridge: address):
     self.crv_token = crv_token
     self.controller = Minter(_minter).controller()
     self.anyswap_bridge = _anyswap_bridge
+    self.checkpoint_admin = _checkpoint_admin
 
     # because we calculate the rate locally, this gauge cannot
     # be used prior to the start of the first emission period
