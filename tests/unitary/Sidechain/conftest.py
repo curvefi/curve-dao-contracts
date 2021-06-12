@@ -1,5 +1,5 @@
 import pytest
-from brownie import ETH_ADDRESS
+from brownie import ETH_ADDRESS, ZERO_ADDRESS
 
 
 @pytest.fixture(scope="module")
@@ -11,7 +11,7 @@ def _root_gauge_setup(token, minter, chain, alice):
 
 @pytest.fixture(scope="module")
 def anyswap_root_gauge(_root_gauge_setup, RootGaugeAnyswap, minter, alice):
-    return RootGaugeAnyswap.deploy(minter, alice, ETH_ADDRESS, {"from": alice})
+    return RootGaugeAnyswap.deploy(minter, alice, ETH_ADDRESS, ZERO_ADDRESS, {"from": alice})
 
 
 @pytest.fixture(scope="module")
