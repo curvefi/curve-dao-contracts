@@ -5,7 +5,7 @@ LP_AMOUNT = 10 ** 18
 
 def test_claim_no_deposit(accounts, chain, liquidity_gauge_reward, reward_contract, coin_reward):
     # Fund
-    coin_reward._mint_for_testing(REWARD, {"from": accounts[0]})
+    coin_reward._mint_for_testing(accounts[0], REWARD)
     coin_reward.transfer(reward_contract, REWARD, {"from": accounts[0]})
     reward_contract.notifyRewardAmount(REWARD, {"from": accounts[0]})
 

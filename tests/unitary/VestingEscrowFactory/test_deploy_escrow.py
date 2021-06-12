@@ -1,13 +1,11 @@
 import brownie
 import pytest
-
-ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
+from brownie import ZERO_ADDRESS
 
 
 @pytest.fixture(scope="module", autouse=True)
-def initial_funding(coin_a, vesting_factory, accounts):
-    coin_a._mint_for_testing(10 ** 21, {"from": accounts[0]})
-    coin_a.transfer(vesting_factory, 10 ** 21, {"from": accounts[0]})
+def initial_funding(coin_a, vesting_factory):
+    coin_a._mint_for_testing(vesting_factory, 10 ** 21)
 
 
 def test_admin_only(accounts, vesting_factory, coin_a):

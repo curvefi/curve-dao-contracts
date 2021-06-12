@@ -52,7 +52,7 @@ def test_modify_no_deposit(
     reward_contract, reward_contract_2, alice, gauge_v2, chain, coin_a, coin_reward, mock_lp_token
 ):
     gauge_v2.deposit(LP_AMOUNT, {"from": alice})
-    coin_reward._mint_for_testing(REWARD, {"from": reward_contract})
+    coin_reward._mint_for_testing(reward_contract, REWARD)
     reward_contract.notifyRewardAmount(REWARD, {"from": alice})
     chain.sleep(86400)
 
@@ -69,7 +69,7 @@ def test_modify_deposit(
     reward_contract, reward_contract_2, alice, gauge_v2, chain, coin_a, coin_reward, mock_lp_token
 ):
     gauge_v2.deposit(LP_AMOUNT, {"from": alice})
-    coin_reward._mint_for_testing(REWARD, {"from": reward_contract})
+    coin_reward._mint_for_testing(reward_contract, REWARD)
     reward_contract.notifyRewardAmount(REWARD, {"from": alice})
     chain.sleep(86400)
 

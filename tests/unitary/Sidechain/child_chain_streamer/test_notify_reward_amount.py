@@ -8,7 +8,7 @@ DAY = 86400
 
 @pytest.fixture(scope="module", autouse=True)
 def local_setup(alice, bob, charlie, chain, coin_reward, child_chain_streamer):
-    coin_reward._mint_for_testing(100 * 10 ** 18, {"from": alice})
+    coin_reward._mint_for_testing(alice, 100 * 10 ** 18)
     coin_reward.transfer(child_chain_streamer, 100 * 10 ** 18, {"from": alice})
 
     child_chain_streamer.add_reward(coin_reward, charlie, DAY * 14, {"from": alice})
@@ -35,7 +35,7 @@ def test_increase_reward_amount_mid_distribution(
 ):
     child_chain_streamer.notify_reward_amount(coin_reward, {"from": charlie})
     chain.mine(timedelta=DAY * 7)  # half the rewards have been streamed
-    coin_reward._mint_for_testing(100 * 10 ** 18, {"from": alice})  # give another 100
+    coin_reward._mint_for_testing(alice, 100 * 10 ** 18)  # give another 100
     # approx 50 will be distributed in this call leaving 150 behind over the course of 14 days
 
     coin_reward.transfer(child_chain_streamer, 100 * 10 ** 18, {"from": alice})
@@ -60,7 +60,7 @@ def test_mid_distribution_only_distributor(
     chain.mine(timedelta=DAY * 7)
 
     # bob gets tokens, then sends them to the streamer hoping to call `notify_reward_amount`
-    coin_reward._mint_for_testing(100 * 10 ** 18, {"from": bob})
+    coin_reward._mint_for_testing(bob, 100 * 10 ** 18)
     coin_reward.transfer(child_chain_streamer, 100 * 10 ** 18, {"from": bob})
 
     with brownie.reverts("Reward period still active"):

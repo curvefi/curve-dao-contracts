@@ -54,7 +54,7 @@ class StateMachine:
         """
         if self.total_balances > 0:
             pre_balance = self.coin_reward.balanceOf(self.liquidity_gauge)
-            self.coin_reward._mint_for_testing(st_reward, {"from": self.liquidity_gauge})
+            self.coin_reward._mint_for_testing(self.liquidity_gauge, st_reward)
             self.rewards_total += st_reward
             assert self.coin_reward.balanceOf(self.liquidity_gauge) == pre_balance + st_reward
 

@@ -8,7 +8,7 @@ def test_deposited_after(web3, chain, accounts, voting_escrow, fee_distributor, 
     fee_distributor = fee_distributor()
 
     token.approve(voting_escrow.address, amount * 10, {"from": alice})
-    coin_a._mint_for_testing(100 * 10 ** 18, {"from": bob})
+    coin_a._mint_for_testing(bob, 100 * 10 ** 18)
 
     for i in range(5):
         for j in range(7):
@@ -34,7 +34,7 @@ def test_deposited_during(web3, chain, accounts, voting_escrow, fee_distributor,
     amount = 1000 * 10 ** 18
 
     token.approve(voting_escrow.address, amount * 10, {"from": alice})
-    coin_a._mint_for_testing(100 * 10 ** 18, {"from": bob})
+    coin_a._mint_for_testing(bob, 100 * 10 ** 18)
 
     chain.sleep(WEEK)
     voting_escrow.create_lock(amount, chain[-1].timestamp + 8 * WEEK, {"from": alice})
@@ -62,7 +62,7 @@ def test_deposited_before(web3, chain, accounts, voting_escrow, fee_distributor,
     amount = 1000 * 10 ** 18
 
     token.approve(voting_escrow.address, amount * 10, {"from": alice})
-    coin_a._mint_for_testing(100 * 10 ** 18, {"from": bob})
+    coin_a._mint_for_testing(bob, 100 * 10 ** 18)
 
     voting_escrow.create_lock(amount, chain[-1].timestamp + 8 * WEEK, {"from": alice})
     chain.sleep(WEEK)
@@ -86,7 +86,7 @@ def test_deposited_twice(web3, chain, accounts, voting_escrow, fee_distributor, 
     amount = 1000 * 10 ** 18
 
     token.approve(voting_escrow.address, amount * 10, {"from": alice})
-    coin_a._mint_for_testing(100 * 10 ** 18, {"from": bob})
+    coin_a._mint_for_testing(bob, 100 * 10 ** 18)
 
     voting_escrow.create_lock(amount, chain[-1].timestamp + 4 * WEEK, {"from": alice})
     chain.sleep(WEEK)
@@ -117,7 +117,7 @@ def test_deposited_parallel(web3, chain, accounts, voting_escrow, fee_distributo
     token.approve(voting_escrow.address, amount * 10, {"from": alice})
     token.approve(voting_escrow.address, amount * 10, {"from": bob})
     token.transfer(bob, amount, {"from": alice})
-    coin_a._mint_for_testing(100 * 10 ** 18, {"from": charlie})
+    coin_a._mint_for_testing(charlie, 100 * 10 ** 18)
 
     voting_escrow.create_lock(amount, chain[-1].timestamp + 8 * WEEK, {"from": alice})
     voting_escrow.create_lock(amount, chain[-1].timestamp + 8 * WEEK, {"from": bob})

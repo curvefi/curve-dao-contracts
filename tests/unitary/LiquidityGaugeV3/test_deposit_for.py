@@ -20,8 +20,7 @@ def test_deposit_for_and_claim_rewards(
     mock_lp_token.approve(gauge_v3, 2 ** 256 - 1, {"from": alice})
     gauge_v3.deposit(LP_AMOUNT, bob, {"from": alice})
 
-    coin_reward._mint_for_testing(REWARD, {"from": alice})
-    coin_reward.transfer(reward_contract, REWARD, {"from": alice})
+    coin_reward._mint_for_testing(reward_contract, REWARD)
     reward_contract.notifyRewardAmount(REWARD, {"from": alice})
 
     gauge_v3.set_rewards(

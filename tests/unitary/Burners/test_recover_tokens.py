@@ -2,7 +2,7 @@ import brownie
 
 
 def test_recover_balance(burner, alice, receiver, coin_a):
-    coin_a._mint_for_testing(10 ** 18, {"from": burner})
+    coin_a._mint_for_testing(burner, 10 ** 18)
 
     burner.recover_balance(coin_a, {"from": alice})
 
@@ -11,7 +11,7 @@ def test_recover_balance(burner, alice, receiver, coin_a):
 
 
 def test_recover_balance_emergency_owner(burner, bob, receiver, coin_a):
-    coin_a._mint_for_testing(10 ** 18, {"from": burner})
+    coin_a._mint_for_testing(burner, 10 ** 18)
 
     burner.recover_balance(coin_a, {"from": bob})
 

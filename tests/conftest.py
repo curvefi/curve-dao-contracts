@@ -37,7 +37,7 @@ def isolation_setup(fn_isolation):
 # helper functions as fixtures
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="module")
 def theoretical_supply(chain, token):
     def _fn():
         epoch = token.mining_epoch()
@@ -112,7 +112,7 @@ def gauge_proxy(GaugeProxy, alice, bob):
 
 
 @pytest.fixture(scope="module")
-def coin_reward(ERC20, accounts):
+def coin_reward():
     yield ERC20("YFIIIIII Funance", "YFIIIIII", 18)
 
 
@@ -203,7 +203,7 @@ def vesting(VestingEscrow, accounts, coin_a, start_time, end_time):
     contract = VestingEscrow.deploy(
         coin_a, start_time, end_time, True, accounts[1:5], {"from": accounts[0]}
     )
-    coin_a._mint_for_testing(10 ** 21, {"from": accounts[0]})
+    coin_a._mint_for_testing(accounts[0], 10 ** 21)
     coin_a.approve(contract, 10 ** 21, {"from": accounts[0]})
     yield contract
 
@@ -220,8 +220,7 @@ def vesting_factory(VestingEscrowFactory, accounts, vesting_target):
 
 @pytest.fixture(scope="module")
 def vesting_simple(VestingEscrowSimple, accounts, vesting_factory, coin_a, start_time):
-    coin_a._mint_for_testing(10 ** 21, {"from": accounts[0]})
-    coin_a.transfer(vesting_factory, 10 ** 21, {"from": accounts[0]})
+    coin_a._mint_for_testing(vesting_factory, 10 ** 21)
     tx = vesting_factory.deploy_vesting_contract(
         coin_a,
         accounts[1],
@@ -256,11 +255,6 @@ def burner(alice, bob, receiver, pool_proxy, request):
     idx = len(Burner.deploy.abi["inputs"]) + 1
 
     yield Burner.deploy(*args[-idx:])
-
-    # if len(Burner.deploy.abi['inputs']) == 4:
-    #     yield Burner.deploy(receiver, receiver, alice, bob, {'from': alice})
-    # else:
-    #     yield Burner.deploy(receiver, alice, bob, {'from': alice})
 
 
 # testing contracts

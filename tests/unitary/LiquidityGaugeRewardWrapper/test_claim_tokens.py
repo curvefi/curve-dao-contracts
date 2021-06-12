@@ -23,7 +23,7 @@ def setup(
     gauge_controller.add_type(b"Liquidity", 10 ** 10, {"from": accounts[0]})
     gauge_controller.add_gauge(liquidity_gauge_reward, 0, 10 ** 18, {"from": accounts[0]})
 
-    coin_reward._mint_for_testing(10 ** 20, {"from": accounts[0]})
+    coin_reward._mint_for_testing(accounts[0], 10 ** 20)
     coin_reward.transfer(reward_contract, 10 ** 20, {"from": accounts[0]})
     reward_contract.notifyRewardAmount(10 ** 20, {"from": accounts[0]})
 

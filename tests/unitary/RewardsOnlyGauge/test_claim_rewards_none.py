@@ -12,8 +12,7 @@ def test_claim_no_deposit(
     mock_lp_token.approve(rewards_only_gauge, LP_AMOUNT, {"from": alice})
     rewards_only_gauge.deposit(LP_AMOUNT, {"from": alice})
 
-    coin_reward._mint_for_testing(REWARD, {"from": alice})
-    coin_reward.transfer(reward_contract, REWARD, {"from": alice})
+    coin_reward._mint_for_testing(reward_contract, REWARD)
     reward_contract.notifyRewardAmount(REWARD, {"from": alice})
 
     rewards_only_gauge.set_rewards(

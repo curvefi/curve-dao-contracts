@@ -17,7 +17,7 @@ def test_claim_many(alice, bob, charlie, chain, voting_escrow, fee_distributor, 
     chain.sleep(WEEK * 5)
 
     fee_distributor = fee_distributor(t=start_time)
-    coin_a._mint_for_testing(10 ** 19, {"from": fee_distributor})
+    coin_a._mint_for_testing(fee_distributor, 10 ** 19)
     fee_distributor.checkpoint_token()
     chain.sleep(WEEK)
     fee_distributor.checkpoint_token()
@@ -50,7 +50,7 @@ def test_claim_many_same_account(
     chain.sleep(WEEK * 5)
 
     fee_distributor = fee_distributor(t=start_time)
-    coin_a._mint_for_testing(10 ** 19, {"from": fee_distributor})
+    coin_a._mint_for_testing(fee_distributor, 10 ** 19)
     fee_distributor.checkpoint_token()
     chain.sleep(WEEK)
     fee_distributor.checkpoint_token()

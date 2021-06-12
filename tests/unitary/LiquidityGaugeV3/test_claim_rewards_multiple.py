@@ -36,8 +36,8 @@ def claim_tokens() -> bool:
 @pytest.fixture(scope="module")
 def reward_contract(alice, coin_a, coin_b):
     contract = compile_source(code).Vyper.deploy(coin_a, coin_b, {"from": alice})
-    coin_a._mint_for_testing(REWARD * 2, {"from": contract})
-    coin_b._mint_for_testing(REWARD * 2, {"from": contract})
+    coin_a._mint_for_testing(contract, REWARD * 2)
+    coin_b._mint_for_testing(contract, REWARD * 2)
 
     yield contract
 
@@ -117,8 +117,8 @@ def test_claim_two_lp(
     mock_lp_token.approve(gauge_v3, LP_AMOUNT, {"from": alice})
     gauge_v3.deposit(LP_AMOUNT, {"from": alice})
 
-    coin_a._mint_for_testing(REWARD, {"from": reward_contract})
-    coin_b._mint_for_testing(REWARD, {"from": reward_contract})
+    coin_a._mint_for_testing(reward_contract, REWARD)
+    coin_b._mint_for_testing(reward_contract, REWARD)
 
     chain.sleep(WEEK)
     chain.mine()

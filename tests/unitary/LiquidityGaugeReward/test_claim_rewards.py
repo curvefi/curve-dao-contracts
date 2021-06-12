@@ -10,7 +10,7 @@ LP_AMOUNT = 10 ** 18
 @pytest.fixture(scope="module", autouse=True)
 def initial_setup(accounts, coin_reward, reward_contract, mock_lp_token, liquidity_gauge_reward):
     # Fund
-    coin_reward._mint_for_testing(REWARD, {"from": accounts[0]})
+    coin_reward._mint_for_testing(accounts[0], REWARD)
     coin_reward.transfer(reward_contract, REWARD, {"from": accounts[0]})
     reward_contract.notifyRewardAmount(REWARD, {"from": accounts[0]})
 

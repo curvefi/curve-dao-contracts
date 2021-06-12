@@ -20,7 +20,7 @@ def initial_setup(alice, bob, coin_reward, mock_lp_token, rewards_only_gauge, mi
     )
 
     # mint rewards directly into the contract (no notifiaction)
-    coin_reward._mint_for_testing(REWARD, {"from": rewards_only_gauge})
+    coin_reward._mint_for_testing(rewards_only_gauge, REWARD)
 
 
 def test_claim_one_lp(bob, chain, rewards_only_gauge, coin_reward):

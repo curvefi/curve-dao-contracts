@@ -67,7 +67,7 @@ def test_unset_with_totalsupply(
 def test_unsetting_claims(alice, chain, coin_reward, reward_contract, rewards_only_gauge):
     rewards_only_gauge.deposit(LP_AMOUNT, {"from": alice})
 
-    coin_reward._mint_for_testing(REWARD, {"from": reward_contract})
+    coin_reward._mint_for_testing(reward_contract, REWARD)
     reward_contract.notifyRewardAmount(REWARD, {"from": alice})
 
     chain.sleep(WEEK)
@@ -106,7 +106,7 @@ def test_modify_no_deposit(
     mock_lp_token,
 ):
     rewards_only_gauge.deposit(LP_AMOUNT, {"from": alice})
-    coin_reward._mint_for_testing(REWARD, {"from": reward_contract})
+    coin_reward._mint_for_testing(reward_contract, REWARD)
     reward_contract.notifyRewardAmount(REWARD, {"from": alice})
     chain.sleep(86400)
 
@@ -136,7 +136,7 @@ def test_modify_deposit(
     mock_lp_token,
 ):
     rewards_only_gauge.deposit(LP_AMOUNT, {"from": alice})
-    coin_reward._mint_for_testing(REWARD, {"from": reward_contract})
+    coin_reward._mint_for_testing(reward_contract, REWARD)
     reward_contract.notifyRewardAmount(REWARD, {"from": alice})
     chain.sleep(86400)
 

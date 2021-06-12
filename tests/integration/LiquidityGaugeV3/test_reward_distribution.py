@@ -58,8 +58,7 @@ class StateMachine:
                 )
                 self.flag = True
 
-            self.coin_reward._mint_for_testing(st_reward)
-            self.coin_reward.transfer(self.reward_contract, st_reward)
+            self.coin_reward._mint_for_testing(self.reward_contract, st_reward)
             self.reward_contract.notifyRewardAmount(st_reward)
             self.rewards_total += st_reward
 

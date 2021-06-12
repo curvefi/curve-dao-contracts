@@ -39,7 +39,7 @@ def initial_setup(
     gauge_v2.set_rewards(reward_contract, sigs, [coin_reward] + [ZERO_ADDRESS] * 7, {"from": alice})
 
     # fund rewards
-    coin_reward._mint_for_testing(REWARD, {"from": reward_contract})
+    coin_reward._mint_for_testing(reward_contract, REWARD)
     reward_contract.notifyRewardAmount(REWARD, {"from": alice})
 
     # sleep half way through the reward period

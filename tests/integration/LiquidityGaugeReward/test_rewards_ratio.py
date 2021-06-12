@@ -30,8 +30,7 @@ def test_ratio_equality(
         liquidity_gauge_reward.deposit(value, {"from": act})
 
     # Fund rewards
-    coin_reward._mint_for_testing(10 ** 20)
-    coin_reward.transfer(reward_contract, 10 ** 20)
+    coin_reward._mint_for_testing(reward_contract, 10 ** 20)
     reward_contract.notifyRewardAmount(10 ** 20)
 
     chain.sleep(2 * 7 * 86400)

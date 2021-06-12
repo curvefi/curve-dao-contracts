@@ -28,7 +28,7 @@ class StateMachine:
         self.voting_escrow = voting_escrow
 
         for acct in accounts:
-            token._mint_for_testing(10 ** 40, {"from": acct})
+            token._mint_for_testing(acct, 10 ** 40)
             token.approve(voting_escrow, 2 ** 256 - 1, {"from": acct})
 
     def setup(self):
