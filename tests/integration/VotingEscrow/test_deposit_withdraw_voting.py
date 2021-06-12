@@ -1,6 +1,7 @@
 import brownie
 from brownie import chain, history
 from brownie.test import strategy
+from brownie_tokens import ERC20
 
 WEEK = 86400 * 7
 MAX_TIME = 86400 * 365 * 4
@@ -186,8 +187,8 @@ class StateMachine:
         assert self.voting_escrow.totalSupplyAt(block_number) == total_supply
 
 
-def test_state_machine(state_machine, accounts, ERC20, VotingEscrow):
-    token = ERC20.deploy("", "", 18, {"from": accounts[0]})
+def test_state_machine(state_machine, accounts, VotingEscrow):
+    token = ERC20("", "", 18)
     voting_escrow = VotingEscrow.deploy(
         token, "Voting-escrowed CRV", "veCRV", "veCRV_0.99", {"from": accounts[0]}
     )
