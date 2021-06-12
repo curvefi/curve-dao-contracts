@@ -6,7 +6,7 @@ MONTH = 86400 * 30
 
 @pytest.fixture(scope="module", autouse=True)
 def deposit_setup(
-    accounts, gauge_controller, minter, liquidity_gauge, unit_gauge, token, mock_lp_token, vault,
+    accounts, gauge_controller, minter, liquidity_gauge, unit_gauge, token, mock_lp_token, vault
 ):
     token.set_minter(minter, {"from": accounts[0]})
 

@@ -55,7 +55,7 @@ def test_claim_for_other_no_reward(accounts, chain, liquidity_gauge_reward, coin
 
 
 def test_claim_two_lp(
-    accounts, chain, liquidity_gauge_reward, mock_lp_token, coin_reward, no_call_coverage,
+    accounts, chain, liquidity_gauge_reward, mock_lp_token, coin_reward, no_call_coverage
 ):
 
     # Deposit

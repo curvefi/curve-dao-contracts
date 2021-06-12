@@ -11,9 +11,7 @@ WEEK = 7 * 86400
 
 
 @pytest.fixture(scope="module", autouse=True)
-def setup(
-    accounts, mock_lp_token, token, minter, gauge_controller, liquidity_gauge, unit_gauge,
-):
+def setup(accounts, mock_lp_token, token, minter, gauge_controller, liquidity_gauge, unit_gauge):
     token.set_minter(minter, {"from": accounts[0]})
 
     gauge_controller.add_type(b"Liquidity", 10 ** 10, {"from": accounts[0]})

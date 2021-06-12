@@ -7,7 +7,13 @@ from tests.conftest import approx
 @given(values=strategy("uint[8]", min_value=1, max_value=10 ** 21))
 @settings(max_examples=25)
 def test_ratio_equality(
-    chain, accounts, liquidity_gauge_reward, mock_lp_token, reward_contract, coin_reward, values,
+    chain,
+    accounts,
+    liquidity_gauge_reward,
+    mock_lp_token,
+    reward_contract,
+    coin_reward,
+    values,
 ):
     N_acc = len(values)
 

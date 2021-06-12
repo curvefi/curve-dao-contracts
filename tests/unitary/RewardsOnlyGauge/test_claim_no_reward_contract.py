@@ -9,9 +9,7 @@ LP_AMOUNT = 10 ** 18
 
 
 @pytest.fixture(scope="module", autouse=True)
-def initial_setup(
-    alice, bob, coin_reward, mock_lp_token, rewards_only_gauge, minter,
-):
+def initial_setup(alice, bob, coin_reward, mock_lp_token, rewards_only_gauge, minter):
     # deposit into gauge
     mock_lp_token.transfer(bob, LP_AMOUNT, {"from": alice})
     mock_lp_token.approve(rewards_only_gauge, LP_AMOUNT, {"from": bob})
