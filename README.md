@@ -6,7 +6,7 @@ Vyper contracts used in the [Curve](https://www.curve.fi/) Governance DAO.
 
 Curve DAO consists of multiple smart contracts connected by [Aragon](https://github.com/aragon/aragonOS). Interaction with Aragon occurs through a [modified implementation](https://github.com/curvefi/curve-aragon-voting) of the [Aragon Voting App](https://github.com/aragon/aragon-apps/tree/master/apps/voting). Aragon's standard one token, one vote method is replaced with a weighting system based on locking tokens. Curve DAO has a token (CRV) which is used for both governance and value accrual.
 
-View the [documentation](doc/readme.pdf) for a more in-depth explanation of how Curve DAO works.
+View the [documentation](https://curve.readthedocs.io/dao-overview.html) for a more in-depth explanation of how Curve DAO works.
 
 ## Testing and Development
 
