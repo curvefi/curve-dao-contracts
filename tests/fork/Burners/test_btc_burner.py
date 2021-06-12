@@ -20,7 +20,7 @@ tokens = (
 @pytest.mark.parametrize("burner_balance", (True, False))
 @pytest.mark.parametrize("caller_balance", (True, False))
 def test_swap(
-    MintableTestToken, SUSD, alice, receiver, burner, token, burner_balance, caller_balance,
+    MintableTestToken, SUSD, alice, receiver, burner, token, burner_balance, caller_balance
 ):
     coin = MintableTestToken(token)
     amount = 10 ** coin.decimals()

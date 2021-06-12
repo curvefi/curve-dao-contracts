@@ -48,7 +48,7 @@ SWAP_FOR = [
 @pytest.mark.parametrize("burner_balance", (True, False))
 @pytest.mark.parametrize("caller_balance", (True, False))
 def test_swap(
-    MintableTestToken, SUSD, alice, receiver, burner, token, target, burner_balance, caller_balance,
+    MintableTestToken, SUSD, alice, receiver, burner, token, target, burner_balance, caller_balance
 ):
     if token == ETH_ADDRESS:
         coin = token

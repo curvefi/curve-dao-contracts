@@ -104,7 +104,14 @@ def test_gauge_integral(accounts, chain, mock_lp_token, token, gauge_v3, gauge_c
 
 
 def test_mining_with_votelock(
-    accounts, chain, history, mock_lp_token, token, gauge_v3, gauge_controller, voting_escrow,
+    accounts,
+    chain,
+    history,
+    mock_lp_token,
+    token,
+    gauge_v3,
+    gauge_controller,
+    voting_escrow,
 ):
     alice, bob = accounts[:2]
     chain.sleep(2 * WEEK + 5)

@@ -4,9 +4,7 @@ import pytest
 
 
 @pytest.fixture(scope="module", autouse=True)
-def setup(
-    accounts, gauge_controller, minter, liquidity_gauge, gauge_wrapper, token, mock_lp_token,
-):
+def setup(accounts, gauge_controller, minter, liquidity_gauge, gauge_wrapper, token, mock_lp_token):
     token.set_minter(minter, {"from": accounts[0]})
 
     gauge_controller.add_type(b"Liquidity", 10 ** 10, {"from": accounts[0]})

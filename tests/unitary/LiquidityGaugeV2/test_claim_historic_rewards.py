@@ -28,7 +28,7 @@ def initial_setup(gauge_v2, mock_lp_token, alice, reward_contract, coin_reward):
     sigs = f"0x{sigs[0]}{sigs[1]}{sigs[2]}{'00' * 20}"
     gauge_v2.set_rewards(reward_contract, sigs, [coin_reward] + [ZERO_ADDRESS] * 7, {"from": alice})
 
-    coin_reward._mint_for_testing(REWARD, {"from": reward_contract})
+    coin_reward._mint_for_testing(reward_contract, REWARD)
     reward_contract.notifyRewardAmount(REWARD, {"from": alice})
 
 
@@ -56,7 +56,7 @@ def test_claim_historic_multiple(
     sigs = f"0x{sigs[0]}{sigs[1]}{sigs[2]}{'00' * 20}"
     gauge_v2.set_rewards(reward_contract_2, sigs, [coin_a] + [ZERO_ADDRESS] * 7, {"from": alice})
 
-    coin_a._mint_for_testing(REWARD, {"from": reward_contract_2})
+    coin_a._mint_for_testing(reward_contract_2, REWARD)
     reward_contract_2.notifyRewardAmount(REWARD, {"from": alice})
 
     chain.sleep(WEEK)

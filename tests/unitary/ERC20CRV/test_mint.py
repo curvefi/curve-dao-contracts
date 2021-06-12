@@ -1,9 +1,9 @@
 import brownie
 import pytest
+from brownie import ZERO_ADDRESS
 
 WEEK = 86400 * 7
 YEAR = 365 * 86400
-ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -44,9 +44,7 @@ def test_overmint(accounts, chain, token):
     chain.sleep(WEEK)
 
     with brownie.reverts("dev: exceeds allowable mint amount"):
-        token.mint(
-            accounts[1], (chain.time() - creation_time + 2) * rate, {"from": accounts[0]},
-        )
+        token.mint(accounts[1], (chain.time() - creation_time + 2) * rate, {"from": accounts[0]})
 
 
 def test_minter_only(accounts, token):

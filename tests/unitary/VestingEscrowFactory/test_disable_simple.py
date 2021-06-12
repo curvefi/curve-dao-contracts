@@ -1,7 +1,5 @@
 import brownie
 
-ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
-
 
 def test_toggle_admin_only(vesting_simple, accounts):
     with brownie.reverts():

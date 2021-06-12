@@ -42,9 +42,7 @@ def test_random_range_year_one(token, chain, accounts, time1, time2):
     assert token.mintable_in_timeframe(start, end) == rate * (end - start)
 
 
-@given(
-    start=strategy("uint", max_value=YEAR * 6), duration=strategy("uint", max_value=YEAR),
-)
+@given(start=strategy("uint", max_value=YEAR * 6), duration=strategy("uint", max_value=YEAR))
 def test_random_range_multiple_epochs(token, chain, accounts, start, duration):
     creation_time = token.start_epoch_time()
     start += creation_time

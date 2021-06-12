@@ -5,7 +5,7 @@ import pytest
 @pytest.fixture(scope="module")
 def fee_distributor(FeeDistributor, accounts, chain, voting_escrow, coin_a):
     yield FeeDistributor.deploy(
-        voting_escrow, chain.time(), coin_a, accounts[0], accounts[1], {"from": accounts[0]},
+        voting_escrow, chain.time(), coin_a, accounts[0], accounts[1], {"from": accounts[0]}
     )
 
 
@@ -28,7 +28,7 @@ def test_multi_kill(fee_distributor, accounts):
 
 
 def test_killing_xfers_tokens(fee_distributor, accounts, coin_a):
-    coin_a._mint_for_testing(31337, {"from": fee_distributor.address})
+    coin_a._mint_for_testing(fee_distributor, 31337)
 
     fee_distributor.kill_me({"from": accounts[0]})
 
@@ -37,10 +37,10 @@ def test_killing_xfers_tokens(fee_distributor, accounts, coin_a):
 
 
 def test_multi_kill_token_xfer(fee_distributor, accounts, coin_a):
-    coin_a._mint_for_testing(10000, {"from": fee_distributor.address})
+    coin_a._mint_for_testing(fee_distributor, 10000)
     fee_distributor.kill_me({"from": accounts[0]})
 
-    coin_a._mint_for_testing(30000, {"from": fee_distributor.address})
+    coin_a._mint_for_testing(fee_distributor, 30000)
     fee_distributor.kill_me({"from": accounts[0]})
 
     assert fee_distributor.emergency_return() == accounts[1]

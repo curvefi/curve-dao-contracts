@@ -63,7 +63,7 @@ def test_modify_reward_tokens_less(
 ):
     sigs = f"0x{'00' * 4}{'00' * 4}{reward_contract.getReward.signature[2:]}{'00' * 20}"
     rewards_only_gauge.set_rewards(
-        reward_contract, sigs, [coin_reward, coin_a, coin_b] + [ZERO_ADDRESS] * 5, {"from": alice},
+        reward_contract, sigs, [coin_reward, coin_a, coin_b] + [ZERO_ADDRESS] * 5, {"from": alice}
     )
 
     reward_tokens = [coin_reward] + [ZERO_ADDRESS] * 7
@@ -76,7 +76,7 @@ def test_modify_reward_tokens_different(
 ):
     sigs = f"0x{'00' * 4}{'00' * 4}{reward_contract.getReward.signature[2:]}{'00' * 20}"
     rewards_only_gauge.set_rewards(
-        reward_contract, sigs, [coin_reward, coin_a, coin_b] + [ZERO_ADDRESS] * 5, {"from": alice},
+        reward_contract, sigs, [coin_reward, coin_a, coin_b] + [ZERO_ADDRESS] * 5, {"from": alice}
     )
 
     reward_tokens = [coin_reward, coin_b, coin_a] + [ZERO_ADDRESS] * 5

@@ -161,7 +161,7 @@ class StateMachine:
         chain.sleep(st_time)
 
         amount = int(st_amount * 10 ** 18)
-        tx = self.fee_coin._mint_for_testing(amount, {"from": self.distributor.address})
+        tx = self.fee_coin._mint_for_testing(self.distributor.address, amount)
 
         if not self.distributor.can_checkpoint_token():
             self.distributor.toggle_allow_checkpoint_token()
@@ -184,7 +184,7 @@ class StateMachine:
         chain.sleep(st_time)
 
         amount = int(st_amount * 10 ** 18)
-        tx = self.fee_coin._mint_for_testing(amount, {"from": self.distributor.address})
+        tx = self.fee_coin._mint_for_testing(self.distributor.address, amount)
 
         self.fees[tx.timestamp] = amount
         self.total_fees += amount

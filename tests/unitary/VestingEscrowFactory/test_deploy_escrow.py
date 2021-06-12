@@ -1,13 +1,11 @@
 import brownie
 import pytest
-
-ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
+from brownie import ZERO_ADDRESS
 
 
 @pytest.fixture(scope="module", autouse=True)
-def initial_funding(coin_a, vesting_factory, accounts):
-    coin_a._mint_for_testing(10 ** 21, {"from": accounts[0]})
-    coin_a.transfer(vesting_factory, 10 ** 21, {"from": accounts[0]})
+def initial_funding(coin_a, vesting_factory):
+    coin_a._mint_for_testing(vesting_factory, 10 ** 21)
 
 
 def test_admin_only(accounts, vesting_factory, coin_a):
@@ -20,7 +18,7 @@ def test_admin_only(accounts, vesting_factory, coin_a):
 def test_approve_fail(accounts, vesting_factory, coin_a):
     with brownie.reverts("dev: approve failed"):
         vesting_factory.deploy_vesting_contract(
-            ZERO_ADDRESS, accounts[1], 10 ** 18, True, 86400 * 365, {"from": accounts[0]},
+            ZERO_ADDRESS, accounts[1], 10 ** 18, True, 86400 * 365, {"from": accounts[0]}
         )
 
 
@@ -61,7 +59,7 @@ def test_start_and_duration(VestingEscrowSimple, accounts, chain, vesting_factor
     start_time = chain.time() + 100
 
     tx = vesting_factory.deploy_vesting_contract(
-        coin_a, accounts[1], 10 ** 18, True, 86400 * 700, start_time, {"from": accounts[0]},
+        coin_a, accounts[1], 10 ** 18, True, 86400 * 700, start_time, {"from": accounts[0]}
     )
 
     assert len(tx.new_contracts) == 1

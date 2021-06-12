@@ -16,7 +16,11 @@ class StateMachine:
     st_reward = strategy("uint64")
 
     def __init__(
-        self, accounts, rewards_only_gauge, mock_lp_token, coin_reward,
+        self,
+        accounts,
+        rewards_only_gauge,
+        mock_lp_token,
+        coin_reward,
     ):
         self.accounts = accounts
         self.token = mock_lp_token
@@ -50,7 +54,7 @@ class StateMachine:
         """
         if self.total_balances > 0:
             pre_balance = self.coin_reward.balanceOf(self.liquidity_gauge)
-            self.coin_reward._mint_for_testing(st_reward, {"from": self.liquidity_gauge})
+            self.coin_reward._mint_for_testing(self.liquidity_gauge, st_reward)
             self.rewards_total += st_reward
             assert self.coin_reward.balanceOf(self.liquidity_gauge) == pre_balance + st_reward
 

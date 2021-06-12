@@ -1,5 +1,6 @@
 import pytest
 from brownie.test import given, strategy
+from hypothesis import settings
 
 WEEK = 86400 * 7
 
@@ -20,6 +21,7 @@ def distributor(accounts, chain, fee_distributor, voting_escrow, token):
     st_locktime=strategy("uint256[10]", min_value=1, max_value=52, unique=True),
     st_sleep=strategy("uint256[10]", min_value=1, max_value=30, unique=True),
 )
+@settings(max_examples=10)
 def test_checkpoint_total_supply(
     accounts, chain, distributor, voting_escrow, st_amount, st_locktime, st_sleep
 ):

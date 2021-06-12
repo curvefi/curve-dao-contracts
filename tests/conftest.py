@@ -9,6 +9,7 @@ from brownie import (
     USDNBurner,
     YBurner,
 )
+from brownie_tokens import ERC20
 
 YEAR = 365 * 86400
 INITIAL_RATE = 274_815_283
@@ -36,7 +37,7 @@ def isolation_setup(fn_isolation):
 # helper functions as fixtures
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="module")
 def theoretical_supply(chain, token):
     def _fn():
         epoch = token.mining_epoch()
@@ -111,8 +112,8 @@ def gauge_proxy(GaugeProxy, alice, bob):
 
 
 @pytest.fixture(scope="module")
-def coin_reward(ERC20, accounts):
-    yield ERC20.deploy("YFIIIIII Funance", "YFIIIIII", 18, {"from": accounts[0]})
+def coin_reward():
+    yield ERC20("YFIIIIII Funance", "YFIIIIII", 18)
 
 
 @pytest.fixture(scope="module")
@@ -154,14 +155,23 @@ def liquidity_gauge_reward(
     LiquidityGaugeReward, accounts, mock_lp_token, minter, reward_contract, coin_reward
 ):
     yield LiquidityGaugeReward.deploy(
-        mock_lp_token, minter, reward_contract, coin_reward, accounts[0], {"from": accounts[0]},
+        mock_lp_token,
+        minter,
+        reward_contract,
+        coin_reward,
+        accounts[0],
+        {"from": accounts[0]},
     )
 
 
 @pytest.fixture(scope="module")
 def reward_gauge_wrapper(LiquidityGaugeRewardWrapper, accounts, liquidity_gauge_reward):
     yield LiquidityGaugeRewardWrapper.deploy(
-        "Tokenized Reward Gauge", "TG", liquidity_gauge_reward, accounts[0], {"from": accounts[0]},
+        "Tokenized Reward Gauge",
+        "TG",
+        liquidity_gauge_reward,
+        accounts[0],
+        {"from": accounts[0]},
     )
 
 
@@ -193,7 +203,7 @@ def vesting(VestingEscrow, accounts, coin_a, start_time, end_time):
     contract = VestingEscrow.deploy(
         coin_a, start_time, end_time, True, accounts[1:5], {"from": accounts[0]}
     )
-    coin_a._mint_for_testing(10 ** 21, {"from": accounts[0]})
+    coin_a._mint_for_testing(accounts[0], 10 ** 21)
     coin_a.approve(contract, 10 ** 21, {"from": accounts[0]})
     yield contract
 
@@ -210,10 +220,15 @@ def vesting_factory(VestingEscrowFactory, accounts, vesting_target):
 
 @pytest.fixture(scope="module")
 def vesting_simple(VestingEscrowSimple, accounts, vesting_factory, coin_a, start_time):
-    coin_a._mint_for_testing(10 ** 21, {"from": accounts[0]})
-    coin_a.transfer(vesting_factory, 10 ** 21, {"from": accounts[0]})
+    coin_a._mint_for_testing(vesting_factory, 10 ** 21)
     tx = vesting_factory.deploy_vesting_contract(
-        coin_a, accounts[1], 10 ** 20, True, 100000000, start_time, {"from": accounts[0]},
+        coin_a,
+        accounts[1],
+        10 ** 20,
+        True,
+        100000000,
+        start_time,
+        {"from": accounts[0]},
     )
     yield VestingEscrowSimple.at(tx.new_contracts[0])
 
@@ -241,23 +256,18 @@ def burner(alice, bob, receiver, pool_proxy, request):
 
     yield Burner.deploy(*args[-idx:])
 
-    # if len(Burner.deploy.abi['inputs']) == 4:
-    #     yield Burner.deploy(receiver, receiver, alice, bob, {'from': alice})
-    # else:
-    #     yield Burner.deploy(receiver, alice, bob, {'from': alice})
-
 
 # testing contracts
 
 
 @pytest.fixture(scope="module")
-def coin_a(ERC20, accounts):
-    yield ERC20.deploy("Coin A", "USDA", 18, {"from": accounts[0]})
+def coin_a():
+    yield ERC20("Coin A", "USDA", 18)
 
 
 @pytest.fixture(scope="module")
-def coin_b(ERC20, accounts):
-    yield ERC20.deploy("Coin B", "USDB", 18, {"from": accounts[0]})
+def coin_b():
+    yield ERC20("Coin B", "USDB", 18)
 
 
 @pytest.fixture(scope="module")
