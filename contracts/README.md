@@ -4,8 +4,10 @@ All contract sources are within this directory.
 
 ## Subdirectories
 
-* [`gauges`](gauges): Contracts used for measuring provided liquidity
+* [`burners`](burners): Contracts used to convert admin fees into 3CRV prior to distribution to the DAO.
+* [`gauges`](gauges): Contracts used for measuring provided liquidity.
 * [`testing`](testing): Contracts used exclusively for testing. Not considered to be a core part of this project.
+* [`vests`](vests): Contracts for vesting CRV.
 
 ## Contracts
 
