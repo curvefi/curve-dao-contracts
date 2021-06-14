@@ -9,6 +9,7 @@ from brownie import (
     USDNBurner,
     YBurner,
 )
+from brownie import compile_source, convert
 from brownie_tokens import ERC20
 
 YEAR = 365 * 86400
@@ -99,6 +100,11 @@ def gauge_controller(GaugeController, accounts, token, voting_escrow):
 @pytest.fixture(scope="module")
 def minter(Minter, accounts, gauge_controller, token):
     yield Minter.deploy(token, gauge_controller, {"from": accounts[0]})
+
+
+@pytest.fixture(scope="module")
+def crypto_pool_proxy(alice, CryptoPoolProxy):
+    return CryptoPoolProxy.deploy(alice, alice, alice, {"from": alice})
 
 
 @pytest.fixture(scope="module")
@@ -271,6 +277,11 @@ def coin_b():
 
 
 @pytest.fixture(scope="module")
+def coin_c():
+    yield ERC20("Coin C", "mWBTC", 8)
+
+
+@pytest.fixture(scope="module")
 def mock_lp_token(ERC20LP, accounts):  # Not using the actual Curve contract
     yield ERC20LP.deploy("Curve LP token", "usdCrv", 18, 10 ** 9, {"from": accounts[0]})
 
@@ -295,3 +306,79 @@ def fee_distributor(FeeDistributor, voting_escrow, accounts, coin_a, chain):
         )
 
     yield f
+
+
+@pytest.fixture(scope="module")
+def crypto_coins(coin_a, coin_b, coin_c):
+    return [coin_a, coin_b, coin_c]
+
+
+@pytest.fixture(scope="module")
+def crypto_lp_token(alice, CurveCryptoLP):
+    return CurveCryptoLP.deploy("Mock Crypto LP Token", "crvMock", {"from": alice})
+
+
+@pytest.fixture(scope="module")
+def crypto_math(alice, CurveCryptoMath):
+    return CurveCryptoMath.deploy({"from": alice})
+
+
+@pytest.fixture(scope="module")
+def crypto_views(alice, CurveCryptoViews, crypto_math, crypto_coins):
+    source: str = CurveCryptoViews._build["source"]
+    for idx, coin in enumerate(crypto_coins):
+        new_value = 10 ** (18 - coin.decimals())
+        source = source.replace(f"1,#{idx}", f"{new_value},")
+    Views = compile_source(source, vyper_version="0.2.12").Vyper
+    return Views.deploy(crypto_math, {"from": alice})
+
+
+@pytest.fixture(scope="session")
+def crypto_initial_prices():
+    # p = requests.get(
+    #     "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd"
+    # ).json()
+    # return tuple(int(p[cur]["usd"] * 1e18) for cur in ["bitcoin", "ethereum"])
+    return (39362000000000003670016, 2493090000000000196608)
+
+
+@pytest.fixture(scope="module")
+def crypto_pool(
+    alice,
+    CurveCryptoPool,
+    crypto_math,
+    crypto_lp_token,
+    crypto_views,
+    crypto_coins,
+    crypto_initial_prices,
+):
+    # taken from curvefi/curve-crypto-contract
+    keys = [0, 1, 2, 16, 17, 18, "1,#0", "1,#1", "1,#2"]
+    values = (
+        [crypto_math.address, crypto_lp_token.address, crypto_views.address]
+        + [coin.address for coin in crypto_coins]
+        + [f"{10 ** (18 - coin.decimals())}," for coin in crypto_coins]
+    )
+    source = CurveCryptoPool._build["source"]
+    for k, v in zip(keys, values):
+        if isinstance(k, int):
+            k = convert.to_address(convert.to_bytes(k, "bytes20"))
+        source.replace(k, v)
+
+    CryptoPool = compile_source(source, vyper_version="0.2.12").Vyper
+    swap = CryptoPool.deploy(
+        alice,
+        135 * 3 ** 3,  # A
+        int(7e-5 * 1e18),  # gamma
+        int(4e-4 * 1e10),  # mid_fee
+        int(4e-3 * 1e10),  # out_fee
+        int(0.0028 * 1e18),  # price_threshold
+        int(0.01 * 1e18),  # fee_gamma
+        int(0.0015 * 1e18),  # adjustment_step
+        0,  # admin_fee
+        600,  # ma_half_time
+        crypto_initial_prices,
+        {"from": alice},
+    )
+    crypto_lp_token.set_minter(swap, {"from": alice})
+    return swap
