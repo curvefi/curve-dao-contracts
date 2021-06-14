@@ -11,3 +11,5 @@ networks:
       unlock: 0xC447FcAF1dEf19A583F97b3620627BF69c05b5fB
 
 autofetch_sources: True
+dependencies:
+  - curvefi/curve-crypto-contract@1.0.0

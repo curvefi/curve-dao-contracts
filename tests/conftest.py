@@ -8,8 +8,9 @@ from brownie import (
     UnderlyingBurner,
     USDNBurner,
     YBurner,
+    compile_source,
+    convert,
 )
-from brownie import compile_source, convert
 from brownie_tokens import ERC20
 
 YEAR = 365 * 86400
@@ -313,19 +314,24 @@ def crypto_coins(coin_a, coin_b, coin_c):
     return [coin_a, coin_b, coin_c]
 
 
-@pytest.fixture(scope="module")
-def crypto_lp_token(alice, CurveCryptoLP):
-    return CurveCryptoLP.deploy("Mock Crypto LP Token", "crvMock", {"from": alice})
+@pytest.fixture(scope="session")
+def crypto_project(pm):
+    return pm("curvefi/curve-crypto-contract@1.0.0")
 
 
 @pytest.fixture(scope="module")
-def crypto_math(alice, CurveCryptoMath):
-    return CurveCryptoMath.deploy({"from": alice})
+def crypto_lp_token(alice, crypto_project):
+    return crypto_project.CurveTokenV4.deploy("Mock Crypto LP Token", "crvMock", {"from": alice})
 
 
 @pytest.fixture(scope="module")
-def crypto_views(alice, CurveCryptoViews, crypto_math, crypto_coins):
-    source: str = CurveCryptoViews._build["source"]
+def crypto_math(alice, crypto_project):
+    return crypto_project.CurveCryptoMath3.deploy({"from": alice})
+
+
+@pytest.fixture(scope="module")
+def crypto_views(alice, crypto_project, crypto_math, crypto_coins):
+    source: str = crypto_project.CurveCryptoViews3._build["source"]
     for idx, coin in enumerate(crypto_coins):
         new_value = 10 ** (18 - coin.decimals())
         source = source.replace(f"1,#{idx}", f"{new_value},")
@@ -345,7 +351,7 @@ def crypto_initial_prices():
 @pytest.fixture(scope="module")
 def crypto_pool(
     alice,
-    CurveCryptoPool,
+    crypto_project,
     crypto_math,
     crypto_lp_token,
     crypto_views,
@@ -359,7 +365,7 @@ def crypto_pool(
         + [coin.address for coin in crypto_coins]
         + [f"{10 ** (18 - coin.decimals())}," for coin in crypto_coins]
     )
-    source = CurveCryptoPool._build["source"]
+    source = crypto_project.CurveCryptoSwap._build["source"]
     for k, v in zip(keys, values):
         if isinstance(k, int):
             k = convert.to_address(convert.to_bytes(k, "bytes20"))

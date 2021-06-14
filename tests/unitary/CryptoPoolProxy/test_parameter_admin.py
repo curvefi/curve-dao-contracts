@@ -1,12 +1,17 @@
+from math import prod
+
 import brownie
 import pytest
 
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
+DAY = 86400
 
 
 @pytest.fixture(scope="module")
 def param_pool(accounts):
     pool_parameters_mock = """
+# @version 0.2.12
+
 A_MULTIPLIER: constant(uint256) = 100
 ADMIN_ACTIONS_DELAY: constant(uint256) = 3 * 86400
 MIN_RAMP_TIME: constant(uint256) = 86400
@@ -66,6 +71,12 @@ def _A_gamma() -> (uint256, uint256):
         gamma1 = (bitwise_and(A_gamma_0, 2**128-1) * (t1 - t0) + gamma1 * t0) / t1
 
     return A1, gamma1
+
+@external
+@pure
+def price_oracle(k: uint256) -> uint256:
+    prices: uint256[2] = [2 * 10 ** 18, 4 * 10 ** 18]
+    return prices[k]
 
 @external
 def ramp_A_gamma(future_A: uint256, future_gamma: uint256, future_time: uint256):
@@ -151,12 +162,12 @@ def commit_new_parameters(
     else:
         new_fee_gamma = self.fee_gamma
     if new_price_threshold != MAX_UINT256:
-        assert new_price_threshold > new_mid_fee  # dev: price threshold should be higher than the fee
+        assert new_price_threshold > new_mid_fee
     else:
         new_price_threshold = self.price_threshold
     if new_adjustment_step == MAX_UINT256:
         new_adjustment_step = self.adjustment_step
-    assert new_adjustment_step <= new_price_threshold  # dev: adjustment step should be smaller than price threshold
+    assert new_adjustment_step <= new_price_threshold
 
     # MA
     if new_ma_half_time != MAX_UINT256:
@@ -214,14 +225,14 @@ def registry(accounts):
 @view
 @external
 def get_decimals(pool: address) -> uint256[8]:
-    decimals: uint256[8] = [18, 18, 0, 0, 0, 0, 0, 0]
+    decimals: uint256[8] = [18, 18, 8, 0, 0, 0, 0, 0]
     return decimals
 
 @view
 @external
 def get_underlying_balances(pool: address) -> uint256[8]:
     # makes the pool appear imbalanced, which we use for testing assymetry checks
-    balances: uint256[8] = [10**21, 3 * 10**20, 0, 0, 0, 0, 0, 0]
+    balances: uint256[8] = [10**21, 5*10**20, 5*10**10, 0, 0, 0, 0, 0]
     return balances
     """
     yield brownie.compile_source(registry_mock).Vyper.deploy({"from": accounts[0]})
@@ -241,126 +252,173 @@ def get_registry() -> address:
     )
 
 
-def test_commit_new_fee(accounts, pool_proxy, pool):
-    pool_proxy.commit_new_fee(pool, 31337, 42, {"from": accounts[1]})
+@pytest.fixture
+def new_params():
+    return [
+        int(4e-3 * 1e10),  # new mid fee
+        int(4e-2 * 1e10),  # new out fee
+        400000,  # new admin fee
+        int(0.02 * 1e18),  # new fee gamma
+        int(0.003 * 1e18),  # new price threshold
+        int(0.003 * 1e18),  # new adjustment step
+        400,  # new ma half time
+    ]
 
 
-@pytest.mark.parametrize("idx", range(4))
-def test_apply_new_fee(accounts, pool_proxy, pool, idx):
-    pool_proxy.commit_new_fee(pool, 31337, 42, {"from": accounts[1]})
-
-    pool_proxy.apply_new_fee(pool, {"from": accounts[idx]})
-
-    assert pool.fee() == 31337
-    assert pool.admin_fee() == 42
-
-
-@pytest.mark.parametrize("idx", [0, 2, 3])
-def test_commit_new_fee_no_access(accounts, pool_proxy, pool, idx):
-    with brownie.reverts("Access denied"):
-        pool_proxy.commit_new_fee(pool, 31337, 42, {"from": accounts[idx]})
-
-
-def test_ramp_A(accounts, chain, pool_proxy, pool):
+def test_ramp_A_gamma(accounts, chain, crypto_pool_proxy, crypto_pool):
     time = chain.time() + 86400 * 2
-    pool_proxy.ramp_A(pool, 1000, time, {"from": accounts[1]})
+    future_A = 130 * 3 ** 3
+    future_gamma = 7 * 10 ** 14
+    crypto_pool_proxy.ramp_A_gamma(crypto_pool, future_A, future_gamma, time, {"from": accounts[1]})
 
-    assert pool.future_A() == 1000
-    assert pool.future_A_time() == time
+    chain.mine(timestamp=time + DAY)
+
+    assert crypto_pool.A() == future_A
+    assert crypto_pool.gamma() == future_gamma
+    assert crypto_pool.future_A_gamma_time() == time
 
 
-def test_stop_ramp_A(accounts, chain, pool_proxy, pool):
-    initial_A = pool.initial_A()
+def test_stop_ramp_A_gamma(accounts, chain, crypto_pool_proxy, crypto_pool):
+    time = chain.time() + 86400 * 2
+    future_A = 130 * 3 ** 3
+    future_gamma = 7 * 10 ** 14
+    crypto_pool_proxy.ramp_A_gamma(crypto_pool, future_A, future_gamma, time, {"from": accounts[1]})
 
-    pool_proxy.ramp_A(pool, 1000, chain.time() + 86400 * 2, {"from": accounts[1]})
-    tx = pool_proxy.stop_ramp_A(pool, {"from": accounts[1]})
+    tx = crypto_pool_proxy.stop_ramp_A_gamma(crypto_pool, {"from": accounts[1]})
+    chain.sleep(DAY * 3)
 
-    assert pool.future_A() == initial_A
-    assert pool.future_A_time() == tx.timestamp
+    assert crypto_pool.A() != future_A
+    assert crypto_pool.gamma() != future_gamma
+    assert crypto_pool.future_A_gamma_time() == tx.timestamp
 
 
 @pytest.mark.parametrize("idx", [0, 2, 3])
-def test_ramp_A_no_access(accounts, chain, pool_proxy, pool, idx):
+def test_ramp_A_gamma_no_access(accounts, chain, crypto_pool_proxy, crypto_pool, idx):
+    time = chain.time() + 86400 * 2
+    future_A = 130 * 3 ** 3
+    future_gamma = 7 * 10 ** 14
     with brownie.reverts("Access denied"):
-        pool_proxy.ramp_A(pool, 1000, chain.time() + 86400 * 2, {"from": accounts[idx]})
+        crypto_pool_proxy.ramp_A_gamma(
+            crypto_pool, future_A, future_gamma, time, {"from": accounts[idx]}
+        )
 
 
 @pytest.mark.parametrize("idx", [0, 3])
-def test_stop_ramp_A_no_access(accounts, pool_proxy, pool, idx):
+def test_stop_ramp_A_gamma_no_access(accounts, crypto_pool_proxy, crypto_pool, idx):
     with brownie.reverts("Access denied"):
-        pool_proxy.stop_ramp_A(pool, {"from": accounts[idx]})
+        crypto_pool_proxy.stop_ramp_A_gamma(crypto_pool, {"from": accounts[idx]})
 
 
-def test_commit_new_parameters(accounts, pool_proxy, param_pool):
-    pool_proxy.commit_new_parameters(param_pool, 1000, 31337, 42, 0, {"from": accounts[1]})
+def test_commit_new_parameters(accounts, crypto_pool_proxy, param_pool, new_params):
+    crypto_pool_proxy.commit_new_parameters(param_pool, *new_params, 0, {"from": accounts[1]})
 
-    assert param_pool.future_amp() == 1000
-    assert param_pool.future_fee() == 31337
-    assert param_pool.future_admin_fee() == 42
+    fns = [
+        "future_mid_fee",
+        "future_out_fee",
+        "future_admin_fee",
+        "future_fee_gamma",
+        "future_price_threshoold",
+        "future_adjustment_step",
+        "future_ma_half_time",
+    ]
+
+    for idx, fn in enumerate(fns):
+        assert getattr(param_pool, fn)() == new_params[idx]
 
 
 @pytest.mark.parametrize("idx", [0, 2, 3])
-def test_commit_new_parameters_no_access(accounts, pool_proxy, param_pool, idx):
+def test_commit_new_parameters_no_access(accounts, crypto_pool_proxy, param_pool, idx, new_params):
     with brownie.reverts("Access denied"):
-        pool_proxy.commit_new_parameters(param_pool, 1000, 0, 0, 0, {"from": accounts[idx]})
+        crypto_pool_proxy.commit_new_parameters(param_pool, *new_params, 0, {"from": accounts[idx]})
 
 
-def test_commit_new_parameters_not_exist(accounts, pool_proxy, pool):
+def test_commit_new_parameters_not_exist(accounts, crypto_pool_proxy, new_params):
     with brownie.reverts("dev: if implemented by the pool"):
-        pool_proxy.commit_new_parameters(pool, 1000, 0, 0, 0, {"from": accounts[1]})
+        crypto_pool_proxy.commit_new_parameters(ZERO_ADDRESS, *new_params, 0, {"from": accounts[1]})
 
 
-def test_apply_new_parameters(accounts, pool_proxy, param_pool):
-    pool_proxy.commit_new_parameters(param_pool, 1000, 31337, 42, 0, {"from": accounts[1]})
-    pool_proxy.apply_new_parameters(param_pool, {"from": accounts[1]})
+def test_apply_new_parameters(accounts, chain, crypto_pool_proxy, param_pool, new_params):
+    crypto_pool_proxy.commit_new_parameters(param_pool, *new_params, 0, {"from": accounts[1]})
+    chain.sleep(DAY * 3)
+    crypto_pool_proxy.apply_new_parameters(param_pool, {"from": accounts[1]})
 
-    assert param_pool.amp() == 1000
-    assert param_pool.fee() == 31337
-    assert param_pool.admin_fee() == 42
+    fns = [
+        "mid_fee",
+        "out_fee",
+        "admin_fee",
+        "fee_gamma",
+        "price_threshold",
+        "adjustment_step",
+        "ma_half_time",
+    ]
+
+    for idx, fn in enumerate(fns):
+        assert getattr(param_pool, fn)() == new_params[idx]
 
 
-def test_apply_new_parameters_asymmetry_works(accounts, pool_proxy, param_pool):
-    # Asymmetry is N * prod(balances) / sum(balances)**N (instead of N**N * ...)
-    # bal1 = 10, bal2 = 3, N = 2
-    # Pool asymmetry is 0.355 * 1e18
-    # min is 0.35 * 1e18
-    asym = 2 * (3 * 10) / (3 + 10) ** 2 * 1e18
-    pool_proxy.commit_new_parameters(
-        param_pool, 1000, 4000000, 0, int(asym * 0.99), {"from": accounts[1]}
+def test_apply_new_parameters_asymmetry_works(
+    accounts, chain, crypto_pool_proxy, param_pool, new_params
+):
+    # Asymmetry is N * prod(scaled_balances) / sum(scaled_balances) **N (instead of N**N * ...)
+    # bal1 = 1000, bal2 = 500, bal3 = 500 N = 3
+    # price_1 = 1, price_2 = 2, price_3 = 4
+    # Pool asymmetry is 0.84375 * 1e18
+    N = 3
+    scaled_balances = [1000, 1000, 2000]
+    asym = 10 ** 18 * N * prod(scaled_balances) // sum(scaled_balances) ** N
+    crypto_pool_proxy.commit_new_parameters(
+        param_pool, *new_params, int(asym * 0.99), {"from": accounts[1]}
     )
-    pool_proxy.apply_new_parameters(param_pool, {"from": accounts[1]})
+    chain.sleep(DAY * 3)
+    crypto_pool_proxy.apply_new_parameters(param_pool, {"from": accounts[1]})
 
 
-def test_apply_new_parameters_asymmetry_fails(accounts, pool_proxy, param_pool):
+def test_apply_new_parameters_asymmetry_fails(
+    accounts, chain, crypto_pool_proxy, param_pool, new_params
+):
     # Pool asymmetry is 0.355 * 1e18
     # min is 0.36 * 1e18
-    asym = 2 * (3 * 10) / (3 + 10) ** 2 * 1e18
-    pool_proxy.commit_new_parameters(
-        param_pool, 1000, 4000000, 0, int(asym * 1.01), {"from": accounts[1]}
+    N = 3
+    scaled_balances = [1000, 1000, 2000]
+    asym = 10 ** 18 * N * prod(scaled_balances) // sum(scaled_balances) ** N
+    crypto_pool_proxy.commit_new_parameters(
+        param_pool, *new_params, int(asym * 1.01), {"from": accounts[1]}
     )
+    chain.sleep(DAY * 3)
     with brownie.reverts("Unsafe to apply"):
-        pool_proxy.apply_new_parameters(param_pool, {"from": accounts[1]})
+        crypto_pool_proxy.apply_new_parameters(param_pool, {"from": accounts[1]})
 
 
-def test_apply_new_parameters_not_exist(accounts, pool_proxy, pool):
+def test_apply_new_parameters_not_exist(accounts, crypto_pool_proxy):
     with brownie.reverts("dev: if implemented by the pool"):
-        pool_proxy.apply_new_parameters(pool, {"from": accounts[1]})
+        crypto_pool_proxy.apply_new_parameters(ZERO_ADDRESS, {"from": accounts[1]})
 
 
-def test_revert_new_parameters(accounts, pool_proxy, param_pool):
-    pool_proxy.commit_new_parameters(param_pool, 1000, 31337, 42, 0, {"from": accounts[1]})
-    pool_proxy.revert_new_parameters(param_pool, {"from": accounts[1]})
+def test_revert_new_parameters(accounts, crypto_pool_proxy, param_pool, new_params):
+    crypto_pool_proxy.commit_new_parameters(param_pool, *new_params, 0, {"from": accounts[1]})
+    crypto_pool_proxy.revert_new_parameters(param_pool, {"from": accounts[1]})
 
-    assert param_pool.future_amp() == 0
-    assert param_pool.future_fee() == 0
-    assert param_pool.future_admin_fee() == 0
+    fns = [
+        "future_mid_fee",
+        "future_out_fee",
+        "future_admin_fee",
+        "future_fee_gamma",
+        "future_price_threshoold",
+        "future_adjustment_step",
+        "future_ma_half_time",
+    ]
+
+    # prevents new parameters from being applied
+    assert param_pool.admin_actions_deadline() == 0
+    for idx, fn in enumerate(fns):
+        assert getattr(param_pool, fn)() == new_params[idx]
 
 
-def test_revert_new_parameters_no_access(accounts, pool_proxy, param_pool):
+def test_revert_new_parameters_no_access(accounts, crypto_pool_proxy, param_pool):
     with brownie.reverts("Access denied"):
-        pool_proxy.revert_new_parameters(param_pool, {"from": accounts[3]})
+        crypto_pool_proxy.revert_new_parameters(param_pool, {"from": accounts[3]})
 
 
-def test_revert_new_parameters_not_exist(accounts, pool_proxy, pool):
+def test_revert_new_parameters_not_exist(accounts, crypto_pool_proxy):
     with brownie.reverts("dev: if implemented by the pool"):
-        pool_proxy.revert_new_parameters(ZERO_ADDRESS, {"from": accounts[1]})
+        crypto_pool_proxy.revert_new_parameters(ZERO_ADDRESS, {"from": accounts[1]})
