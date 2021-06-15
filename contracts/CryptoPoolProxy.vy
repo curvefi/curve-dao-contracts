@@ -17,7 +17,7 @@ interface Curve:
     def commit_transfer_ownership(_owner: address): nonpayable
     def donate_admin_fees(): nonpayable
     def kill_me(): nonpayable
-    def price_scale(k: uint256) -> uint256: view
+    def price_oracle(k: uint256) -> uint256: view
     def ramp_A_gamma(future_A: uint256, future_gamma: uint256, future_time: uint256): nonpayable
     def revert_new_parameters(): nonpayable
     def revert_transfer_ownership(): nonpayable
@@ -384,28 +384,25 @@ def apply_new_parameters(_pool: address):
         decimals: uint256[8] = Registry(registry).get_decimals(_pool)
 
         balances: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
-        prices_scale: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
+        # scaled_x_i = balance_i * price_i / 10 ** (precision)
         # asymmetry = prod(x_i) / (sum(x_i) / N) ** N =
         # = prod( (N * x_i) / sum(x_j) )
         S: uint256 = 0
+        P: uint256 = 1
         N: uint256 = 0
         for i in range(MAX_COINS):
             x: uint256 = underlying_balances[i]
             if x == 0:
                 N = i
                 break
-            prices_scale[i + 1] = Curve(_pool).price_scale(i)
-            x *= 10 ** (18 - decimals[i])
-            balances[i] = x
+            price: uint256 = 10 ** 18
+            if i != 0:
+                price = Curve(_pool).price_oracle(i - 1)
+            x *= price / 10 ** decimals[i]
+            P *= x
             S += x
 
-        asymmetry: uint256 = N * 10 ** 18
-        prices_scale[0] = 10 ** 18
-        for i in range(MAX_COINS):
-            x: uint256 = balances[i]
-            if x == 0:
-                break
-            asymmetry = asymmetry * (x * prices_scale[i] / 10 ** 18) / S
+        asymmetry: uint256 = P * N / (pow_mod256(S, N) / 10 ** 18)
 
         assert asymmetry >= min_asymmetry, "Unsafe to apply"
 
