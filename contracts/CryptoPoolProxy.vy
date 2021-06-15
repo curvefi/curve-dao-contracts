@@ -1,6 +1,6 @@
-# @version 0.2.7
+# @version 0.2.12
 """
-@title Curve StableSwap Proxy
+@title Curve Crypto Pool Proxy
 @author Curve Finance
 @license MIT
 """
@@ -13,7 +13,15 @@ interface Curve:
     def apply_new_parameters(): nonpayable
     def apply_transfer_ownership(): nonpayable
     def claim_admin_fees(): nonpayable
-    def commit_new_parameters(_new_mid_fee: uint256, _new_out_fee: uint256, _new_admin_fee: uint256, _new_fee_gamma: uint256, _new_price_threshold: uint256, _new_adjustment_step: uint256, _new_ma_half_time: uint256): nonpayable
+    def commit_new_parameters(
+        _new_mid_fee: uint256,
+        _new_out_fee: uint256,
+        _new_admin_fee: uint256,
+        _new_fee_gamma: uint256,
+        _new_price_threshold: uint256,
+        _new_adjustment_step: uint256,
+        _new_ma_half_time: uint256
+    ): nonpayable
     def commit_transfer_ownership(_owner: address): nonpayable
     def donate_admin_fees(): nonpayable
     def kill_me(): nonpayable
@@ -349,9 +357,16 @@ def commit_new_parameters(
     """
     @notice Commit new parameters for `_pool`, A: `amplification`, fee: `new_fee` and admin fee: `new_admin_fee`
     @param _pool Pool address
+    @param _new_mid_fee New mid fee, less than or equal to `_new_out_fee`
+    @param _new_out_fee New out fee, greater than MIN_FEE and less than MAX_FEE 
+    @param _new_admin_fee New admin fee, less than MAX_ADMIN_FEE
+    @param _new_fee_gamma New fee gamma, within the bounds of [1, 2**100]
+    @param _new_price_threshold New price threshold, greater than `_new_mid_fee`
+    @param _new_adjustment_step New adjustment step, less than `_new_price_threshold`
+    @param _new_ma_half_time New MA half time, less than 7 days 
     @param _min_asymmetry Minimal asymmetry factor allowed.
             Asymmetry factor is:
-            Prod(balances) / (Sum(balances) / N) ** N
+            N * Prod(scaled_balances) / (Sum(scaled_balances) ** N / 1e18)
     """
     assert msg.sender == self.parameter_admin, "Access denied"
     self.min_asymmetries[_pool] = _min_asymmetry
@@ -384,9 +399,6 @@ def apply_new_parameters(_pool: address):
         decimals: uint256[8] = Registry(registry).get_decimals(_pool)
 
         balances: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
-        # scaled_x_i = balance_i * price_i / 10 ** (precision)
-        # asymmetry = prod(x_i) / (sum(x_i) / N) ** N =
-        # = prod( (N * x_i) / sum(x_j) )
         S: uint256 = 0
         P: uint256 = 1
         N: uint256 = 0
