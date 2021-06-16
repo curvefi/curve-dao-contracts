@@ -25,8 +25,8 @@ def xdai_root_gauge(_root_gauge_setup, RootGaugeXdai, minter, alice):
 
 
 @pytest.fixture(scope="module")
-def child_chain_streamer(alice, ChildChainStreamer):
-    return ChildChainStreamer.deploy(alice, {"from": alice})
+def child_chain_streamer(alice, bob, ChildChainStreamer, coin_reward):
+    return ChildChainStreamer.deploy(alice, bob, coin_reward, {"from": alice})
 
 
 @pytest.fixture(scope="module")

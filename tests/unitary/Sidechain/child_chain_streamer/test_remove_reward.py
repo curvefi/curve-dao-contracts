@@ -9,7 +9,6 @@ DAY = 86400
 def local_setup(alice, charlie, coin_reward, child_chain_streamer):
     coin_reward._mint_for_testing(alice, 100 * 10 ** 18)
     coin_reward.transfer(child_chain_streamer, 100 * 10 ** 18, {"from": alice})
-    child_chain_streamer.add_reward(coin_reward, charlie, DAY * 7, {"from": alice})
 
 
 def test_admin_only(charlie, child_chain_streamer, coin_reward):
