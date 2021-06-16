@@ -140,7 +140,7 @@ def gauge_v3(LiquidityGaugeV3, alice, mock_lp_token, minter):
 
 @pytest.fixture(scope="module")
 def rewards_only_gauge(RewardsOnlyGauge, alice, mock_lp_token):
-    yield RewardsOnlyGauge.deploy(mock_lp_token, alice, {"from": alice})
+    yield RewardsOnlyGauge.deploy(alice, mock_lp_token, {"from": alice})
 
 
 @pytest.fixture(scope="module")
