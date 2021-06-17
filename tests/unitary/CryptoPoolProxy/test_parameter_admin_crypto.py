@@ -1,5 +1,3 @@
-from math import prod
-
 import brownie
 import pytest
 
@@ -310,7 +308,7 @@ def test_stop_ramp_A_gamma_no_access(accounts, crypto_pool_proxy, crypto_pool, i
 
 
 def test_commit_new_parameters(accounts, crypto_pool_proxy, param_pool, new_params):
-    crypto_pool_proxy.commit_new_parameters(param_pool, *new_params, 0, {"from": accounts[1]})
+    crypto_pool_proxy.commit_new_parameters(param_pool, *new_params, {"from": accounts[1]})
 
     fns = [
         "future_mid_fee",
@@ -329,16 +327,16 @@ def test_commit_new_parameters(accounts, crypto_pool_proxy, param_pool, new_para
 @pytest.mark.parametrize("idx", [0, 2, 3])
 def test_commit_new_parameters_no_access(accounts, crypto_pool_proxy, param_pool, idx, new_params):
     with brownie.reverts("Access denied"):
-        crypto_pool_proxy.commit_new_parameters(param_pool, *new_params, 0, {"from": accounts[idx]})
+        crypto_pool_proxy.commit_new_parameters(param_pool, *new_params, {"from": accounts[idx]})
 
 
 def test_commit_new_parameters_not_exist(accounts, crypto_pool_proxy, new_params):
     with brownie.reverts("dev: if implemented by the pool"):
-        crypto_pool_proxy.commit_new_parameters(ZERO_ADDRESS, *new_params, 0, {"from": accounts[1]})
+        crypto_pool_proxy.commit_new_parameters(ZERO_ADDRESS, *new_params, {"from": accounts[1]})
 
 
 def test_apply_new_parameters(accounts, chain, crypto_pool_proxy, param_pool, new_params):
-    crypto_pool_proxy.commit_new_parameters(param_pool, *new_params, 0, {"from": accounts[1]})
+    crypto_pool_proxy.commit_new_parameters(param_pool, *new_params, {"from": accounts[1]})
     chain.sleep(DAY * 3)
     crypto_pool_proxy.apply_new_parameters(param_pool, {"from": accounts[1]})
 
@@ -356,46 +354,13 @@ def test_apply_new_parameters(accounts, chain, crypto_pool_proxy, param_pool, ne
         assert getattr(param_pool, fn)() == new_params[idx]
 
 
-def test_apply_new_parameters_asymmetry_works(
-    accounts, chain, crypto_pool_proxy, param_pool, new_params
-):
-    # Asymmetry is N * prod(scaled_balances) / sum(scaled_balances) **N (instead of N**N * ...)
-    # bal1 = 1000, bal2 = 500, bal3 = 500 N = 3
-    # price_1 = 1, price_2 = 2, price_3 = 4
-    # Pool asymmetry is 0.84375 * 1e18
-    N = 3
-    scaled_balances = [1000, 1000, 2000]
-    asym = 10 ** 18 * N * prod(scaled_balances) // sum(scaled_balances) ** N
-    crypto_pool_proxy.commit_new_parameters(
-        param_pool, *new_params, int(asym * 0.99), {"from": accounts[1]}
-    )
-    chain.sleep(DAY * 3)
-    crypto_pool_proxy.apply_new_parameters(param_pool, {"from": accounts[1]})
-
-
-def test_apply_new_parameters_asymmetry_fails(
-    accounts, chain, crypto_pool_proxy, param_pool, new_params
-):
-    # Pool asymmetry is 0.355 * 1e18
-    # min is 0.36 * 1e18
-    N = 3
-    scaled_balances = [1000, 1000, 2000]
-    asym = 10 ** 18 * N * prod(scaled_balances) // sum(scaled_balances) ** N
-    crypto_pool_proxy.commit_new_parameters(
-        param_pool, *new_params, int(asym * 1.01), {"from": accounts[1]}
-    )
-    chain.sleep(DAY * 3)
-    with brownie.reverts("Unsafe to apply"):
-        crypto_pool_proxy.apply_new_parameters(param_pool, {"from": accounts[1]})
-
-
 def test_apply_new_parameters_not_exist(accounts, crypto_pool_proxy):
     with brownie.reverts("dev: if implemented by the pool"):
         crypto_pool_proxy.apply_new_parameters(ZERO_ADDRESS, {"from": accounts[1]})
 
 
 def test_revert_new_parameters(accounts, crypto_pool_proxy, param_pool, new_params):
-    crypto_pool_proxy.commit_new_parameters(param_pool, *new_params, 0, {"from": accounts[1]})
+    crypto_pool_proxy.commit_new_parameters(param_pool, *new_params, {"from": accounts[1]})
     crypto_pool_proxy.revert_new_parameters(param_pool, {"from": accounts[1]})
 
     fns = [

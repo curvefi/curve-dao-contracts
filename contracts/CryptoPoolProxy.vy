@@ -76,8 +76,6 @@ future_ownership_admin: public(address)
 future_parameter_admin: public(address)
 future_emergency_admin: public(address)
 
-min_asymmetries: public(HashMap[address, uint256])
-
 burners: public(HashMap[address, address])
 burner_kill: public(bool)
 
@@ -352,7 +350,6 @@ def commit_new_parameters(
     _new_price_threshold: uint256,
     _new_adjustment_step: uint256,
     _new_ma_half_time: uint256,
-    _min_asymmetry: uint256
 ):
     """
     @notice Commit new parameters for `_pool`, A: `amplification`, fee: `new_fee` and admin fee: `new_admin_fee`
@@ -364,12 +361,8 @@ def commit_new_parameters(
     @param _new_price_threshold New price threshold, greater than `_new_mid_fee`
     @param _new_adjustment_step New adjustment step, less than `_new_price_threshold`
     @param _new_ma_half_time New MA half time, less than 7 days 
-    @param _min_asymmetry Minimal asymmetry factor allowed.
-            Asymmetry factor is:
-            N * Prod(scaled_balances) / (Sum(scaled_balances) ** N / 1e18)
     """
     assert msg.sender == self.parameter_admin, "Access denied"
-    self.min_asymmetries[_pool] = _min_asymmetry
     Curve(_pool).commit_new_parameters(
         _new_mid_fee,
         _new_out_fee,
@@ -390,34 +383,6 @@ def apply_new_parameters(_pool: address):
     @param _pool Pool address
     """
     assert msg.sender == tx.origin
-
-    min_asymmetry: uint256 = self.min_asymmetries[_pool]
-
-    if min_asymmetry > 0:
-        registry: address = AddressProvider(ADDRESS_PROVIDER).get_registry()
-        underlying_balances: uint256[8] = Registry(registry).get_underlying_balances(_pool)
-        decimals: uint256[8] = Registry(registry).get_decimals(_pool)
-
-        balances: uint256[MAX_COINS] = empty(uint256[MAX_COINS])
-        S: uint256 = 0
-        P: uint256 = 1
-        N: uint256 = 0
-        for i in range(MAX_COINS):
-            x: uint256 = underlying_balances[i]
-            if x == 0:
-                N = i
-                break
-            price: uint256 = 10 ** 18
-            if i != 0:
-                price = Curve(_pool).price_oracle(i - 1)
-            x *= price / 10 ** decimals[i]
-            P *= x
-            S += x
-
-        asymmetry: uint256 = P * N / (pow_mod256(S, N) / 10 ** 18)
-
-        assert asymmetry >= min_asymmetry, "Unsafe to apply"
-
     Curve(_pool).apply_new_parameters()  # dev: if implemented by the pool
 
 
