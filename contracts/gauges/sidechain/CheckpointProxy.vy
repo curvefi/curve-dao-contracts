@@ -11,17 +11,9 @@ interface RootGauge:
 
 
 @external
-def checkpoint(_gauge: address) -> bool:
+def checkpoint(_gauge: address):
+    # anyswap bridge cannot handle multiple transfers in one call, so we
+    # block smart contracts that could checkpoint multiple gauges at once
+    assert msg.sender == tx.origin
+
     RootGauge(_gauge).checkpoint()
-
-    return True
-
-
-@external
-def checkpoint_many(_gauges: address[10]) -> bool:
-    for gauge in _gauges:
-        if gauge == ZERO_ADDRESS:
-            break
-        RootGauge(gauge).checkpoint()
-
-    return True
