@@ -11,9 +11,6 @@ def local_setup(alice, bob, charlie, chain, coin_reward, child_chain_streamer):
     coin_reward._mint_for_testing(alice, 100 * 10 ** 18)
     coin_reward.transfer(child_chain_streamer, 100 * 10 ** 18, {"from": alice})
 
-    child_chain_streamer.add_reward(coin_reward, charlie, DAY * 14, {"from": alice})
-    child_chain_streamer.set_receiver(bob, {"from": alice})
-
 
 @pytest.mark.parametrize("idx", range(5))
 def test_unguarded(accounts, coin_reward, child_chain_streamer, idx):
@@ -34,17 +31,18 @@ def test_increase_reward_amount_mid_distribution(
     alice, chain, charlie, coin_reward, child_chain_streamer
 ):
     child_chain_streamer.notify_reward_amount(coin_reward, {"from": charlie})
-    chain.mine(timedelta=DAY * 7)  # half the rewards have been streamed
+    chain.mine(timedelta=DAY * 3.5)  # half the rewards have been streamed
     coin_reward._mint_for_testing(alice, 100 * 10 ** 18)  # give another 100
     # approx 50 will be distributed in this call leaving 150 behind over the course of 14 days
 
     coin_reward.transfer(child_chain_streamer, 100 * 10 ** 18, {"from": alice})
-    tx = child_chain_streamer.notify_reward_amount(coin_reward, {"from": charlie})
+    # alice has to call notify reward now since she is distributor as owner
+    tx = child_chain_streamer.notify_reward_amount(coin_reward, {"from": alice})
     data = child_chain_streamer.reward_data(coin_reward)
 
-    expected_rate = (50 + 100) * 10 ** 18 // (14 * DAY)
+    expected_rate = (50 + 100) * 10 ** 18 // (7 * DAY)
 
-    assert data["period_finish"] == tx.timestamp + 14 * DAY
+    assert data["period_finish"] == tx.timestamp + 7 * DAY
     assert data["received"] == 200 * 10 ** 18
     assert math.isclose(data["rate"], expected_rate, rel_tol=0.00001)
 
@@ -57,7 +55,7 @@ def test_mid_distribution_only_distributor(
     # bad actor
     child_chain_streamer.notify_reward_amount(coin_reward, {"from": charlie})
 
-    chain.mine(timedelta=DAY * 7)
+    chain.mine(timedelta=DAY * 3.5)
 
     # bob gets tokens, then sends them to the streamer hoping to call `notify_reward_amount`
     coin_reward._mint_for_testing(bob, 100 * 10 ** 18)

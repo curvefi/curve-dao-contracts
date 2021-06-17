@@ -75,11 +75,11 @@ future_admin: public(address)  # Can and will be a smart contract
 
 
 @external
-def __init__(_lp_token: address, _admin: address):
+def __init__( _admin: address, _lp_token: address):
     """
     @notice Contract constructor
-    @param _lp_token Liquidity Pool contract address
     @param _admin Admin who can kill the gauge
+    @param _lp_token Liquidity Pool contract address
     """
 
     symbol: String[26] = ERC20Extended(_lp_token).symbol()

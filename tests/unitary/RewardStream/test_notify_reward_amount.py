@@ -1,3 +1,5 @@
+import math
+
 import brownie
 from brownie import chain
 
@@ -30,7 +32,8 @@ def test_reward_rate_updates_mid_duration(bob, stream):
     stream.notify_reward_amount(10 ** 18 / 2, {"from": bob})
     post_notify = stream.reward_rate()
 
-    assert post_notify == 10 ** 18 / (86400 * 10)
+    # should relatively close .00001 seems about good of a heuristic
+    assert math.isclose(post_notify, 10 ** 18 / (86400 * 10), rel_tol=0.00001)
 
 
 def test_period_finish_updates(bob, stream):

@@ -28,8 +28,14 @@ last_update_time: public(uint256)
 
 
 @external
-def __init__(_owner: address):
+def __init__(_owner: address, _receiver: address, _reward: address):
     self.owner = _owner
+    self.reward_receiver = _receiver
+
+    self.reward_tokens[0] = _reward
+    self.reward_count = 1
+    self.reward_data[_reward].distributor = _owner
+    self.reward_data[_reward].duration = 86400 * 7
 
 
 @external
