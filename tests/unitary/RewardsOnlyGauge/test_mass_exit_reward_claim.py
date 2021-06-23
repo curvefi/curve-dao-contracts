@@ -7,9 +7,19 @@ REWARD = 10 ** 20
 WEEK = 7 * 86400
 
 
+@pytest.fixture(scope="module")
+def reward_contract(RewardStream, alice, charlie, rewards_only_gauge, coin_reward):
+    contract = RewardStream.deploy(alice, charlie, coin_reward, 86400 * 7, {"from": alice})
+    contract.add_receiver(rewards_only_gauge, {"from": alice})
+    coin_reward.approve(contract, 2 ** 256 - 1, {"from": charlie})
+    coin_reward._mint_for_testing(charlie, REWARD, {"from": alice})
+    return contract
+
+
 @pytest.fixture(scope="module", autouse=True)
 def initial_setup(
     alice,
+    charlie,
     accounts,
     chain,
     coin_reward,
@@ -32,20 +42,13 @@ def initial_setup(
         rewards_only_gauge.deposit(10 ** 18, acct, {"from": alice})
 
     # add rewards
-    sigs = [
-        reward_contract.stake.signature[2:],
-        reward_contract.withdraw.signature[2:],
-        reward_contract.getReward.signature[2:],
-    ]
-    sigs = f"0x{sigs[0]}{sigs[1]}{sigs[2]}{'00' * 20}"
-
+    sigs = reward_contract.get_reward.signature
     rewards_only_gauge.set_rewards(
         reward_contract, sigs, [coin_reward] + [ZERO_ADDRESS] * 7, {"from": alice}
     )
 
     # fund rewards
-    coin_reward._mint_for_testing(reward_contract, REWARD)
-    reward_contract.notifyRewardAmount(REWARD, {"from": alice})
+    reward_contract.notify_reward_amount(REWARD, {"from": charlie})
 
     # sleep half way through the reward period
     chain.sleep(WEEK)
