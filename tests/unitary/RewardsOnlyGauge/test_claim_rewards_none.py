@@ -17,7 +17,7 @@ def test_claim_no_deposit(
 
     rewards_only_gauge.set_rewards(
         reward_contract,
-        "0xa694fc3a2e1a7d4d3d18b9120000000000000000000000000000000000000000",
+        "0x3d18b912",
         [coin_reward] + [ZERO_ADDRESS] * 7,
         {"from": alice},
     )
