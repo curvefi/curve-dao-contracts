@@ -57,6 +57,8 @@ CREATE_LOCK_TYPE: constant(int128) = 1
 INCREASE_LOCK_AMOUNT: constant(int128) = 2
 INCREASE_UNLOCK_TIME: constant(int128) = 3
 
+event SetIsactive:
+    value: bool
 
 event CommitOwnership:
     admin: address
@@ -87,6 +89,7 @@ MULTIPLIER: constant(uint256) = 10 ** 18
 
 token: public(address)
 supply: public(uint256)
+is_active: public(bool)
 
 locked: public(HashMap[address, LockedBalance])
 
@@ -129,6 +132,7 @@ def __init__(token_addr: address, _name: String[64], _symbol: String[32], _versi
     self.point_history[0].ts = block.timestamp
     self.controller = msg.sender
     self.transfersEnabled = True
+    self.is_active = True
 
     _decimals: uint256 = ERC20(token_addr).decimals()
     assert _decimals <= 255
@@ -138,6 +142,16 @@ def __init__(token_addr: address, _name: String[64], _symbol: String[32], _versi
     self.symbol = _symbol
     self.version = _version
 
+
+@external
+def set_is_active(val: bool):
+    """
+    @notice set is_active = False so that users can withdraw, ignoring lock end time
+    @param val Boolean the state of is_active
+    """
+    assert msg.sender == self.admin  # dev: admin only
+    self.is_active = val
+    log SetIsactive(val)
 
 @external
 def commit_transfer_ownership(addr: address):
@@ -472,7 +486,8 @@ def withdraw():
     @dev Only possible if the lock has expired
     """
     _locked: LockedBalance = self.locked[msg.sender]
-    assert block.timestamp >= _locked.end, "The lock didn't expire"
+    if self.is_active:
+        assert block.timestamp >= _locked.end, "The lock didn't expire"
     value: uint256 = convert(_locked.amount, uint256)
 
     old_locked: LockedBalance = _locked
