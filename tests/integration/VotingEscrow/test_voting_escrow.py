@@ -280,13 +280,13 @@ def test_voting_escrow_is_not_active(web3, chain, accounts, token, voting_escrow
     chain.sleep(H)
     chain.mine()
 
-    # Early withdrawal not allowed when is_active is True
+    # Early withdrawal not allowed when breaker is False
     with brownie.reverts("The lock didn't expire"):
         voting_escrow.withdraw({"from": alice})
 
-    voting_escrow.set_is_active(False)
+    voting_escrow.set_breaker(True)
 
-    # Early withdrawl is allowed when is_active is False, no penalties incurred
+    # Early withdrawl is allowed when breaker is True, no penalties incurred
     voting_escrow.withdraw({"from": alice})
     assert token.balanceOf(alice) == alice_beginning_balance
     assert voting_escrow.totalSupply() == 0
