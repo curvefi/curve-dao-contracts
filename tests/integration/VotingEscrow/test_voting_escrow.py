@@ -1,5 +1,5 @@
 from tests.conftest import approx
-
+import brownie
 H = 3600
 DAY = 86400
 WEEK = 7 * DAY
@@ -255,3 +255,39 @@ def test_voting_powers(web3, chain, accounts, token, voting_escrow):
     w_alice = voting_escrow.balanceOfAt(alice, stages["bob_withdraw_2"][0])
     w_bob = voting_escrow.balanceOfAt(bob, stages["bob_withdraw_2"][0])
     assert w_total == w_alice == w_bob == 0
+
+def test_voting_escrow_is_not_active(web3, chain, accounts, token, voting_escrow):
+    alice = accounts[0]
+    amount = 1000 * 10 ** 18
+    stages = {}
+
+    token.approve(voting_escrow.address, amount * 10, {"from": alice})
+
+    assert voting_escrow.totalSupply() == 0
+    assert voting_escrow.balanceOf(alice) == 0
+
+    # Move to timing which is good for testing - beginning of a UTC week
+    chain.sleep((chain[-1].timestamp // WEEK + 1) * WEEK - chain[-1].timestamp)
+    chain.mine()
+
+    chain.sleep(H)
+
+    stages["before_deposits"] = (web3.eth.blockNumber, chain[-1].timestamp)
+    alice_beginning_balance = token.balanceOf(alice)
+    voting_escrow.create_lock(amount, chain[-1].timestamp + WEEK, {"from": alice})
+    stages["alice_deposit"] = (web3.eth.blockNumber, chain[-1].timestamp)
+
+    chain.sleep(H)
+    chain.mine()
+
+    # Early withdrawal not allowed when breaker is False
+    with brownie.reverts("The lock didn't expire"):
+        voting_escrow.withdraw({"from": alice})
+
+    voting_escrow.set_breaker(True)
+
+    # Early withdrawl is allowed when breaker is True, no penalties incurred
+    voting_escrow.withdraw({"from": alice})
+    assert token.balanceOf(alice) == alice_beginning_balance
+    assert voting_escrow.totalSupply() == 0
+    assert voting_escrow.balanceOf(alice) == 0
