@@ -210,7 +210,7 @@ def check_all_params():
         elif params[0] == "new_parameters":
             Contract(POOL_PROXY).apply_new_parameters(params[1], {"from": vote.SENDER})
 
-    chain.mine(1, timestamp=chain.time() + 365 * 86400)
+    chain.mine(timedelta=365 * 86400)
     for params in new_parameters:
         if params[0] == "new_fee":
             _, pool, new_fee, new_admin_fee = params
