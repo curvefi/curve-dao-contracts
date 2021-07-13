@@ -4,7 +4,6 @@ from brownie import Contract, chain
 
 import scripts.voting.new_vote as vote
 
-
 # This script updates parameters of pools via 'new_vote.py'
 # Update all lines marked 'CHANGE'
 
