@@ -8,7 +8,7 @@ from brownie.convert import to_address
 warnings.filterwarnings("ignore")
 
 # this script is used to prepare, simulate and broadcast votes within Curve's DAO
-# modify the constants below according the the comments, and then use `simulate` in
+# modify the constants below according to the comments, and then use `simulate` in
 # a forked mainnet to verify the result of the vote prior to broadcasting on mainnet
 
 # addresses related to the DAO - these should not need modification
@@ -40,7 +40,7 @@ TARGET = CURVE_DAO_OWNERSHIP
 # address to create the vote from - you will need to modify this prior to mainnet use
 SENDER = accounts.at("0x9B44473E223f8a3c047AD86f387B80402536B029", force=True)
 
-# a list of calls to perform in the vote, formatted as a lsit of tuples
+# a list of calls to perform in the vote, formatted as a list of tuples
 # in the format (target, function name, *input args).
 #
 # for example, to call:
@@ -105,6 +105,7 @@ def make_vote(sender=SENDER):
 
 
 def simulate():
+    print(f"Simulating actions: {ACTIONS}")
     # fetch the top holders so we can pass the vote
     data = requests.get(
         f"https://api.ethplorer.io/getTopTokenHolders/{TARGET['token']}",
