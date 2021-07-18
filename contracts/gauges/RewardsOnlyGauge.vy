@@ -121,6 +121,7 @@ def _checkpoint_rewards(_user: address, _total_supply: uint256, _claim: bool, _r
             # direct claims to user if no default receiver is set
             receiver = _user
 
+    # calculate new user reward integral and transfer any owed rewards
     user_balance: uint256 = self.balanceOf[_user]
     for i in range(MAX_REWARDS):
         token: address = self.reward_tokens[i]
@@ -141,15 +142,16 @@ def _checkpoint_rewards(_user: address, _total_supply: uint256, _claim: bool, _r
             self.reward_integral[token] = integral
 
         integral_for: uint256 = self.reward_integral_for[token][_user]
-        if integral_for <= integral or _total_supply == 0:
-            new_claimable: uint256 = user_balance * (integral - integral_for) / 10**18
+        new_claimable: uint256 = 0
+        if integral_for < integral:
             self.reward_integral_for[token][_user] = integral
+            new_claimable = user_balance * (integral - integral_for) / 10**18
 
-            claim_data: uint256 = self.claim_data[_user][token]
-            total_claimed: uint256 = claim_data % 2 ** 128  # lower order bytes
-            total_claimable: uint256 = shift(claim_data, -128) + new_claimable
-
-            if _claim and total_claimable > 0:
+        claim_data: uint256 = self.claim_data[_user][token]
+        total_claimable: uint256 = shift(claim_data, -128) + new_claimable
+        if total_claimable > 0:
+            total_claimed: uint256 = claim_data % 2 ** 128
+            if _claim:
                 response: Bytes[32] = raw_call(
                     token,
                     concat(
