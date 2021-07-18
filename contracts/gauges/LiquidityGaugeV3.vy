@@ -246,16 +246,17 @@ def _checkpoint_rewards( _user: address, _total_supply: uint256, _claim: bool, _
                 self.reward_integral[token] = reward_integrals[i]
 
     if _user != ZERO_ADDRESS:
-        user_balance: uint256 = self.balanceOf[_user]
+
         receiver: address = _receiver
-        if _claim and _receiver == ZERO_ADDRESS:
-            # if receiver is not explicitly declared, check if a default receiver is set
+        if _claim and receiver == ZERO_ADDRESS:
+            # if receiver is not explicitly declared, check for default receiver
             receiver = self.rewards_receiver[_user]
             if receiver == ZERO_ADDRESS:
-                # if no default receiver is set, direct claims to the user
+                # direct claims to user if no default receiver is set
                 receiver = _user
 
         # calculate new user reward integral and transfer any owed rewards
+        user_balance: uint256 = self.balanceOf[_user]
         for i in range(MAX_REWARDS):
             token: address = reward_tokens[i]
             if token == ZERO_ADDRESS:
@@ -271,7 +272,7 @@ def _checkpoint_rewards( _user: address, _total_supply: uint256, _claim: bool, _
             claim_data: uint256 = self.claim_data[_user][token]
             total_claimable: uint256 = shift(claim_data, -128) + new_claimable
             if total_claimable > 0:
-                total_claimed: uint256 = claim_data % 2**128
+                total_claimed: uint256 = claim_data % 2 ** 128
                 if _claim:
                     response: Bytes[32] = raw_call(
                         token,
@@ -284,8 +285,10 @@ def _checkpoint_rewards( _user: address, _total_supply: uint256, _claim: bool, _
                     )
                     if len(response) != 0:
                         assert convert(response, bool)
+                    # update amount claimed (lower order bytes)
                     self.claim_data[_user][token] = total_claimed + total_claimable
                 elif new_claimable > 0:
+                    # update total_claimable (higher order bytes)
                     self.claim_data[_user][token] = total_claimed + shift(total_claimable, 128)
 
 
