@@ -6,11 +6,12 @@ from brownie import (
     LPBurner,
     MetaBurner,
     UnderlyingBurner,
+    UniswapLPBurner,
     USDNBurner,
+    XSushiBurner,
     YBurner,
     compile_source,
     convert,
-    UniswapLPBurner,
 )
 from brownie_tokens import ERC20
 
@@ -255,7 +256,8 @@ def vesting_simple(VestingEscrowSimple, accounts, vesting_factory, coin_a, start
         UnderlyingBurner,
         USDNBurner,
         YBurner,
-        UniswapLPBurner
+        UniswapLPBurner,
+        XSushiBurner,
     ],
 )
 def burner(alice, bob, receiver, pool_proxy, request):

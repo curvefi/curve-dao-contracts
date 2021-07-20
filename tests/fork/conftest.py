@@ -31,15 +31,17 @@ def SUSD():
 def SBTC():
     yield _MintableTestToken("0xfE18be6b3Bd88A2D2A7f928d00292E7a9963CfC6")
 
+
 @pytest.fixture(scope="module")
 def WETH():
     yield _MintableTestToken("0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2")
+
 
 @pytest.fixture(scope="module")
 def USDT():
     yield _MintableTestToken("0xdac17f958d2ee523a2206206994597c13d831ec7")
 
+
 @pytest.fixture(scope="module")
 def DAI():
     yield _MintableTestToken("0x6B175474E89094C44Da98b954EedeAC495271d0F")
-
