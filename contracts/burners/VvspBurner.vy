@@ -1,6 +1,6 @@
 # @version 0.2.12
 """
-@title xSushi Burner
+@title VVSP Burner
 @notice Withdraw from Vvsp and send VSP to receiver
 """
 
