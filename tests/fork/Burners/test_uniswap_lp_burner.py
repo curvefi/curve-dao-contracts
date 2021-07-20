@@ -1,5 +1,5 @@
 import pytest
-
+from abi.ERC20 import ERC20
 
 @pytest.fixture(scope="module")
 def burner(UniswapLPBurner, alice, receiver):
@@ -13,8 +13,8 @@ SUSHISWAP_LP_TOKEN ='0xc3d03e4f041fd4cd388c549ee2a29a9e5075882f' #SLP-DAI-ETH
 
 @pytest.mark.parametrize("token", [UNISWAP_LP_TOKEN, SUSHISWAP_LP_TOKEN])
 def test_burn_swap(MintableTestToken, DAI, WETH, alice, receiver, burner, token):
-    coin = MintableTestToken(token)
-    amount = 100 ** coin.decimals()
+    coin = MintableTestToken.from_abi('testToken', token, abi=ERC20)
+    amount = 10 ** coin.decimals()
 
     coin._mint_for_testing(alice, amount, {"from": alice})
     coin.approve(burner, 2 ** 256 - 1, {"from": alice})

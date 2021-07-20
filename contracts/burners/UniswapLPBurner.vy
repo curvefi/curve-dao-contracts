@@ -86,6 +86,7 @@ def burn(_coin: address) -> bool:
             if UniswapV2Router02(r).factory() == UniswapV2Pair(_coin).factory():
                 router = r
         assert router != ZERO_ADDRESS
+        ERC20(_coin).approve(router, lp_amount)
         token_amounts:uint256[2] = UniswapV2Router02(router).removeLiquidity(token0, token1, lp_amount, 0, 0, self.next_level_burner,block.timestamp) 
         log Burn(_coin, lp_amount, token_amounts[0], token_amounts[1])
     return True
