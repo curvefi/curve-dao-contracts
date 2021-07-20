@@ -3,7 +3,7 @@ from abi.ERC20 import ERC20
 
 @pytest.fixture(scope="module")
 def burner(UniswapLPBurner, alice, receiver):
-    yield UniswapLPBurner.deploy(receiver, receiver, alice, receiver, {"from": alice})
+    yield UniswapLPBurner.deploy(receiver, receiver, alice, alice, {"from": alice})
 
 
 UNISWAP_LP_TOKEN = '0xa478c2975ab1ea89e8196811f51a7b7ade33eb11' #UNI-V2-DAI-ETH

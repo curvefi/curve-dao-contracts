@@ -16,20 +16,18 @@ interface UniswapV2Router02:
     def removeLiquidity(tokenA:address, tokenB:address, liquidity:uint256, amountAMin:uint256, amountBMin:uint256, to:address, deadline:uint256) -> uint256[2]: nonpayable
     def factory() -> address: view
 
+receiver: public(address)
 recovery: public(address)
-is_killed: public(bool)
-
 owner: public(address)
+is_killed: public(bool)
 emergency_owner: public(address)
 future_owner: public(address)
 future_emergency_owner: public(address)
-next_level_burner: public(address)
+
 routers: constant(address[2]) = [
     0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D, # uniswap
     0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F # sushiswap
 ]
-
-
 
 event Burn:
     lp_token: address
@@ -38,32 +36,28 @@ event Burn:
     token1_amount:uint256
 
 @external
-def __init__(_recovery: address, _owner: address, _emergency_owner: address, _next_level_burner:address):
+def __init__(_receiver:address, _recovery: address, _owner: address, _emergency_owner: address):
     """
     @notice Contract constructor
-    @dev Unlike other burners, this contract may transfer tokens to
-         multiple addresses after the swap. Receiver addresses are
-         set by calling `set_swap_data` instead of setting it
-         within the constructor.
+    @param _receiver the receiver address to which the resultant tokens will be sent
     @param _recovery Address that tokens are transferred to during an
                      emergency token recovery.
     @param _owner Owner address. Can kill the contract, recover tokens
                   and modify the recovery address.
     @param _emergency_owner Emergency owner address. Can kill the contract
                             and recover tokens.
-    @param _next_level_burner The burner to which resultant coins will be sent, should be a deployed UniswapBurner
     """
+    self.receiver = _receiver
     self.recovery = _recovery
     self.owner = _owner
     self.emergency_owner = _emergency_owner
-    self.next_level_burner = _next_level_burner
 
 
 
 @external
 def burn(_coin: address) -> bool:
     """
-    @notice Convert `_coin` by removing liquidity and transfer to another burner
+    @notice Convert `_coin` by removing liquidity and send the resultant tokens to receiver
     @param _coin Address of the coin being converted
     @return bool success
     """
@@ -78,7 +72,7 @@ def burn(_coin: address) -> bool:
     lp_amount = ERC20(_coin).balanceOf(self)
 
     if lp_amount != 0:
-        # remove liquidity and pass to the next burner    
+        # remove liquidity and pass to receiver
         token0:address = UniswapV2Pair(_coin).token0()
         token1:address = UniswapV2Pair(_coin).token1()
         router:address = ZERO_ADDRESS
@@ -87,7 +81,7 @@ def burn(_coin: address) -> bool:
                 router = r
         assert router != ZERO_ADDRESS
         ERC20(_coin).approve(router, lp_amount)
-        token_amounts:uint256[2] = UniswapV2Router02(router).removeLiquidity(token0, token1, lp_amount, 0, 0, self.next_level_burner,block.timestamp) 
+        token_amounts:uint256[2] = UniswapV2Router02(router).removeLiquidity(token0, token1, lp_amount, 0, 0, self.receiver, block.timestamp) 
         log Burn(_coin, lp_amount, token_amounts[0], token_amounts[1])
     return True
 
