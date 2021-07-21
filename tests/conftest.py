@@ -6,6 +6,7 @@ from brownie import (
     LPBurner,
     MetaBurner,
     UnderlyingBurner,
+    UniswapBurner,
     UniswapLPBurner,
     USDNBurner,
     VvspBurner,
@@ -260,6 +261,7 @@ def vesting_simple(VestingEscrowSimple, accounts, vesting_factory, coin_a, start
         UniswapLPBurner,
         XSushiBurner,
         VvspBurner,
+        UniswapBurner,
     ],
 )
 def burner(alice, bob, receiver, pool_proxy, request):

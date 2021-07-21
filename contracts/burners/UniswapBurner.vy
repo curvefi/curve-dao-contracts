@@ -6,13 +6,25 @@
 
 from vyper.interfaces import ERC20
 
-
 WETH: constant(address) = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2
 USDC: constant(address) = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
 
+interface UniswapV2Pair:
+    def token0() -> address: view
+    def token1() -> address: view
+    def factory() -> address: view
+
+interface UniswapV2Router02:
+    def removeLiquidity(tokenA:address, tokenB:address, liquidity:uint256, amountAMin:uint256, amountBMin:uint256, to:address, deadline:uint256) -> uint256[2]: nonpayable
+    def factory() -> address: view
+
+interface UniswapV2Factory:
+    def getPair(tokenA:address, tokenB:address) -> address: view
+
+    
 ROUTERS: constant(address[2]) = [
     0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D,  # uniswap
-    0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F   # sushi
+    0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F,   # sushi
 ]
 
 
@@ -81,6 +93,11 @@ def burn(_coin: address) -> bool:
     # check the rates on uniswap and sushi to see which is the better option
     # vyper doesn't support dynamic arrays, so we build the calldata manually
     for addr in ROUTERS:
+        factory:address = UniswapV2Router02(addr).factory()
+        coin_weth_pair:address = UniswapV2Factory(factory).getPair(_coin, WETH)
+        if coin_weth_pair == ZERO_ADDRESS:
+            continue
+
         response: Bytes[128] = raw_call(
             addr,
             concat(
@@ -98,6 +115,8 @@ def burn(_coin: address) -> bool:
         if expected > best_expected:
             best_expected = expected
             router = addr
+
+    assert router != ZERO_ADDRESS, "neither Uniswap nor Sushiswap has liquidity pool for this token"
 
     # make sure the router is approved to transfer the coin
     if not self.is_approved[router][_coin]:
