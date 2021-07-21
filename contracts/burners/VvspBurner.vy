@@ -18,6 +18,7 @@ emergency_owner: public(address)
 future_owner: public(address)
 future_emergency_owner: public(address)
 vsp: public(address)
+vvsp: public(address)
 
 
 event Burn:
@@ -42,6 +43,7 @@ def __init__(_receiver:address, _recovery: address, _owner: address, _emergency_
     self.owner = _owner
     self.emergency_owner = _emergency_owner
     self.vsp = 0x1b40183EFB4Dd766f11bDa7A7c3AD8982e998421
+    self.vvsp = 0xbA4cFE5741b357FA371b506e5db0774aBFeCf8Fc
 
 
 @external
@@ -52,6 +54,7 @@ def burn(_coin: address) -> bool:
     @return bool success
     """
     assert not self.is_killed  # dev: is killed
+    assert _coin == self.vvsp, "only allows burning vvsp"
     
     # transfer coins from caller
     amount: uint256 = ERC20(_coin).balanceOf(msg.sender)
