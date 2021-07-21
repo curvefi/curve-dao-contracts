@@ -31,7 +31,7 @@ def test_burn(MintableTestToken, USDC, alice, receiver, burner):
     assert USDC.balanceOf(receiver) > 0
 
 
-def test_burn_unburnable(MintableTestToken, USDC, alice, receiver, burner):
+def test_burn_unburnable(MintableTestToken, USDC, alice, burner):
     # CMC Rank 500 coin, not available in either sushi or uniswap
     turtle = MintableTestToken.from_abi(
         "turtle", "0xf3afdc2525568ffe743801c8c54bdea1704c9adb", abi=ERC20
