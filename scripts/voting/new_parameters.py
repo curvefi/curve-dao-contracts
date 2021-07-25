@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from brownie import Contract, chain
+from brownie import Contract, chain, network
 
 import scripts.voting.new_vote as vote
 
@@ -38,7 +38,7 @@ def main():
 
     vote.TARGET = vote.CURVE_DAO_PARAM
     vote.DESCRIPTION = ""  # CHANGE
-    if False:  # CHANGE for prod
+    if network.show_active() == "mainnet":
         vote.make_vote(vote.SENDER)  # CHANGE
         return
     vote.simulate()
