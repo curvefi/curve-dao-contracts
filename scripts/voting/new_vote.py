@@ -104,7 +104,7 @@ def make_vote(sender=SENDER):
     return vote_id
 
 
-def simulate():
+def simulate(sender=None):
     print(f"Simulating actions: {ACTIONS}")
     # fetch the top holders so we can pass the vote
     data = requests.get(
@@ -122,7 +122,7 @@ def simulate():
 
     # make the new vote
     top_holder = holders[0]
-    vote_id = make_vote(top_holder)
+    vote_id = make_vote(sender or top_holder)
 
     # vote
     aragon = Contract(TARGET["voting"])

@@ -6,6 +6,7 @@ import scripts.voting.new_vote as vote
 
 # This script updates parameters of pools via 'new_vote.py'
 # Update all lines marked 'CHANGE'
+# Check that you use mainnet-fork when testing.
 
 POOL_PROXY = "0xeCb456EA5365865EbAb8a2661B0c503410e9B347"
 FACTORY_PROXY = "0x8CF8Af108B3B46DDC6AD596aebb917E053F0D72b"
@@ -39,10 +40,11 @@ def main():
 
     vote.TARGET = vote.CURVE_DAO_PARAM
     vote.DESCRIPTION = ""  # CHANGE
+    # vote.SENDER = vote.accounts.load("")  # CHANGE
     if network.show_active() == "mainnet":
-        vote.make_vote(vote.SENDER)  # CHANGE
+        vote.make_vote()
         return
-    vote.simulate()
+    vote.simulate(vote.SENDER)
 
     # Check every pool separately
     check_new_fee()
