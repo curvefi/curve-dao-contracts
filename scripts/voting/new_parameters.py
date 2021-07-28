@@ -13,6 +13,7 @@ ADDRESS_PROVIDER = "0x0000000022d53366457f9d5e68ec105046fc4383"
 REGISTRY = Contract(ADDRESS_PROVIDER).get_registry()
 
 ADMIN_ACTIONS_DELAY = 3 * 86400
+FEE_DENOMINATOR = 10 ** 10
 
 new_parameters = [  # CHANGE
     # ("new_fee", pool: address, new_fee: int, new_admin_fee: int)
@@ -60,8 +61,8 @@ def add_new_fee(i: int, pool: Contract, new_fee: int, new_admin_fee: int):
         [
             f"Address: {pool.address}",
             f"Pool: {Contract(REGISTRY).get_pool_name(pool)}",
-            f"Current fee: {pool.fee()}",
-            f"Current admin_fee: {pool.admin_fee()}",
+            f"Current fee: {pretty_fee(pool.fee())}",
+            f"Current admin_fee: {pretty_fee(pool.admin_fee())}",
             "",
         ]
     )
@@ -83,8 +84,8 @@ def check_new_fee():
             logs[i].extend(
                 [
                     datetime.fromtimestamp(ts).ctime() + f", ts: {ts}",
-                    f"New fee: {fee}",
-                    f"New admin_fee: {admin_fee}",
+                    f"New fee: {pretty_fee(fee)}",
+                    f"New admin_fee: {pretty_fee(admin_fee)}",
                     "",
                 ]
             )
@@ -162,8 +163,8 @@ def add_new_parameters(
             f"Address: {pool.address}",
             f"Pool: {Contract(REGISTRY).get_pool_name(pool)}",
             f"Current A: {pool.A()}",
-            f"Current fee: {pool.fee()}",
-            f"Current admin_fee: {pool.admin_fee()}",
+            f"Current fee: {pretty_fee(pool.fee())}",
+            f"Current admin_fee: {pretty_fee(pool.admin_fee())}",
             "",
         ]
     )
@@ -188,8 +189,8 @@ def check_new_parameters():
                 [
                     datetime.fromtimestamp(ts).ctime() + f", ts: {ts}",
                     f"New A: {A}",
-                    f"New fee: {fee}",
-                    f"New admin_fee: {admin_fee}",
+                    f"New fee: {pretty_fee(fee)}",
+                    f"New admin_fee: {pretty_fee(admin_fee)}",
                     "",
                 ]
             )
@@ -226,3 +227,7 @@ def check_all_params():
             assert pool.A() == new_A
             assert pool.fee() == new_fee
             assert pool.admin_fee() == new_admin_fee
+
+
+def pretty_fee(fee: int):
+    return f"{fee}={fee / FEE_DENOMINATOR * 100}%"
