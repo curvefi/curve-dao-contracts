@@ -25,6 +25,8 @@ interface Controller:
 interface Distributor:
     def token() -> address: view
     def controller() -> address: view
+    def distributed(user: address, gauge: address) -> uint256: view
+
     # what else? have to replace the minter here
 # interface Minter:
 #     def token() -> address: view
@@ -300,7 +302,7 @@ def claimable_tokens(addr: address) -> uint256:
     @return uint256 number of claimable tokens per user
     """
     self._checkpoint(addr)
-    return self.integrate_fraction[addr] - Minter(self.minter).minted(addr, self)
+    return self.integrate_fraction[addr] - Distributor(self.distributor).distributed(addr, self)
 
 
 @external

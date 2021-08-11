@@ -1,3 +1,7 @@
+# LIX Fork Notes
+- deleted a bunch of shit from here because it's annoying to keep track of
+- Kept LiquidityGaugeV3.vy in case anyone want to do a code diff with LiquidityGaugeLix.vy
+
 # curve-dao-contracts/contracts/gauges
 
 Contracts used for measuring provided liquidity within Curve pools.
