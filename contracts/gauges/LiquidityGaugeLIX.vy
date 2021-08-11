@@ -14,9 +14,6 @@ implements: ERC20
 #     def rate() -> uint256: view
 
 interface Controller:
-    def period() -> int128: view
-    def period_write() -> int128: nonpayable
-    def period_timestamp(p: int128) -> uint256: view
     def gauge_relative_weight(addr: address, time: uint256) -> uint256: view
     def voting_escrow() -> address: view
     def checkpoint(): nonpayable
@@ -26,8 +23,7 @@ interface Distributor:
     def token() -> address: view
     def controller() -> address: view
     def distributed(user: address, gauge: address) -> uint256: view
-
-    # what else? have to replace the minter here
+# what else? have to replace the minter here
 # interface Minter:
 #     def token() -> address: view
 #     def controller() -> address: view

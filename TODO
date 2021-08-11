@@ -1,0 +1,25 @@
+For gauges, swap out lp_token (currently the CurveTokenV3.vy) for LixirVault compatability
+  actually they only use ERC20 functions so this is done
+
+Rip out rewards distribution accordingg to inflation supply, add in another contract that
+acts as a hodler of LIX that can then be distributed at some rate.
+
+Need a new way of handling epochs. This is baked into CRV20, and we don't have that...
+
+
+BIG DIFFS TO GAUGES
+- ripped out all synthetix rewards. idk wtf they are.
+- swapped inflation rate for distribution rate. Need a scheme for dealing with this and updating it
+- instead of a Minter() we need a Distributor() contract (yet to be written or figured out)
+  - needs to implement the functionality of CRV20 inflation schedule and Minter functions
+
+BIG DIFFS TO GAUGE CONTROLLER
+- might remove vote_for_gauge_weights because we just want to set them right?
+
+TALK ABOUT FEE COLLECTION
+- read this https://curve.readthedocs.io/dao-fees.html
+- it's really complicated. Lots of swaps to get it into the correct token (3CRV for them, will be LIX for us)
+- Fees are claimed by and burned by the PoolProxy.vy contract, then converted to USDC (3CRV)
+  - must write a VaultProxy.vy contract
+- Need a bunch of burn contracts that go from X token to LIX (or USDC? Whatever token)
+- Might need to alter FeeDistributor contract (we'll see)

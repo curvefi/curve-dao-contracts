@@ -15,9 +15,9 @@ interface CRV20:
     def rate() -> uint256: view
 
 interface Controller:
-    def period() -> int128: view
-    def period_write() -> int128: nonpayable
-    def period_timestamp(p: int128) -> uint256: view
+    def period() -> int128: view ##
+    def period_write() -> int128: nonpayable ##
+    def period_timestamp(p: int128) -> uint256: view ## LOL These 3 aren't in the interface for the GaugeController
     def gauge_relative_weight(addr: address, time: uint256) -> uint256: view
     def voting_escrow() -> address: view
     def checkpoint(): nonpayable
