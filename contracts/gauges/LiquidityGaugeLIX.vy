@@ -1,7 +1,7 @@
-# @version 0.2.8
+# @version 0.2.12
 """
-@title Liquidity Gauge v2
-@author Curve Finance
+@title Liquidity Gauge LIX
+@author Lixir Finance
 @license MIT
 """
 
@@ -9,10 +9,9 @@ from vyper.interfaces import ERC20
 
 implements: ERC20
 
-
-interface CRV20:
-    def future_epoch_time_write() -> uint256: nonpayable
-    def rate() -> uint256: view
+# interface CRV20:
+#     def future_epoch_time_write() -> uint256: nonpayable
+#     def rate() -> uint256: view
 
 interface Controller:
     def period() -> int128: view
@@ -23,10 +22,14 @@ interface Controller:
     def checkpoint(): nonpayable
     def checkpoint_gauge(addr: address): nonpayable
 
-interface Minter:
+interface Distributor:
     def token() -> address: view
     def controller() -> address: view
-    def minted(user: address, gauge: address) -> uint256: view
+    # what else? have to replace the minter here
+# interface Minter:
+#     def token() -> address: view
+#     def controller() -> address: view
+#     def minted(user: address, gauge: address) -> uint256: view
 
 interface VotingEscrow:
     def user_point_epoch(addr: address) -> uint256: view
@@ -68,12 +71,13 @@ event Approval:
     _value: uint256
 
 
-MAX_REWARDS: constant(uint256) = 8
+# MAX_REWARDS: constant(uint256) = 8
 TOKENLESS_PRODUCTION: constant(uint256) = 40
 WEEK: constant(uint256) = 604800
+CLAIM_FREQUENCY: constant(uint256) = 3600
 
-minter: public(address)
-crv_token: public(address)
+distributor: public(address) # minter: public(address)
+lix_token: public(address)
 lp_token: public(address)
 controller: public(address)
 voting_escrow: public(address)
@@ -81,13 +85,10 @@ future_epoch_time: public(uint256)
 
 balanceOf: public(HashMap[address, uint256])
 totalSupply: public(uint256)
-allowances: HashMap[address, HashMap[address, uint256]]
+allowance: public(HashMap[address, HashMap[address, uint256]])
 
 name: public(String[64])
 symbol: public(String[32])
-
-# caller -> recipient -> can deposit?
-approved_to_deposit: public(HashMap[address, HashMap[address, bool]])
 
 working_balances: public(HashMap[address, uint256])
 working_supply: public(uint256)
@@ -108,53 +109,58 @@ integrate_checkpoint_of: public(HashMap[address, uint256])
 # Units: rate * t = already number of coins per address to issue
 integrate_fraction: public(HashMap[address, uint256])
 
-inflation_rate: public(uint256)
+distribution_rate: public(uint256) # inflation_rate: public(uint256)
 
 # For tracking external rewards
-reward_contract: public(address)
-reward_tokens: public(address[MAX_REWARDS])
+# reward_data: uint256
+# reward_tokens: public(address[MAX_REWARDS])
 
 # deposit / withdraw / claim
-reward_sigs: bytes32
+# reward_sigs: bytes32
+
+# claimant -> default reward receiver
+# rewards_receiver: public(HashMap[address, address])
 
 # reward token -> integral
-reward_integral: public(HashMap[address, uint256])
+# reward_integral: public(HashMap[address, uint256])
 
 # reward token -> claiming address -> integral
-reward_integral_for: public(HashMap[address, HashMap[address, uint256]])
+# reward_integral_for: public(HashMap[address, HashMap[address, uint256]])
+
+# user -> [uint128 claimable amount][uint128 claimed amount]
+claim_data: HashMap[address, HashMap[address, uint256]]
 
 admin: public(address)
 future_admin: public(address)  # Can and will be a smart contract
 is_killed: public(bool)
 
-
 @external
-def __init__(_lp_token: address, _minter: address, _admin: address):
+def __init__(_lp_token: address, _distributor: address, _admin: address):
     """
     @notice Contract constructor
     @param _lp_token Liquidity Pool contract address
-    @param _minter Minter contract address
+    @param _distributor Distributor contract address
     @param _admin Admin who can kill the gauge
     """
 
     symbol: String[26] = ERC20Extended(_lp_token).symbol()
-    self.name = concat("Curve.fi ", symbol, " Gauge Deposit")
+    self.name = concat("Lixir Finance ", symbol, " Gauge Deposit")
     self.symbol = concat(symbol, "-gauge")
 
-    crv_token: address = Minter(_minter).token()
-    controller: address = Minter(_minter).controller()
+    lix_token: address = Distributor(_distributor).token()
+    controller: address = Distributor(_distributor).controller()
 
     self.lp_token = _lp_token
-    self.minter = _minter
+    self.distributor = _distributor
     self.admin = _admin
-    self.crv_token = crv_token
+    self.lix_token = lix_token
     self.controller = controller
     self.voting_escrow = Controller(controller).voting_escrow()
 
     self.period_timestamp[0] = block.timestamp
-    self.inflation_rate = CRV20(crv_token).rate()
-    self.future_epoch_time = CRV20(crv_token).future_epoch_time_write()
-
+    # TODO figure out how we want to set distribution (inflation) rate and future_epoch_time
+    # self.inflation_rate = CRV20(crv_token).rate()
+    self.future_epoch_time = 0 #  CRV20(crv_token).future_epoch_time_write()
 
 @view
 @external
@@ -165,7 +171,6 @@ def decimals() -> uint256:
     @return uint256 decimal places
     """
     return 18
-
 
 @view
 @external
@@ -202,59 +207,6 @@ def _update_liquidity_limit(addr: address, l: uint256, L: uint256):
 
 
 @internal
-def _checkpoint_rewards(_addr: address, _total_supply: uint256):
-    """
-    @notice Claim pending rewards and checkpoint rewards for a user
-    """
-    if _total_supply == 0:
-        return
-
-    reward_balances: uint256[MAX_REWARDS] = empty(uint256[MAX_REWARDS])
-    reward_tokens: address[MAX_REWARDS] = empty(address[MAX_REWARDS])
-    for i in range(MAX_REWARDS):
-        token: address = self.reward_tokens[i]
-        if token == ZERO_ADDRESS:
-            break
-        reward_tokens[i] = token
-        reward_balances[i] = ERC20(token).balanceOf(self)
-
-    # claim from reward contract
-    raw_call(self.reward_contract, slice(self.reward_sigs, 8, 4))  # dev: bad claim sig
-
-    user_balance: uint256 = self.balanceOf[_addr]
-    for i in range(MAX_REWARDS):
-        token: address = reward_tokens[i]
-        if token == ZERO_ADDRESS:
-            break
-        dI: uint256 = 10**18 * (ERC20(token).balanceOf(self) - reward_balances[i]) / _total_supply
-        if _addr == ZERO_ADDRESS:
-            if dI != 0:
-                self.reward_integral[token] += dI
-            continue
-
-        integral: uint256 = self.reward_integral[token] + dI
-        if dI != 0:
-            self.reward_integral[token] = integral
-
-        integral_for: uint256 = self.reward_integral_for[token][_addr]
-        if integral_for < integral:
-            claimable: uint256 = user_balance * (integral - integral_for) / 10**18
-            self.reward_integral_for[token][_addr] = integral
-            if claimable != 0:
-                response: Bytes[32] = raw_call(
-                    token,
-                    concat(
-                        method_id("transfer(address,uint256)"),
-                        convert(_addr, bytes32),
-                        convert(claimable, bytes32),
-                    ),
-                    max_outsize=32,
-                )
-                if len(response) != 0:
-                    assert convert(response, bool)
-
-
-@internal
 def _checkpoint(addr: address):
     """
     @notice Checkpoint for a user
@@ -263,14 +215,17 @@ def _checkpoint(addr: address):
     _period: int128 = self.period
     _period_time: uint256 = self.period_timestamp[_period]
     _integrate_inv_supply: uint256 = self.integrate_inv_supply[_period]
-    rate: uint256 = self.inflation_rate
+    rate: uint256 = self.distribution_rate # rate: uint256 = self.inflation_rate
     new_rate: uint256 = rate
     prev_future_epoch: uint256 = self.future_epoch_time
     if prev_future_epoch >= _period_time:
-        _token: address = self.crv_token
-        self.future_epoch_time = CRV20(_token).future_epoch_time_write()
-        new_rate = CRV20(_token).rate()
-        self.inflation_rate = new_rate
+        # TODO: figure out how we want to update the distribution rate here
+        self.distribution_rate = new_rate
+
+        # _token: address = self.crv_token
+        # self.future_epoch_time = CRV20(_token).future_epoch_time_write()
+        # new_rate = CRV20(_token).rate()
+        # self.inflation_rate = new_rate
 
     if self.is_killed:
         # Stop distributing inflation as soon as killed
@@ -331,7 +286,7 @@ def user_checkpoint(addr: address) -> bool:
     @param addr User address
     @return bool success
     """
-    assert (msg.sender == addr) or (msg.sender == self.minter)  # dev: unauthorized
+    assert (msg.sender == addr) or (msg.sender == self.distributor) # (msg.sender == self.minter)  # dev: unauthorized
     self._checkpoint(addr)
     self._update_liquidity_limit(addr, self.balanceOf[addr], self.totalSupply)
     return True
@@ -349,71 +304,6 @@ def claimable_tokens(addr: address) -> uint256:
 
 
 @external
-@nonreentrant('lock')
-def claimable_reward(_addr: address, _token: address) -> uint256:
-    """
-    @notice Get the number of claimable reward tokens for a user
-    @dev This function should be manually changed to "view" in the ABI
-         Calling it via a transaction will claim available reward tokens
-    @param _addr Account to get reward amount for
-    @param _token Token to get reward amount for
-    @return uint256 Claimable reward token amount
-    """
-    claimable: uint256 = ERC20(_token).balanceOf(_addr)
-    if self.reward_contract != ZERO_ADDRESS:
-        self._checkpoint_rewards(_addr, self.totalSupply)
-    claimable = ERC20(_token).balanceOf(_addr) - claimable
-
-    integral: uint256 = self.reward_integral[_token]
-    integral_for: uint256 = self.reward_integral_for[_token][_addr]
-
-    if integral_for < integral:
-        claimable += self.balanceOf[_addr] * (integral - integral_for) / 10**18
-
-    return claimable
-
-
-@external
-@nonreentrant('lock')
-def claim_rewards(_addr: address = msg.sender):
-    """
-    @notice Claim available reward tokens for `_addr`
-    @param _addr Address to claim for
-    """
-    self._checkpoint_rewards(_addr, self.totalSupply)
-
-
-@external
-@nonreentrant('lock')
-def claim_historic_rewards(_reward_tokens: address[MAX_REWARDS], _addr: address = msg.sender):
-    """
-    @notice Claim reward tokens available from a previously-set staking contract
-    @param _reward_tokens Array of reward token addresses to claim
-    @param _addr Address to claim for
-    """
-    for token in _reward_tokens:
-        if token == ZERO_ADDRESS:
-            break
-        integral: uint256 = self.reward_integral[token]
-        integral_for: uint256 = self.reward_integral_for[token][_addr]
-
-        if integral_for < integral:
-            claimable: uint256 = self.balanceOf[_addr] * (integral - integral_for) / 10**18
-            self.reward_integral_for[token][_addr] = integral
-            response: Bytes[32] = raw_call(
-                token,
-                concat(
-                    method_id("transfer(address,uint256)"),
-                    convert(_addr, bytes32),
-                    convert(claimable, bytes32),
-                ),
-                max_outsize=32,
-            )
-            if len(response) != 0:
-                assert convert(response, bool)
-
-
-@external
 def kick(addr: address):
     """
     @notice Kick `addr` for abusing their boost
@@ -427,7 +317,7 @@ def kick(addr: address):
     )
     _balance: uint256 = self.balanceOf[addr]
 
-    assert ERC20(self.voting_escrow).balanceOf(addr) == 0 or t_ve > t_last # dev: kick not allowed
+    assert ERC20(_voting_escrow).balanceOf(addr) == 0 or t_ve > t_last # dev: kick not allowed
     assert self.working_balances[addr] > _balance * TOKENLESS_PRODUCTION / 100  # dev: kick not needed
 
     self._checkpoint(addr)
@@ -435,34 +325,19 @@ def kick(addr: address):
 
 
 @external
-def set_approve_deposit(addr: address, can_deposit: bool):
-    """
-    @notice Set whether `addr` can deposit tokens for `msg.sender`
-    @param addr Address to set approval on
-    @param can_deposit bool - can this account deposit for `msg.sender`?
-    """
-    self.approved_to_deposit[addr][msg.sender] = can_deposit
-
-
-@external
 @nonreentrant('lock')
-def deposit(_value: uint256, _addr: address = msg.sender):
+def deposit(_value: uint256, _addr: address = msg.sender, _claim_rewards: bool = False):
     """
     @notice Deposit `_value` LP tokens
     @dev Depositting also claims pending reward tokens
     @param _value Number of tokens to deposit
     @param _addr Address to deposit for
     """
-    if _addr != msg.sender:
-        assert self.approved_to_deposit[msg.sender][_addr], "Not approved"
 
     self._checkpoint(_addr)
 
     if _value != 0:
-        reward_contract: address = self.reward_contract
         total_supply: uint256 = self.totalSupply
-        if reward_contract != ZERO_ADDRESS:
-            self._checkpoint_rewards(_addr, total_supply)
 
         total_supply += _value
         new_balance: uint256 = self.balanceOf[_addr] + _value
@@ -472,13 +347,6 @@ def deposit(_value: uint256, _addr: address = msg.sender):
         self._update_liquidity_limit(_addr, new_balance, total_supply)
 
         ERC20(self.lp_token).transferFrom(msg.sender, self, _value)
-        if reward_contract != ZERO_ADDRESS:
-            deposit_sig: Bytes[4] = slice(self.reward_sigs, 0, 4)
-            if convert(deposit_sig, uint256) != 0:
-                raw_call(
-                    reward_contract,
-                    concat(deposit_sig, convert(_value, bytes32))
-                )
 
     log Deposit(_addr, _value)
     log Transfer(ZERO_ADDRESS, _addr, _value)
@@ -486,7 +354,7 @@ def deposit(_value: uint256, _addr: address = msg.sender):
 
 @external
 @nonreentrant('lock')
-def withdraw(_value: uint256):
+def withdraw(_value: uint256, _claim_rewards: bool = False):
     """
     @notice Withdraw `_value` LP tokens
     @dev Withdrawing also claims pending reward tokens
@@ -495,10 +363,7 @@ def withdraw(_value: uint256):
     self._checkpoint(msg.sender)
 
     if _value != 0:
-        reward_contract: address = self.reward_contract
         total_supply: uint256 = self.totalSupply
-        if reward_contract != ZERO_ADDRESS:
-            self._checkpoint_rewards(msg.sender, total_supply)
 
         total_supply -= _value
         new_balance: uint256 = self.balanceOf[msg.sender] - _value
@@ -507,47 +372,24 @@ def withdraw(_value: uint256):
 
         self._update_liquidity_limit(msg.sender, new_balance, total_supply)
 
-        if reward_contract != ZERO_ADDRESS:
-            withdraw_sig: Bytes[4] = slice(self.reward_sigs, 4, 4)
-            if convert(withdraw_sig, uint256) != 0:
-                raw_call(
-                    reward_contract,
-                    concat(withdraw_sig, convert(_value, bytes32))
-                )
         ERC20(self.lp_token).transfer(msg.sender, _value)
 
     log Withdraw(msg.sender, _value)
     log Transfer(msg.sender, ZERO_ADDRESS, _value)
 
 
-@view
-@external
-def allowance(_owner : address, _spender : address) -> uint256:
-    """
-    @notice Check the amount of tokens that an owner allowed to a spender
-    @param _owner The address which owns the funds
-    @param _spender The address which will spend the funds
-    @return uint256 Amount of tokens still available for the spender
-    """
-    return self.allowances[_owner][_spender]
-
-
 @internal
 def _transfer(_from: address, _to: address, _value: uint256):
     self._checkpoint(_from)
     self._checkpoint(_to)
-    reward_contract: address = self.reward_contract
 
     if _value != 0:
         total_supply: uint256 = self.totalSupply
-        if reward_contract != ZERO_ADDRESS:
-            self._checkpoint_rewards(_from, total_supply)
+
         new_balance: uint256 = self.balanceOf[_from] - _value
         self.balanceOf[_from] = new_balance
         self._update_liquidity_limit(_from, new_balance, total_supply)
 
-        if reward_contract != ZERO_ADDRESS:
-            self._checkpoint_rewards(_to, total_supply)
         new_balance = self.balanceOf[_to] + _value
         self.balanceOf[_to] = new_balance
         self._update_liquidity_limit(_to, new_balance, total_supply)
@@ -579,9 +421,9 @@ def transferFrom(_from : address, _to : address, _value : uint256) -> bool:
      @param _to address The address which you want to transfer to
      @param _value uint256 the amount of tokens to be transferred
     """
-    _allowance: uint256 = self.allowances[_from][msg.sender]
+    _allowance: uint256 = self.allowance[_from][msg.sender]
     if _allowance != MAX_UINT256:
-        self.allowances[_from][msg.sender] = _allowance - _value
+        self.allowance[_from][msg.sender] = _allowance - _value
 
     self._transfer(_from, _to, _value)
 
@@ -602,7 +444,7 @@ def approve(_spender : address, _value : uint256) -> bool:
     @param _value The amount of tokens that may be transferred
     @return bool success
     """
-    self.allowances[msg.sender][_spender] = _value
+    self.allowance[msg.sender][_spender] = _value
     log Approval(msg.sender, _spender, _value)
 
     return True
@@ -618,8 +460,8 @@ def increaseAllowance(_spender: address, _added_value: uint256) -> bool:
     @param _added_value The amount of to increase the allowance
     @return bool success
     """
-    allowance: uint256 = self.allowances[msg.sender][_spender] + _added_value
-    self.allowances[msg.sender][_spender] = allowance
+    allowance: uint256 = self.allowance[msg.sender][_spender] + _added_value
+    self.allowance[msg.sender][_spender] = allowance
 
     log Approval(msg.sender, _spender, allowance)
 
@@ -636,91 +478,12 @@ def decreaseAllowance(_spender: address, _subtracted_value: uint256) -> bool:
     @param _subtracted_value The amount of to decrease the allowance
     @return bool success
     """
-    allowance: uint256 = self.allowances[msg.sender][_spender] - _subtracted_value
-    self.allowances[msg.sender][_spender] = allowance
+    allowance: uint256 = self.allowance[msg.sender][_spender] - _subtracted_value
+    self.allowance[msg.sender][_spender] = allowance
 
     log Approval(msg.sender, _spender, allowance)
 
     return True
-
-
-@external
-@nonreentrant('lock')
-def set_rewards(_reward_contract: address, _sigs: bytes32, _reward_tokens: address[MAX_REWARDS]):
-    """
-    @notice Set the active reward contract
-    @dev A reward contract cannot be set while this contract has no deposits
-    @param _reward_contract Reward contract address. Set to ZERO_ADDRESS to
-                            disable staking.
-    @param _sigs Four byte selectors for staking, withdrawing and claiming,
-                 right padded with zero bytes. If the reward contract can
-                 be claimed from but does not require staking, the staking
-                 and withdraw selectors should be set to 0x00
-    @param _reward_tokens List of claimable tokens for this reward contract
-    """
-    assert msg.sender == self.admin
-
-    lp_token: address = self.lp_token
-    current_reward_contract: address = self.reward_contract
-    total_supply: uint256 = self.totalSupply
-    if current_reward_contract != ZERO_ADDRESS:
-        self._checkpoint_rewards(ZERO_ADDRESS, total_supply)
-        withdraw_sig: Bytes[4] = slice(self.reward_sigs, 4, 4)
-        if convert(withdraw_sig, uint256) != 0:
-            if total_supply != 0:
-                raw_call(
-                    current_reward_contract,
-                    concat(withdraw_sig, convert(total_supply, bytes32))
-                )
-            ERC20(lp_token).approve(current_reward_contract, 0)
-
-    if _reward_contract != ZERO_ADDRESS:
-        assert _reward_contract.is_contract  # dev: not a contract
-        sigs: bytes32 = _sigs
-        deposit_sig: Bytes[4] = slice(sigs, 0, 4)
-        withdraw_sig: Bytes[4] = slice(sigs, 4, 4)
-
-        if convert(deposit_sig, uint256) != 0:
-            # need a non-zero total supply to verify the sigs
-            assert total_supply != 0  # dev: zero total supply
-            ERC20(lp_token).approve(_reward_contract, MAX_UINT256)
-
-            # it would be Very Bad if we get the signatures wrong here, so
-            # we do a test deposit and withdrawal prior to setting them
-            raw_call(
-                _reward_contract,
-                concat(deposit_sig, convert(total_supply, bytes32))
-            )  # dev: failed deposit
-            assert ERC20(lp_token).balanceOf(self) == 0
-            raw_call(
-                _reward_contract,
-                concat(withdraw_sig, convert(total_supply, bytes32))
-            )  # dev: failed withdraw
-            assert ERC20(lp_token).balanceOf(self) == total_supply
-
-            # deposit and withdraw are good, time to make the actual deposit
-            raw_call(
-                _reward_contract,
-                concat(deposit_sig, convert(total_supply, bytes32))
-            )
-        else:
-            assert convert(withdraw_sig, uint256) == 0  # dev: withdraw without deposit
-
-    self.reward_contract = _reward_contract
-    self.reward_sigs = _sigs
-    for i in range(MAX_REWARDS):
-        if _reward_tokens[i] != ZERO_ADDRESS:
-            self.reward_tokens[i] = _reward_tokens[i]
-        elif self.reward_tokens[i] != ZERO_ADDRESS:
-            self.reward_tokens[i] = ZERO_ADDRESS
-        else:
-            assert i != 0  # dev: no reward token
-            break
-
-    if _reward_contract != ZERO_ADDRESS:
-        # do an initial checkpoint to verify that claims are working
-        self._checkpoint_rewards(ZERO_ADDRESS, total_supply)
-
 
 @external
 def set_killed(_is_killed: bool):
