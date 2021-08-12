@@ -9,10 +9,6 @@ from vyper.interfaces import ERC20
 
 implements: ERC20
 
-# interface CRV20:
-#     def future_epoch_time_write() -> uint256: nonpayable
-#     def rate() -> uint256: view
-
 interface Controller:
     def gauge_relative_weight(addr: address, time: uint256) -> uint256: view
     def voting_escrow() -> address: view
@@ -20,14 +16,14 @@ interface Controller:
     def checkpoint_gauge(addr: address): nonpayable
 
 interface Distributor:
+    # lifted from Minter
     def token() -> address: view
     def controller() -> address: view
     def distributed(user: address, gauge: address) -> uint256: view
-# what else? have to replace the minter here
-# interface Minter:
-#     def token() -> address: view
-#     def controller() -> address: view
-#     def minted(user: address, gauge: address) -> uint256: view
+
+    # these two are lifted from CRV20
+    def future_epoch_time_write() -> uint256: nonpayable
+    def rate() -> uint256: view
 
 interface VotingEscrow:
     def user_point_epoch(addr: address) -> uint256: view
@@ -69,10 +65,8 @@ event Approval:
     _value: uint256
 
 
-# MAX_REWARDS: constant(uint256) = 8
 TOKENLESS_PRODUCTION: constant(uint256) = 40
 WEEK: constant(uint256) = 604800
-CLAIM_FREQUENCY: constant(uint256) = 3600
 
 distributor: public(address) # minter: public(address)
 lix_token: public(address)
@@ -108,22 +102,6 @@ integrate_checkpoint_of: public(HashMap[address, uint256])
 integrate_fraction: public(HashMap[address, uint256])
 
 distribution_rate: public(uint256) # inflation_rate: public(uint256)
-
-# For tracking external rewards
-# reward_data: uint256
-# reward_tokens: public(address[MAX_REWARDS])
-
-# deposit / withdraw / claim
-# reward_sigs: bytes32
-
-# claimant -> default reward receiver
-# rewards_receiver: public(HashMap[address, address])
-
-# reward token -> integral
-# reward_integral: public(HashMap[address, uint256])
-
-# reward token -> claiming address -> integral
-# reward_integral_for: public(HashMap[address, HashMap[address, uint256]])
 
 # user -> [uint128 claimable amount][uint128 claimed amount]
 claim_data: HashMap[address, HashMap[address, uint256]]
