@@ -1,5 +1,4 @@
 from brownie import Contract, accounts, history
-from brownie.network.gas.strategies import GasNowScalingStrategy
 
 # this script is used for bridging CRV rewards to sidechains
 # it should be run once per week, just after the start of the epoch week
@@ -14,22 +13,23 @@ POLYGON = [
     "0x060e386eCfBacf42Aa72171Af9EFe17b3993fC4F",  # aTriCrypto
     "0x488E6ef919C2bB9de535C634a80afb0114DA8F62",  # ren
 ]
-
-gas_strategy = GasNowScalingStrategy(initial_speed="slow", max_speed="fast")
+XDAI = [
+    "0x6C09F6727113543Fd061a721da512B7eFCDD0267",  # x3pool
+]
 
 
 def main():
     acct = accounts.load("curve-deploy")
 
-    # polygon bridge takes longer so we do it first
-    for addr in POLYGON:
-        Contract(addr).checkpoint({"from": acct, "gas_price": gas_strategy, "required_confs": 0})
+    # xdai/polygon bridge takes longer so we do it first
+    for addr in POLYGON + XDAI:
+        Contract(addr).checkpoint({"from": acct, "priority_fee": "2 gwei", "required_confs": 0})
 
     # for fantom we must call the gauge through the checkpoint
     # contract in order for the bridge to recognize the transaction
     checkpoint = Contract("0xa549ffd8e439c4ff746659ed80a6c5e55f9cf3cf")
     for addr in FTM:
-        checkpoint.checkpoint(addr, {"from": acct, "gas_price": gas_strategy, "required_confs": 0})
+        checkpoint.checkpoint(addr, {"from": acct, "priority_fee": "2 gwei", "required_confs": 0})
 
     history.wait()
 
@@ -47,4 +47,12 @@ def polygon():
     for addr in POLYGON:
         streamer = Contract(addr)
         token = streamer.reward_tokens(0)
-        streamer.notify_reward_amount(token, {"from": acct, "gas_price": "10 gwei"})
+        streamer.notify_reward_amount(token, {"from": acct, "gas_price": "30 gwei"})
+
+
+def xdai():
+    acct = accounts.load("curve-deploy")
+    for addr in XDAI:
+        streamer = Contract(addr)
+        token = streamer.reward_tokens(0)
+        streamer.notify_reward_amount(token, {"from": acct})
