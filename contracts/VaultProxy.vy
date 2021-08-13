@@ -15,7 +15,7 @@ interface Burner:
 
 interface LixirVault:
     def setPerformanceFee(newFee: uint256): nonpayable # actually a uint24 but vyper is retarded
-
+    def withdraw(shares: uint256, amount0Min: uint256, amount1Min: uint256, recipient: address, deadline: uint256)
 
 event CommitAdmins:
     ownership_admin: address
@@ -164,7 +164,7 @@ def set_many_burners(_coins: address[20], _burners: address[20]):
 
 @external
 @nonreentrant('burn')
-def burn(_coin: address):
+def burn(_lvt: address):
     """
     @notice Burn accrued `_coin` via a preset burner
     @dev Only callable by an EOA to prevent flashloan exploits
@@ -172,17 +172,30 @@ def burn(_coin: address):
     """
     assert tx.origin == msg.sender
     assert not self.burner_kill
+    _token0 = LixirVault(_lvt).token0()
+    _token1 = LixirVault(_lvt).token1()
+
+    # TODO: is there a better way to call this function??
+    LixirVault(_lvt).withdraw(MAX_UINT256, MAX_UINT256, MAX_UINT256, self, MAX_UINT256)
+
+    ERC20(_token0).approve(self.burners[_coin], MAX_UINT256)
+    ERC20(_token1).approve(self.burners[_coin], MAX_UINT256)
 
     _value: uint256 = 0
-    if _coin == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
-        _value = self.balance # TODO wtf is this???
+    if token0 == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+        value = self.balance
+    Burner(self.burners[_coin]).burn(_coin, value=_value)
 
-    Burner(self.burners[_coin]).burn(_coin, value=_value)  # dev: should implement burn()
+    _value = 0
+    if token1 == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+        value = self.balance
+    Burner(self.burners[_coin]).burn(_coin, value=_value)
+
 
 
 @external
 @nonreentrant('burn')
-def burn_many(_coins: address[20]):
+def burn_many(_lvts: address[20]):
     """
     @notice Burn accrued admin fees from multiple coins
     @dev Only callable by an EOA to prevent flashloan exploits
@@ -191,16 +204,10 @@ def burn_many(_coins: address[20]):
     assert tx.origin == msg.sender
     assert not self.burner_kill
 
-    for coin in _coins:
+    for lvt in _lvts:
         if coin == ZERO_ADDRESS:
             break
-
-        _value: uint256 = 0
-        if coin == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
-            _value = self.balance
-
-        Burner(self.burners[coin]).burn(coin, value=_value)  # dev: should implement burn()
-
+        burn(lvt)
 
 # @external
 # @nonreentrant('lock')
