@@ -134,9 +134,8 @@ def __init__(_lp_token: address, _distributor: address, _admin: address):
     self.voting_escrow = Controller(controller).voting_escrow()
 
     self.period_timestamp[0] = block.timestamp
-    # TODO figure out how we want to set distribution (inflation) rate and future_epoch_time
-    # self.inflation_rate = CRV20(crv_token).rate()
-    self.future_epoch_time = 0 #  CRV20(crv_token).future_epoch_time_write()
+    self.distribution_rate = Distributor(_distributor).rate()
+    self.future_epoch_time = Distributor(_distributor).future_epoch_time_write()
 
 @view
 @external
@@ -198,10 +197,10 @@ def _checkpoint(addr: address):
         # TODO: figure out how we want to update the distribution rate here
         self.distribution_rate = new_rate
 
-        # _token: address = self.crv_token
-        # self.future_epoch_time = CRV20(_token).future_epoch_time_write()
-        # new_rate = CRV20(_token).rate()
-        # self.inflation_rate = new_rate
+        _dist: address = self.distributor
+        self.future_epoch_time = Distributor(self.distributor).future_epoch_time_write()
+        new_rate = Distributor(self.distributor).rate()
+        self.distribution_rate = new_rate
 
     if self.is_killed:
         # Stop distributing inflation as soon as killed
