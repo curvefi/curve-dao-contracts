@@ -260,6 +260,7 @@ def _claim(addr: address, ve: address, _last_token_time: uint256) -> uint256:
     old_user_point: Point = empty(Point)
 
     # Iterate over weeks
+    # if user has a long veLIX history, this could require multiple calls
     for i in range(50):
         if week_cursor >= _last_token_time:
             break
@@ -374,8 +375,8 @@ def claim_many(_receivers: address[20]) -> bool:
 @external
 def burn(_coin: address) -> bool:
     """
-    @notice Receive 3CRV into the contract and trigger a token checkpoint
-    @param _coin Address of the coin being received (must be 3CRV)
+    @notice Receive LIX into the contract and trigger a token checkpoint
+    @param _coin Address of the coin being received (must be LIX)
     @return bool success
     """
     assert _coin == self.token

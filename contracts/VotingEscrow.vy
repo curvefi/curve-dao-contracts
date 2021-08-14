@@ -108,7 +108,7 @@ decimals: public(uint256)
 # Checker for whitelisted (smart contract) wallets which are allowed to deposit
 # The goal is to prevent tokenizing the escrow
 future_smart_wallet_checker: public(address)
-smart_wallet_checker: public(address)
+smart_wallet_checker: public(address) # veCRV uses this on mainnet: 0xca719728ef172d0961768581fdf35cb116e0b7a4
 
 admin: public(address)  # Can and will be a smart contract
 future_admin: public(address)
