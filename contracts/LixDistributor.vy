@@ -33,11 +33,10 @@ YEAR: constant(uint256) = 86400 * 365
 
 
 # Supply parameters
-INITIAL_RATE: constant(uint256) = 274_815_283 * 10 ** 18 / YEAR  # leading to 43% premine
 RATE_REDUCTION_TIME: constant(uint256) = YEAR
-RATE_REDUCTION_COEFFICIENT: constant(uint256) = 1189207115002721024  # 2 ** (1/4) * 1e18
-RATE_DENOMINATOR: constant(uint256) = 10 ** 18
+RATE_REDUCTION_COEFFICIENT: constant(uint256) = 2 # half every epoch
 INFLATION_DELAY: constant(uint256) = 86400
+initial_rate: uint256 # calculated in __init__
 
 # Supply variables
 mining_epoch: public(int128)
@@ -55,17 +54,16 @@ controller: public(address)
 distributed: public(HashMap[address, HashMap[address, uint256]])
 
 @external
-def __init__(_token: address, _controller: address, init_supply: uint256):
+def __init__(_token: address, _controller: address, _init_supply: uint256):
     self.token = _token
     self.controller = _controller
 
     # TODO: idk if this is the best way to endow this contract but whatever
-    assert(ERC20(self.token).transferFrom(msg.sender, self, init_supply))
-
+    assert(ERC20(_token).transferFrom(msg.sender, self, _init_supply))
     self.start_epoch_time = block.timestamp + INFLATION_DELAY - RATE_REDUCTION_TIME
     self.mining_epoch = -1
+    self.initial_rate = _init_supply / RATE_REDUCTION_COEFFICIENT
     self.rate = 0
-    self.start_epoch_supply = init_supply
 
 
 @external
@@ -88,11 +86,11 @@ def _update_mining_parameters():
     self.mining_epoch += 1
 
     if _rate == 0:
-        _rate = INITIAL_RATE
+        _rate = self.initial_rate
     else:
-        _start_epoch_supply += _rate * RATE_REDUCTION_TIME
+        _start_epoch_supply += _rate / RATE_REDUCTION_COEFFICIENT
         self.start_epoch_supply = _start_epoch_supply
-        _rate = _rate * RATE_DENOMINATOR / RATE_REDUCTION_COEFFICIENT
+        _rate = _rate / RATE_REDUCTION_COEFFICIENT
 
     self.rate = _rate
 
@@ -140,6 +138,8 @@ def future_epoch_time_write() -> uint256:
         return _start_epoch_time + RATE_REDUCTION_TIME
 
 
+# TODO : check this function works properly...I think since I changed around the
+# way that mining params get updated, it's very different.
 @external
 @view
 def mintable_in_timeframe(start: uint256, end: uint256) -> uint256:
@@ -157,7 +157,7 @@ def mintable_in_timeframe(start: uint256, end: uint256) -> uint256:
     # Special case if end is in future (not yet minted) epoch
     if end > current_epoch_time + RATE_REDUCTION_TIME:
         current_epoch_time += RATE_REDUCTION_TIME
-        current_rate = current_rate * RATE_DENOMINATOR / RATE_REDUCTION_COEFFICIENT
+        current_rate = current_rate / RATE_REDUCTION_COEFFICIENT
 
     assert end <= current_epoch_time + RATE_REDUCTION_TIME  # dev: too far in future
 
@@ -179,8 +179,8 @@ def mintable_in_timeframe(start: uint256, end: uint256) -> uint256:
                 break
 
         current_epoch_time -= RATE_REDUCTION_TIME
-        current_rate = current_rate * RATE_REDUCTION_COEFFICIENT / RATE_DENOMINATOR  # double-division with rounding made rate a bit less => good
-        assert current_rate <= INITIAL_RATE  # This should never happen
+        current_rate = current_rate / RATE_REDUCTION_COEFFICIENT
+        assert current_rate <= self.initial_rate  # This should never happen
 
     return to_mint
 

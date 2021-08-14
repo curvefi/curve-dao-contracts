@@ -172,7 +172,7 @@ def _update_liquidity_limit(addr: address, l: uint256, L: uint256):
     if voting_total > 0:
         lim += L * voting_balance / voting_total * (100 - TOKENLESS_PRODUCTION) / 100
 
-    lim = min(l, lim)
+    lim = min(l, lim) # TODO shouldn't this be max for boosts?
     old_bal: uint256 = self.working_balances[addr]
     self.working_balances[addr] = lim
     _working_supply: uint256 = self.working_supply + lim - old_bal
@@ -346,7 +346,7 @@ def withdraw(_value: uint256, _claim_rewards: bool = False):
         self.totalSupply = total_supply
 
         self._update_liquidity_limit(msg.sender, new_balance, total_supply)
-
+        # TODO doesn't this need to check that _value is correct? How do you stop someone from just withdrawing everything when they don't have the balance??
         ERC20(self.lp_token).transfer(msg.sender, _value)
 
     log Withdraw(msg.sender, _value)
