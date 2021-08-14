@@ -47,29 +47,23 @@ start_epoch_supply: uint256
 ##############
 
 # LIX
-token: public(address)
+lix: public(address)
 controller: public(address)
 
 # user -> gauge -> value
 distributed: public(HashMap[address, HashMap[address, uint256]])
 
 @external
-def __init__(_token: address, _controller: address, _init_supply: uint256):
-    self.token = _token
+def __init__(_lix: address, _controller: address, _init_supply: uint256):
+    self.lix = _lix
     self.controller = _controller
 
     # TODO: idk if this is the best way to endow this contract but whatever
-    assert(ERC20(_token).transferFrom(msg.sender, self, _init_supply))
+    assert(ERC20(_lix).transferFrom(msg.sender, self, _init_supply))
     self.start_epoch_time = block.timestamp + INFLATION_DELAY - RATE_REDUCTION_TIME
     self.mining_epoch = -1
-    self.initial_rate = _init_supply / RATE_REDUCTION_COEFFICIENT
+    self.initial_rate = _init_supply / RATE_REDUCTION_COEFFICIENT / RATE_REDUCTION_TIME
     self.rate = 0
-
-
-@external
-@view
-def totalBalance() -> uint256:
-    return ERC20(self.token).balanceOf(self)
 
 
 @internal
@@ -88,7 +82,8 @@ def _update_mining_parameters():
     if _rate == 0:
         _rate = self.initial_rate
     else:
-        _start_epoch_supply += _rate / RATE_REDUCTION_COEFFICIENT
+        # TODO test this code. Might be something up with like ofsetting and messing things up
+        _start_epoch_supply += _rate / RATE_REDUCTION_COEFFICIENT * RATE_REDUCTION_TIME
         self.start_epoch_supply = _start_epoch_supply
         _rate = _rate / RATE_REDUCTION_COEFFICIENT
 
@@ -139,7 +134,7 @@ def future_epoch_time_write() -> uint256:
 
 
 # TODO : check this function works properly...I think since I changed around the
-# way that mining params get updated, it's very different.
+# way that mining params get updated, it could fuck up calculations
 @external
 @view
 def mintable_in_timeframe(start: uint256, end: uint256) -> uint256:
@@ -179,7 +174,7 @@ def mintable_in_timeframe(start: uint256, end: uint256) -> uint256:
                 break
 
         current_epoch_time -= RATE_REDUCTION_TIME
-        current_rate = current_rate / RATE_REDUCTION_COEFFICIENT
+        current_rate = current_rate / RATE_REDUCTION_COEFFICIENT # TODO this line might mess up, test it later
         assert current_rate <= self.initial_rate  # This should never happen
 
     return to_mint
@@ -190,16 +185,14 @@ def _distribute_for(gauge_addr: address, _for: address):
     assert GaugeController(self.controller).gauge_types(gauge_addr) >= 0  # dev: gauge is not added
     assert _for != ZERO_ADDRESS  # dev: zero address
 
-    # TODO this seems kinda sus...not really clicking for me how gauges are doing their thing...
-    # seems like things could break pretty easily if we don't set it up properly...
     LiquidityGauge(gauge_addr).user_checkpoint(_for)
-    total_dist: uint256 = LiquidityGauge(gauge_addr).integrate_fraction(_for)
+    total_dist: uint256 = LiquidityGauge(gauge_addr).integrate_fraction(_for) # TODO: write some tests to make sure the gauges are doing the correct thing here
     to_dist: uint256 = total_dist - self.distributed[_for][gauge_addr]
 
     if to_dist != 0:
         if block.timestamp >= self.start_epoch_time + RATE_REDUCTION_TIME:
             self._update_mining_parameters()
-        ERC20(self.token).transfer(_for, to_dist)
+        ERC20(self.lix).transfer(_for, to_dist)
         self.distributed[_for][gauge_addr] = total_dist
 
         log Distributed(_for, gauge_addr, total_dist)
