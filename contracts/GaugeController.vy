@@ -310,9 +310,9 @@ def add_gauge(addr: address, gauge_type: int128, weight: uint256 = 0):
         _old_sum: uint256 = self._get_sum(gauge_type)
         _old_total: uint256 = self._get_total()
 
-        self.points_sum[gauge_type][next_time].bias = weight + _old_sum # add new weight to total type sum
+        self.points_sum[gauge_type][next_time].bias = weight + _old_sum
         self.time_sum[gauge_type] = next_time
-        self.points_total[next_time] = _old_total + _type_weight * weight # don't get this
+        self.points_total[next_time] = _old_total + _type_weight * weight
         self.time_total = next_time
 
         self.points_weight[addr][next_time].bias = weight
@@ -431,7 +431,7 @@ def add_type(_name: String[64], weight: uint256 = 0):
     self.n_gauge_types = type_id + 1
     if weight != 0:
         self._change_type_weight(type_id, weight)
-        log AddType(_name, type_id) # lol why does it only log if weight > 0
+        log AddType(_name, type_id)
 
 
 @external
