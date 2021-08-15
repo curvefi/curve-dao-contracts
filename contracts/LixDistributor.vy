@@ -59,7 +59,7 @@ def __init__(_lix: address, _controller: address, _init_supply: uint256):
     self.controller = _controller
 
     # TODO: idk if this is the best way to endow this contract but whatever
-    assert(ERC20(_lix).transferFrom(msg.sender, self, _init_supply))
+    # assert(ERC20(_lix).transferFrom(msg.sender, self, _init_supply))
     self.start_epoch_time = block.timestamp + INFLATION_DELAY - RATE_REDUCTION_TIME
     self.mining_epoch = -1
     self.initial_rate = _init_supply / RATE_REDUCTION_COEFFICIENT / RATE_REDUCTION_TIME

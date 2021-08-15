@@ -17,7 +17,7 @@ interface Controller:
 
 interface Distributor:
     # lifted from Minter
-    def token() -> address: view
+    def lix() -> address: view
     def controller() -> address: view
     def distributed(user: address, gauge: address) -> uint256: view
 
@@ -123,7 +123,7 @@ def __init__(_lp_token: address, _distributor: address, _admin: address):
     self.name = concat("Lixir Finance ", symbol, " Gauge Deposit")
     self.symbol = concat(symbol, "-gauge")
 
-    lix_token: address = Distributor(_distributor).token()
+    lix_token: address = Distributor(_distributor).lix()
     controller: address = Distributor(_distributor).controller()
 
     self.lp_token = _lp_token

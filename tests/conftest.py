@@ -80,7 +80,7 @@ def receiver(accounts):
 
 @pytest.fixture(scope="module")
 def token(LIX, accounts):
-    yield LIX.deploy("Lixir Token", "LIX", 18, 100 * 10 ** 18, {"from": accounts[0]})
+    yield LIX.deploy("Lixir Token", "LIX", 18, 10000000, {"from": accounts[0]})
 
 
 @pytest.fixture(scope="module")
@@ -102,7 +102,7 @@ def gauge_controller(GaugeController, accounts, token, voting_escrow):
 
 @pytest.fixture(scope="module")
 def distributor(LixDistributor, accounts, gauge_controller, token):
-    yield LixDistributor.deploy(token, gauge_controller, 100 * 10 ** 18, {"from": accounts[0]})
+    yield LixDistributor.deploy(token, gauge_controller, 6000000, {"from": accounts[0]})
 
 
 # @pytest.fixture(scope="module")
@@ -148,8 +148,10 @@ def distributor(LixDistributor, accounts, gauge_controller, token):
 
 
 @pytest.fixture(scope="module")
-def vault_gauge(VaultGauge, alice, mock_lp_token, minter):
-    yield VaultGauge.deploy(mock_lp_token, minter, alice, {"from": alice})
+def vault_gauge(VaultGauge, alice, mock_lp_token, distributor):
+    meme = VaultGauge.deploy(mock_lp_token, distributor, alice, {"from": alice})
+    print('asdfasdf', meme)
+    yield meme
 
 # @pytest.fixture(scope="module")
 # def rewards_only_gauge(RewardsOnlyGauge, alice, mock_lp_token):
@@ -188,14 +190,19 @@ def vault_gauge(VaultGauge, alice, mock_lp_token, minter):
 #     )
 
 
-# @pytest.fixture(scope="module")
-# def three_gauges(LiquidityGauge, accounts, mock_lp_token, minter):
-#     contracts = [
-#         LiquidityGauge.deploy(mock_lp_token, minter, accounts[0], {"from": accounts[0]})
-#         for _ in range(3)
-#     ]
+@pytest.fixture(scope="module")
+def three_gauges(VaultGauge, accounts, mock_lp_token, distributor):
+    contracts = [
+        VaultGauge.deploy(
+            mock_lp_token,
+            distributor,
+            accounts[0],
+            {"from": accounts[0]}
+        )
+        for _ in range(3)
+    ]
 
-#     yield contracts
+    yield contracts
 
 
 # VestingEscrow fixtures
