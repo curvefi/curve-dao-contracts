@@ -36,7 +36,7 @@ YEAR: constant(uint256) = 86400 * 365
 RATE_REDUCTION_TIME: constant(uint256) = YEAR
 RATE_REDUCTION_COEFFICIENT: constant(uint256) = 2 # half every epoch
 DISTRIBUTION_DELAY: constant(uint256) = 86400
-initial_rate: uint256
+initial_rate: public(uint256) # not public needed
 
 # Supply variables
 initial_supply: public(uint256)
@@ -69,7 +69,7 @@ def set_initial_params(_init_supply: uint256):
     self.mining_epoch = -1
     self.initial_rate = _init_supply / RATE_REDUCTION_COEFFICIENT / RATE_REDUCTION_TIME
     self.rate = 0
-    self.start_epoch_supply = _init_supply
+    self.start_epoch_supply = 0
 
 @internal
 def _update_mining_parameters():

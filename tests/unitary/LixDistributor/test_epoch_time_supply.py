@@ -35,6 +35,7 @@ def test_update_mining_parameters(distributor, chain, accounts):
 
     assert distributor.start_epoch_time() == creation_time + YEAR
 
+
 def test_update_mining_parameters_same_epoch(distributor, chain, accounts):
     creation_time = distributor.start_epoch_time()
     new_epoch = creation_time + YEAR - chain.time()
@@ -49,7 +50,7 @@ def test_distributable_in_timeframe_end_before_start(distributor, accounts):
         distributor.distributable_in_timeframe(creation_time + 1, creation_time)
 
 
-def test_mintable_in_timeframe_multiple_epochs(distributor, accounts):
+def test_distributable_in_timeframe_multiple_epochs(distributor, accounts):
     creation_time = distributor.start_epoch_time()
 
     # two epochs should not raise
@@ -61,11 +62,11 @@ def test_mintable_in_timeframe_multiple_epochs(distributor, accounts):
 
 
 def test_avaialable_to_distribute(chain, web3, distributor):
-    creation_time = distributor.start_epoch_time()
-    initial_supply = distributor.initial_supply()
-    rate = distributor.rate()
     chain.sleep(WEEK)
     chain.mine()
+
+    epoch_0_start = distributor.start_epoch_time_write().return_value
+    rate = distributor.rate()
     
-    expected = initial_supply + (chain[-1].timestamp - creation_time) * rate
+    expected = (chain[-1].timestamp - epoch_0_start) * rate
     assert distributor.avaialable_to_distribute() == expected
