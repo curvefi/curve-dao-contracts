@@ -35,10 +35,11 @@ YEAR: constant(uint256) = 86400 * 365
 # Supply parameters
 RATE_REDUCTION_TIME: constant(uint256) = YEAR
 RATE_REDUCTION_COEFFICIENT: constant(uint256) = 2 # half every epoch
-INFLATION_DELAY: constant(uint256) = 86400
-initial_rate: uint256 # calculated in __init__
+DISTRIBUTION_DELAY: constant(uint256) = 86400
+initial_rate: uint256
 
 # Supply variables
+initial_supply: public(uint256)
 mining_epoch: public(int128)
 start_epoch_time: public(uint256)
 rate: public(uint256)
@@ -54,17 +55,21 @@ controller: public(address)
 distributed: public(HashMap[address, HashMap[address, uint256]])
 
 @external
-def __init__(_lix: address, _controller: address, _init_supply: uint256):
+def __init__(_lix: address, _controller: address):
     self.lix = _lix
     self.controller = _controller
 
-    # TODO: idk if this is the best way to endow this contract but whatever
-    # assert(ERC20(_lix).transferFrom(msg.sender, self, _init_supply))
-    self.start_epoch_time = block.timestamp + INFLATION_DELAY - RATE_REDUCTION_TIME
+
+@external
+def set_initial_params(_init_supply: uint256):
+    assert(ERC20(self.lix).transferFrom(msg.sender, self, _init_supply)) # dev: token failed to transfer
+    self.initial_supply = _init_supply
+
+    self.start_epoch_time = block.timestamp + DISTRIBUTION_DELAY - RATE_REDUCTION_TIME
     self.mining_epoch = -1
     self.initial_rate = _init_supply / RATE_REDUCTION_COEFFICIENT / RATE_REDUCTION_TIME
     self.rate = 0
-
+    self.start_epoch_supply = _init_supply
 
 @internal
 def _update_mining_parameters():
@@ -90,6 +95,21 @@ def _update_mining_parameters():
     self.rate = _rate
 
     log UpdateMiningParameters(block.timestamp, _rate, _start_epoch_supply)
+
+
+@internal
+@view
+def _avaialable_to_distribute() -> uint256:
+    return self.start_epoch_supply + (block.timestamp - self.start_epoch_time) * self.rate
+
+
+@external
+@view
+def avaialable_to_distribute() -> uint256:
+    """
+    @notice Current number of tokens in existence (claimed or unclaimed)
+    """
+    return self._avaialable_to_distribute()
 
 
 @external
@@ -137,7 +157,7 @@ def future_epoch_time_write() -> uint256:
 # way that mining params get updated, it could fuck up calculations
 @external
 @view
-def mintable_in_timeframe(start: uint256, end: uint256) -> uint256:
+def distributable_in_timeframe(start: uint256, end: uint256) -> uint256:
     """
     @notice How much supply is mintable from start timestamp till end timestamp
     @param start Start of the time interval (timestamp)
