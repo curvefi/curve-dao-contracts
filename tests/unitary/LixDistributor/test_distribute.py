@@ -76,7 +76,7 @@ def test_distribute_multiple_same_gauge(accounts, chain, three_gauges, distribut
     assert distributor.distributed(accounts[1], three_gauges[0]) == expected
 
 
-def test_mint_multiple_gauges(accounts, chain, three_gauges, distributor, token):
+def tes_distribute_multiple_gauges(accounts, chain, three_gauges, distributor, token):
     for i in range(3):
         three_gauges[i].deposit((i + 1) * 10 ** 17, {"from": accounts[1]})
 
@@ -95,7 +95,7 @@ def test_mint_multiple_gauges(accounts, chain, three_gauges, distributor, token)
     assert token.balanceOf(accounts[1]) == total_dist
 
 
-def test_mint_after_withdraw(accounts, chain, three_gauges, distributor, token):
+def test_distribute_after_withdraw(accounts, chain, three_gauges, distributor, token):
     three_gauges[0].deposit(1e18, {"from": accounts[1]})
 
     chain.sleep(2 * WEEK)
@@ -105,7 +105,7 @@ def test_mint_after_withdraw(accounts, chain, three_gauges, distributor, token):
     assert token.balanceOf(accounts[1]) > 0
 
 
-def test_mint_multiple_after_withdraw(accounts, chain, three_gauges, distributor, token):
+def test_distribute_multiple_after_withdraw(accounts, chain, three_gauges, distributor, token):
     three_gauges[0].deposit(1e18, {"from": accounts[1]})
 
     chain.sleep(10)
@@ -127,7 +127,7 @@ def test_no_deposit(accounts, chain, three_gauges, distributor, token):
     assert distributor.distributed(accounts[1], three_gauges[0]) == 0
 
 
-def test_mint_wrong_gauge(accounts, chain, three_gauges, distributor, token):
+def test_distribute_wrong_gauge(accounts, chain, three_gauges, distributor, token):
     three_gauges[0].deposit(1e18, {"from": accounts[1]})
 
     chain.sleep(MONTH)
@@ -138,12 +138,12 @@ def test_mint_wrong_gauge(accounts, chain, three_gauges, distributor, token):
     assert distributor.distributed(accounts[1], three_gauges[1]) == 0
 
 
-def test_mint_not_a_gauge(accounts, distributor):
+def test_distribute_not_a_gauge(accounts, distributor):
     with brownie.reverts("dev: gauge is not added"):
         distributor.distribute(accounts[1], {"from": accounts[0]})
 
 
-def test_mint_before_inflation_begins(accounts, chain, three_gauges, distributor, token):
+def test_distribute_before_inflation_begins(accounts, chain, three_gauges, distributor, token):
     three_gauges[0].deposit(1e18, {"from": accounts[1]})
 
     chain.sleep(distributor.start_epoch_time() - chain.time() - 5)
