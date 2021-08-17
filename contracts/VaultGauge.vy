@@ -261,7 +261,7 @@ def user_checkpoint(addr: address) -> bool:
     @param addr User address
     @return bool success
     """
-    assert (msg.sender == addr) or (msg.sender == self.distributor) # (msg.sender == self.minter)  # dev: unauthorized
+    assert (msg.sender == addr) or (msg.sender == self.distributor) # dev: unauthorized
     self._checkpoint(addr)
     self._update_liquidity_limit(addr, self.balanceOf[addr], self.totalSupply)
     return True
@@ -301,10 +301,9 @@ def kick(addr: address):
 
 @external
 @nonreentrant('lock')
-def deposit(_value: uint256, _addr: address = msg.sender, _claim_rewards: bool = False):
+def deposit(_value: uint256, _addr: address = msg.sender):
     """
     @notice Deposit `_value` LP tokens
-    @dev Depositting also claims pending reward tokens
     @param _value Number of tokens to deposit
     @param _addr Address to deposit for
     """
@@ -329,10 +328,9 @@ def deposit(_value: uint256, _addr: address = msg.sender, _claim_rewards: bool =
 
 @external
 @nonreentrant('lock')
-def withdraw(_value: uint256, _claim_rewards: bool = False):
+def withdraw(_value: uint256):
     """
     @notice Withdraw `_value` LP tokens
-    @dev Withdrawing also claims pending reward tokens
     @param _value Number of tokens to withdraw
     """
     self._checkpoint(msg.sender)
@@ -377,7 +375,6 @@ def _transfer(_from: address, _to: address, _value: uint256):
 def transfer(_to : address, _value : uint256) -> bool:
     """
     @notice Transfer token for a specified address
-    @dev Transferring claims pending reward tokens for the sender and receiver
     @param _to The address to transfer to.
     @param _value The amount to be transferred.
     """
@@ -391,7 +388,6 @@ def transfer(_to : address, _value : uint256) -> bool:
 def transferFrom(_from : address, _to : address, _value : uint256) -> bool:
     """
      @notice Transfer tokens from one address to another.
-     @dev Transferring claims pending reward tokens for the sender and receiver
      @param _from address The address which you want to send tokens from
      @param _to address The address which you want to transfer to
      @param _value uint256 the amount of tokens to be transferred
