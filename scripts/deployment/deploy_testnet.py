@@ -6,7 +6,6 @@ import time
 
 from brownie import (
     ERC20,
-    ERC20LP,
     GaugeController,
     VaultGauge,
     LixirVault,
@@ -89,6 +88,10 @@ def main():
 
     # deploying new contracts
     escrow = VotingEscrow.deploy(lix, "Vote-escrowed LIX", "veLIX", "veLIX_0.99", {"from": deployer, "required_confs": CONFS})
+    
+    # we could automatically get funds in the FeeDistributor by using a VaultProxy and a bunch of burners
+    # or we can just manually burn and transfer. We are doing the latter until later notice (progessively decentralizing)
+    feeDistributor = FeeDistributor.deploy(escrow, 0, lix, ZERO_ADDRESS, deployer, {"from": deployer, "required_confs": CONFS})
     gauge_controller = GaugeController.deploy(lix, escrow, {"from": deployer, "required_confs": CONFS})
     distributor = LixDistributor.deploy(lix, gauge_controller, {"from": deployer, "required_confs": CONFS})
     vault_gauge = VaultGauge.deploy(lp_token, distributor, deployer, {"from": deployer, "required_confs": CONFS})
