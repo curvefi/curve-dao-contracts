@@ -1,21 +1,19 @@
 # Testnet deployment script
 
 import json
+from operator import truediv
 import time
 
 from brownie import (
     ERC20,
-    ERC20CRV,
     ERC20LP,
-    CurvePool,
-    CurveRewards,
     GaugeController,
-    LiquidityGauge,
-    LiquidityGaugeReward,
-    Minter,
-    PoolProxy,
-    VestingEscrow,
+    VaultGauge,
+    LixirVault,
+    LixirRegistry,
+    LixDistributor,
     VotingEscrow,
+    FeeDistributor,
     accounts,
     web3,
 )
@@ -26,9 +24,8 @@ USE_STRATEGIES = False  # Needed for the ganache-cli tester which doesn't like m
 POA = True
 
 DEPLOYER = "0xFD3DeCC0cF498bb9f54786cb65800599De505706"
-ARAGON_AGENT = "0x22D61abd46F14D40Ca9bF8eDD9445DCF29208589"
 
-DISTRIBUTION_AMOUNT = 10 ** 6 * 10 ** 18
+DISTRIBUTION_AMOUNT = 10 ** 2 * 10 ** 18
 DISTRIBUTION_ADDRESSES = [
     "0x39415255619783A2E71fcF7d8f708A951d92e1b6",
     "0x6cd85bbb9147b86201d882ae1068c67286855211",
@@ -50,253 +47,55 @@ def repeat(f, *args):
         except KeyError:
             continue
 
+def deploy_erc20s_and_vault(deployer):
+    coin_a = ERC20.deploy("Coin A", "USDA", 18, 10 ** 9 * 10 ** 18, {"from": deployer, "required_confs": CONFS})
+    coin_b = ERC20.deploy("Coin B", "USDB", 18, 10 ** 9 * 10 ** 18, {"from": deployer, "required_confs": CONFS})
 
-def save_abi(contract, name):
-    with open("%s.abi" % name, "w") as f:
-        json.dump(contract.abi, f)
+    registry = LixirRegistry.deploy(ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, {"from": deployer, "required_confs": CONFS})
 
-
-def deploy_erc20s_and_pool(deployer):
-    coin_a = repeat(ERC20.deploy, "Coin A", "USDA", 18, {"from": deployer, "required_confs": CONFS})
-    repeat(
-        coin_a._mint_for_testing, 10 ** 9 * 10 ** 18, {"from": deployer, "required_confs": CONFS}
-    )
-    coin_b = repeat(ERC20.deploy, "Coin B", "USDB", 18, {"from": deployer, "required_confs": CONFS})
-    repeat(
-        coin_b._mint_for_testing, 10 ** 9 * 10 ** 18, {"from": deployer, "required_confs": CONFS}
-    )
-
-    lp_token = repeat(
-        ERC20LP.deploy, "Some pool", "cPool", 18, 0, {"from": deployer, "required_confs": CONFS}
-    )
-    save_abi(lp_token, "lp_token")
-    pool = repeat(
-        CurvePool.deploy,
-        [coin_a, coin_b],
-        lp_token,
-        100,
-        4 * 10 ** 6,
-        {"from": deployer, "required_confs": CONFS},
-    )
-    save_abi(pool, "curve_pool")
-    repeat(lp_token.set_minter, pool, {"from": deployer, "required_confs": CONFS})
-
-    # registry = repeat(
-    #     Registry.deploy, [ZERO_ADDRESS] * 4, {"from": deployer, "required_confs": CONFS}
-    # )
-    # save_abi(registry, "registry")
+    vault = LixirVault.deploy(registry, {"from": deployer, "required_confs": CONFS})
+    vault.initialize("Lixir Vault USDA USDB", "LVT_USDA_USDB", coin_a, coin_b, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS, {"from": deployer, "required_confs": CONFS})
 
     for account in DISTRIBUTION_ADDRESSES:
-        repeat(
-            coin_a.transfer,
+        coin_a.transfer(
             account,
             DISTRIBUTION_AMOUNT,
             {"from": deployer, "required_confs": CONFS},
         )
-        repeat(
-            coin_b.transfer,
+        coin_b.transfer(
             account,
             DISTRIBUTION_AMOUNT,
             {"from": deployer, "required_confs": CONFS},
         )
 
-    repeat(
-        pool.commit_transfer_ownership, ARAGON_AGENT, {"from": deployer, "required_confs": CONFS}
-    )
-    repeat(pool.apply_transfer_ownership, {"from": deployer, "required_confs": CONFS})
 
-    return [lp_token, coin_a]
+
+    return [vault, coin_a, coin_b]
 
 
 def main():
-    if USE_STRATEGIES:
-        web3.eth.setGasPriceStrategy(gas_strategy)
-        web3.middleware_onion.add(middleware.time_based_cache_middleware)
-        web3.middleware_onion.add(middleware.latest_block_based_cache_middleware)
-        web3.middleware_onion.add(middleware.simple_cache_middleware)
-        if POA:
-            web3.middleware_onion.inject(middleware.geth_poa_middleware, layer=0)
-
-    deployer = accounts.at(DEPLOYER)
-
-    # deploy pools and gauges
-
-    coin_a = repeat(ERC20.deploy, "Coin A", "USDA", 18, {"from": deployer, "required_confs": CONFS})
-    repeat(
-        coin_a._mint_for_testing, 10 ** 9 * 10 ** 18, {"from": deployer, "required_confs": CONFS}
-    )
-    coin_b = repeat(ERC20.deploy, "Coin B", "USDB", 18, {"from": deployer, "required_confs": CONFS})
-    repeat(
-        coin_b._mint_for_testing, 10 ** 9 * 10 ** 18, {"from": deployer, "required_confs": CONFS}
-    )
-
-    lp_token = repeat(
-        ERC20LP.deploy, "Some pool", "cPool", 18, 0, {"from": deployer, "required_confs": CONFS}
-    )
-    save_abi(lp_token, "lp_token")
-    pool = repeat(
-        CurvePool.deploy,
-        [coin_a, coin_b],
-        lp_token,
-        100,
-        4 * 10 ** 6,
-        {"from": deployer, "required_confs": CONFS},
-    )
-    save_abi(pool, "curve_pool")
-    repeat(lp_token.set_minter, pool, {"from": deployer, "required_confs": CONFS})
-
-    repeat(
-        coin_a.transfer,
-        "0x6cd85bbb9147b86201d882ae1068c67286855211",
-        DISTRIBUTION_AMOUNT,
-        {"from": deployer, "required_confs": CONFS},
-    )
-    repeat(
-        coin_b.transfer,
-        "0x6cd85bbb9147b86201d882ae1068c67286855211",
-        DISTRIBUTION_AMOUNT,
-        {"from": deployer, "required_confs": CONFS},
-    )
-
-    contract = repeat(
-        CurveRewards.deploy, lp_token, coin_a, {"from": accounts[0], "required_confs": CONFS}
-    )
-    repeat(
-        contract.setRewardDistribution, accounts[0], {"from": accounts[0], "required_confs": CONFS}
-    )
-    repeat(coin_a.transfer, contract, 100e18, {"from": accounts[0], "required_confs": CONFS})
-
-    liquidity_gauge_rewards = repeat(
-        LiquidityGaugeReward.deploy,
-        lp_token,
-        "0xbE45e0E4a72aEbF9D08F93E64701964d2CC4cF96",
-        contract,
-        coin_a,
-        {"from": deployer, "required_confs": CONFS},
-    )
-
-    coins = deploy_erc20s_and_pool(deployer)
-
-    lp_token = coins[0]
-    coin_a = coins[1]
-
-    token = repeat(
-        ERC20CRV.deploy, "Curve DAO Token", "CRV", 18, {"from": deployer, "required_confs": CONFS}
-    )
-    save_abi(token, "token_crv")
-
-    escrow = repeat(
-        VotingEscrow.deploy,
-        token,
-        "Vote-escrowed CRV",
-        "veCRV",
-        "veCRV_0.99",
-        {"from": deployer, "required_confs": CONFS},
-    )
-    save_abi(escrow, "voting_escrow")
-
-    repeat(escrow.changeController, ARAGON_AGENT, {"from": deployer, "required_confs": CONFS})
+    deployer = accounts.at(DEPLOYER, force=True)
+    [lp_token, coin_a, coin_b] = deploy_erc20s_and_vault(deployer)
+    lix = ERC20.deploy("Lixir Token", "LIX", 18, 10000000, {"from": deployer, "required_confs": CONFS})
+    
 
     for account in DISTRIBUTION_ADDRESSES:
-        repeat(
-            token.transfer,
+        lix.transfer(
             account,
             DISTRIBUTION_AMOUNT,
             {"from": deployer, "required_confs": CONFS},
         )
 
-    gauge_controller = repeat(
-        GaugeController.deploy, token, escrow, {"from": deployer, "required_confs": CONFS}
-    )
-    save_abi(gauge_controller, "gauge_controller")
 
-    minter = repeat(
-        Minter.deploy, token, gauge_controller, {"from": deployer, "required_confs": CONFS}
-    )
-    save_abi(minter, "minter")
+    # deploying new contracts
+    escrow = VotingEscrow.deploy(lix, "Vote-escrowed LIX", "veLIX", "veLIX_0.99", {"from": deployer, "required_confs": CONFS})
+    gauge_controller = GaugeController.deploy(lix, escrow, {"from": deployer, "required_confs": CONFS})
+    distributor = LixDistributor.deploy(lix, gauge_controller, {"from": deployer, "required_confs": CONFS})
+    vault_gauge = VaultGauge.deploy(lp_token, distributor, deployer, {"from": deployer, "required_confs": CONFS})
 
-    liquidity_gauge = repeat(
-        LiquidityGauge.deploy, lp_token, minter, {"from": deployer, "required_confs": CONFS}
-    )
-    save_abi(liquidity_gauge, "liquidity_gauge")
-
-    contract = repeat(
-        CurveRewards.deploy, lp_token, coin_a, {"from": accounts[0], "required_confs": CONFS}
-    )
-    repeat(
-        contract.setRewardDistribution, accounts[0], {"from": accounts[0], "required_confs": CONFS}
-    )
-    repeat(coin_a.transfer, contract, 100e18, {"from": accounts[0], "required_confs": CONFS})
-
-    liquidity_gauge_rewards = repeat(
-        LiquidityGaugeReward.deploy,
-        lp_token,
-        minter,
-        contract,
-        coin_a,
-        {"from": deployer, "required_confs": CONFS},
-    )
-
-    repeat(token.set_minter, minter, {"from": deployer, "required_confs": CONFS})
-    repeat(gauge_controller.add_type, b"Liquidity", {"from": deployer, "required_confs": CONFS})
-    repeat(
-        gauge_controller.change_type_weight,
-        0,
-        10 ** 18,
-        {"from": deployer, "required_confs": CONFS},
-    )
-    repeat(
-        gauge_controller.add_gauge,
-        liquidity_gauge,
-        0,
-        10 ** 18,
-        {"from": deployer, "required_confs": CONFS},
-    )
-
-    repeat(
-        gauge_controller.add_type, b"LiquidityRewards", {"from": deployer, "required_confs": CONFS}
-    )
-    repeat(
-        gauge_controller.change_type_weight,
-        1,
-        10 ** 18,
-        {"from": deployer, "required_confs": CONFS},
-    )
-    repeat(
-        gauge_controller.add_gauge,
-        liquidity_gauge_rewards,
-        1,
-        10 ** 18,
-        {"from": deployer, "required_confs": CONFS},
-    )
-
-    repeat(
-        gauge_controller.commit_transfer_ownership,
-        ARAGON_AGENT,
-        {"from": deployer, "required_confs": CONFS},
-    )
-    repeat(gauge_controller.apply_transfer_ownership, {"from": deployer, "required_confs": CONFS})
-    repeat(
-        escrow.commit_transfer_ownership, ARAGON_AGENT, {"from": deployer, "required_confs": CONFS}
-    )
-    repeat(escrow.apply_transfer_ownership, {"from": deployer, "required_confs": CONFS})
-
-    repeat(PoolProxy.deploy, {"from": deployer, "required_confs": CONFS})
-
-    vesting = repeat(
-        VestingEscrow.deploy,
-        token,
-        time.time() + 300,
-        "1628364267",
-        False,
-        {"from": deployer, "required_confs": CONFS},
-    )
-    save_abi(vesting, "vesting")
-
-    repeat(token.approve, vesting, 1000e18, {"from": deployer, "required_confs": CONFS})
-    repeat(
-        vesting.fund,
-        VESTING_ADDRESSES + ["0x0000000000000000000000000000000000000000"] * 9,
-        [1000e18] + [0] * 9,
-        {"from": deployer, "required_confs": CONFS},
-    )
+    # config
+    lix.approve(distributor, 6000000, {"from": deployer, "required_confs": CONFS})
+    distributor.set_initial_params(6000000, {"from": deployer, "required_confs": CONFS})
+    gauge_controller.add_type(b"Liquidity", {"from": deployer, "required_confs": CONFS})
+    gauge_controller.change_type_weight(0, 10 ** 18, {"from": deployer, "required_confs": CONFS})
+    gauge_controller.add_gauge(vault_gauge, 0, 10 ** 18, {"from": deployer, "required_confs": CONFS})
