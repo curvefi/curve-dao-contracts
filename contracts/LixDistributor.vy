@@ -7,7 +7,7 @@
 
 from vyper.interfaces import ERC20
 
-interface LiquidityGauge:
+interface VaultGauge:
     # Presumably, other gauges will provide the same interfaces
     def integrate_fraction(addr: address) -> uint256: view
     def user_checkpoint(addr: address) -> bool: nonpayable
@@ -34,7 +34,7 @@ YEAR: constant(uint256) = 86400 * 365
 
 # Supply parameters
 RATE_REDUCTION_TIME: constant(uint256) = YEAR
-RATE_REDUCTION_COEFFICIENT: constant(uint256) = 2 # half every epoch
+RATE_REDUCTION_COEFFICIENT: constant(uint256) = 2 #1298701298701298700 # (1 / .77) * 10 ** 18
 DISTRIBUTION_DELAY: constant(uint256) = 86400
 initial_rate: public(uint256) # not public needed
 
@@ -205,8 +205,8 @@ def _distribute_for(gauge_addr: address, _for: address):
     assert GaugeController(self.controller).gauge_types(gauge_addr) >= 0  # dev: gauge is not added
     assert _for != ZERO_ADDRESS  # dev: zero address
 
-    LiquidityGauge(gauge_addr).user_checkpoint(_for)
-    total_dist: uint256 = LiquidityGauge(gauge_addr).integrate_fraction(_for) # TODO: write some tests to make sure the gauges are doing the correct thing here
+    VaultGauge(gauge_addr).user_checkpoint(_for)
+    total_dist: uint256 = VaultGauge(gauge_addr).integrate_fraction(_for) # TODO: write some tests to make sure the gauges are doing the correct thing here
     to_dist: uint256 = total_dist - self.distributed[_for][gauge_addr]
 
     if to_dist != 0:
@@ -223,7 +223,7 @@ def _distribute_for(gauge_addr: address, _for: address):
 def distribute(gauge_addr: address):
     """
     @notice Distribute everything which belongs to `msg.sender` and send to them
-    @param gauge_addr `LiquidityGauge` address to get mintable amount from
+    @param gauge_addr `VaultGauge` address to get mintable amount from
     """
     self._distribute_for(gauge_addr, msg.sender)
 
@@ -233,7 +233,7 @@ def distribute(gauge_addr: address):
 def dist_many(gauge_addrs: address[8]):
     """
     @notice Distribute everything which belongs to `msg.sender` across multiple gauges
-    @param gauge_addrs List of `LiquidityGauge` addresses
+    @param gauge_addrs List of `VaultGauge` addresses
     """
     for i in range(8):
         if gauge_addrs[i] == ZERO_ADDRESS:

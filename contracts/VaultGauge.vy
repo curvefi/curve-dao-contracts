@@ -194,7 +194,6 @@ def _checkpoint(addr: address):
     new_rate: uint256 = rate
     prev_future_epoch: uint256 = self.future_epoch_time
     if prev_future_epoch >= _period_time:
-        # TODO: figure out how we want to update the distribution rate here
         self.distribution_rate = new_rate
 
         _dist: address = self.distributor

@@ -6,14 +6,14 @@ WEEK = 86400 * 7
 
 
 @pytest.fixture(scope="module")
-def distributor(accounts, chain, fee_distributor, voting_escrow, token):
-    distributor = fee_distributor()
+def fee_distributor(accounts, chain, fee_distributor, voting_escrow, token):
+    fee_distributor = fee_distributor()
 
     for i in range(10):
         token.approve(voting_escrow, 2 ** 256 - 1, {"from": accounts[i]})
         token.transfer(accounts[i], 10 ** 21, {"from": accounts[0]})
 
-    yield distributor
+    yield fee_distributor
 
 
 @given(
@@ -23,7 +23,7 @@ def distributor(accounts, chain, fee_distributor, voting_escrow, token):
 )
 @settings(max_examples=10)
 def test_checkpoint_total_supply(
-    accounts, chain, distributor, voting_escrow, st_amount, st_locktime, st_sleep
+    accounts, chain, fee_distributor, voting_escrow, st_amount, st_locktime, st_sleep
 ):
     final_lock = 0
     for i in range(10):
@@ -42,6 +42,6 @@ def test_checkpoint_total_supply(
         # Max: 42 weeks
         # doing checkpoint 3 times is enough
         for i in range(3):
-            distributor.checkpoint_total_supply({"from": accounts[0]})
+            fee_distributor.checkpoint_total_supply({"from": accounts[0]})
 
-        assert distributor.ve_supply(week_epoch) == voting_escrow.totalSupplyAt(week_block)
+        assert fee_distributor.ve_supply(week_epoch) == voting_escrow.totalSupplyAt(week_block)
