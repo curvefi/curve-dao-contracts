@@ -105,6 +105,5 @@ def test_relative_weight_write(accounts, chain, gauge_controller, three_gauges, 
     # Fill weights and check that nothing has changed
     t = chain.time()
     for gauge, w, gauge_type in zip(three_gauges, GAUGE_WEIGHTS, [0, 0, 1]):
-        gauge_controller.gauge_relative_weight_write(gauge, t)
-        relative_weight = gauge_controller.gauge_relative_weight(gauge, t)
+        relative_weight = gauge_controller.gauge_relative_weight_write(gauge, t).return_value
         assert relative_weight == 10 ** 18 * w * TYPE_WEIGHTS[gauge_type] / total_weight

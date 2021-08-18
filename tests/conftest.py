@@ -79,8 +79,8 @@ def receiver(accounts):
 
 
 @pytest.fixture(scope="module")
-def token(LIX, accounts):
-    yield LIX.deploy("Lixir Token", "LIX", 18, 10000000, {"from": accounts[0]})
+def token(ERC20, accounts):
+    yield ERC20.deploy("Lixir Token", "LIX", 18, 10000000, {"from": accounts[0]})
 
 
 @pytest.fixture(scope="module")
@@ -152,9 +152,7 @@ def distributor(LixDistributor, accounts, gauge_controller, token):
 
 @pytest.fixture(scope="module")
 def vault_gauge(VaultGauge, alice, mock_lp_token, distributor):
-    meme = VaultGauge.deploy(mock_lp_token, distributor, alice, {"from": alice})
-    print('asdfasdf', meme)
-    yield meme
+    yield VaultGauge.deploy(mock_lp_token, distributor, alice, {"from": alice})
 
 # @pytest.fixture(scope="module")
 # def rewards_only_gauge(RewardsOnlyGauge, alice, mock_lp_token):

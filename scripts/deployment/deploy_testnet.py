@@ -100,5 +100,5 @@ def main():
     lix.approve(distributor, 6000000, {"from": deployer, "required_confs": CONFS})
     distributor.set_initial_params(6000000, {"from": deployer, "required_confs": CONFS})
     gauge_controller.add_type(b"Liquidity", {"from": deployer, "required_confs": CONFS})
-    gauge_controller.change_type_weight(0, 10 ** 18, {"from": deployer, "required_confs": CONFS})
+    gauge_controller.change_type_weight(0, 10 ** 18, {"from": deployer, "required_confs": CONFS}) # we only need one type and can weight it as 1.
     gauge_controller.add_gauge(vault_gauge, 0, 10 ** 18, {"from": deployer, "required_confs": CONFS})
