@@ -153,10 +153,7 @@ def distributor(LixDistributor, accounts, gauge_controller, token):
 
 @pytest.fixture(scope="module")
 def vault_gauge(VaultGauge, alice, lixir_vault, distributor, accounts, chain):
-    gauge = VaultGauge.deploy(lixir_vault, distributor, alice, {"from": alice})
-    lixir_vault.deposit(10**9, 10**9, 0, 0, accounts[0], chain.time() + 10**18, {"from": accounts[0]})
-    lixir_vault.approve(gauge, 2 ** 256 - 1, {"from": accounts[0]})
-    yield gauge
+    yield VaultGauge.deploy(lixir_vault, distributor, alice, {"from": alice})
 
 # @pytest.fixture(scope="module")
 # def rewards_only_gauge(RewardsOnlyGauge, alice, mock_lp_token):
@@ -307,9 +304,10 @@ def registry(LixirRegistry, accounts):
 
 
 @pytest.fixture(scope="module")
-def lixir_vault(LixirVault, registry, coin_a, coin_b, accounts):
+def lixir_vault(LixirVault, registry, coin_a, coin_b, accounts, chain):
     vault = LixirVault.deploy(registry, {"from": accounts[0]})
     vault.initialize("Test Vault Token", "LVT", coin_a, coin_b, accounts[0], accounts[0], accounts[0])
+    vault.deposit(10**18 / 2, 10**18 /2, 0, 0, accounts[0], chain.time() + 10**18, {"from": accounts[0]})
     yield vault
 
 

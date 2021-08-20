@@ -3785,7 +3785,7 @@ contract LixirVault is
     )
   {
     _mintPoolTokens(recipient, amount0Desired+amount1Desired);
-    return (0, 0, 0);
+    return (amount0Desired+amount1Desired, amount0Desired, amount1Desired);
     // DepositPositionData memory mainData;
     // DepositPositionData memory rangeData;
     // uint256 total0;
