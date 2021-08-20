@@ -4,12 +4,14 @@ import pytest
 
 
 @pytest.fixture(scope="module", autouse=True)
-def setup(accounts, gauge_controller, distributor, vault_gauge, token, mock_lp_token):
+def setup(accounts, gauge_controller, distributor, vault_gauge, token, lixir_vault, chain):
     gauge_controller.add_type(b"Liquidity", 10 ** 10, {"from": accounts[0]})
     gauge_controller.add_gauge(vault_gauge, 0, 0, {"from": accounts[0]})
-
-    mock_lp_token.approve(vault_gauge, 2 ** 256 - 1, {"from": accounts[0]})
-    vault_gauge.deposit(10 ** 18, {"from": accounts[0]})
+    
+    lixir_vault.deposit(10**18 / 2, 10**18 /2, 0, 0, accounts[0], chain.time() + 10**18, {"from": accounts[0]})
+    lixir_vault.approve(vault_gauge, 2 ** 256 - 1, {"from": accounts[0]})
+    vault_gauge.deposit(10**18, {"from": accounts[0]})
+    assert vault_gauge.balanceOf(accounts[0]) == 10**18
 
 
 def test_sender_balance_decreases(accounts, vault_gauge):

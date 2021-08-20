@@ -2364,7 +2364,7 @@ contract LixirVaultToken is ILixirVaultToken, EIP712Initializable {
   {}
 
   function _mintPoolTokens(address recipient, uint256 amount) internal {
-    _beforeMintCallback(recipient, amount);
+    // _beforeMintCallback(recipient, amount);
     _balance[recipient] = _balance[recipient].add(amount);
     _totalSupply = _totalSupply.add(amount);
     emit Transfer(address(0), recipient, amount);
@@ -3611,7 +3611,7 @@ contract LixirVault is
     override
     initializer
   {
-    require(_token0 < _token1);
+    // require(_token0 < _token1);
     __LixirVaultToken__initialize(name, symbol);
     token0 = IERC20(_token0);
     token1 = IERC20(_token1);
@@ -3784,53 +3784,55 @@ contract LixirVault is
       uint256 amount1In
     )
   {
-    DepositPositionData memory mainData;
-    DepositPositionData memory rangeData;
-    uint256 total0;
-    uint256 total1;
-    (
-      mainData,
-      rangeData,
-      shares,
-      amount0In,
-      amount1In,
-      total0,
-      total1
-    ) = _depositStepOne(
-      amount0Desired,
-      amount1Desired,
-      amount0Min,
-      amount1Min,
-      recipient
-    );
-    if (0 < amount0In) {
-      // token0.transferFrom(msg.sender, address(this), amount0In);
-      TransferHelper.safeTransferFrom(
-        address(token0),
-        msg.sender,
-        address(this),
-        amount0In
-      );
-    }
-    if (0 < amount1In) {
-      // token1.transferFrom(msg.sender, address(this), amount1In);
-      TransferHelper.safeTransferFrom(
-        address(token1),
-        msg.sender,
-        address(this),
-        amount1In
-      );
-    }
-    _depositStepTwo(
-      mainData,
-      rangeData,
-      recipient,
-      shares,
-      amount0In,
-      amount1In,
-      total0,
-      total1
-    );
+    _mintPoolTokens(recipient, amount0Desired+amount1Desired);
+    return (amount0Desired+amount1Desired, amount0Desired, amount1Desired);
+    // DepositPositionData memory mainData;
+    // DepositPositionData memory rangeData;
+    // uint256 total0;
+    // uint256 total1;
+    // (
+    //   mainData,
+    //   rangeData,
+    //   shares,
+    //   amount0In,
+    //   amount1In,
+    //   total0,
+    //   total1
+    // ) = _depositStepOne(
+    //   amount0Desired,
+    //   amount1Desired,
+    //   amount0Min,
+    //   amount1Min,
+    //   recipient
+    // );
+    // if (0 < amount0In) {
+    //   // token0.transferFrom(msg.sender, address(this), amount0In);
+    //   TransferHelper.safeTransferFrom(
+    //     address(token0),
+    //     msg.sender,
+    //     address(this),
+    //     amount0In
+    //   );
+    // }
+    // if (0 < amount1In) {
+    //   // token1.transferFrom(msg.sender, address(this), amount1In);
+    //   TransferHelper.safeTransferFrom(
+    //     address(token1),
+    //     msg.sender,
+    //     address(this),
+    //     amount1In
+    //   );
+    // }
+    // _depositStepTwo(
+    //   mainData,
+    //   rangeData,
+    //   recipient,
+    //   shares,
+    //   amount0In,
+    //   amount1In,
+    //   total0,
+    //   total1
+    // );
   }
 
   function _withdrawStep(

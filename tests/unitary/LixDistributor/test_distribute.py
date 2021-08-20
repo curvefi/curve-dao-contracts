@@ -12,7 +12,7 @@ WEEK = 7 * 86400
 
 
 @pytest.fixture(scope="module", autouse=True)
-def distributor_setup(accounts, mock_lp_token, gauge_controller, three_gauges, chain):
+def distributor_setup(accounts, lixir_vault, gauge_controller, three_gauges, chain, coin_a, coin_b):
     # ensure the tests all begin at the start of the epoch week
     chain.mine(timestamp=(chain.time() / WEEK + 1) * WEEK)
 
@@ -26,13 +26,15 @@ def distributor_setup(accounts, mock_lp_token, gauge_controller, three_gauges, c
             three_gauges[i], GAUGE_TYPES[i], GAUGE_WEIGHTS[i], {"from": accounts[0]}
         )
 
+
     # transfer tokens
     for acct in accounts[1:4]:
-        mock_lp_token.transfer(acct, 1e18, {"from": accounts[0]})
+        lixir_vault.deposit(10**18 / 2, 10**18 /2, 0, 0, acct, chain.time() + 10**18, {"from": acct})
+
 
     # approve gauges
     for gauge, acct in itertools.product(three_gauges, accounts[1:4]):
-        mock_lp_token.approve(gauge, 1e18, {"from": acct})
+        lixir_vault.approve(gauge, 1e18, {"from": acct})
 
 
 def test_distribute(accounts, chain, three_gauges, distributor, token):
