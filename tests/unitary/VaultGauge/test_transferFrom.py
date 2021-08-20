@@ -8,6 +8,10 @@ def setup(accounts, gauge_controller, distributor, vault_gauge, token, lixir_vau
     gauge_controller.add_type(b"Liquidity", 10 ** 10, {"from": accounts[0]})
     gauge_controller.add_gauge(vault_gauge, 0, 0, {"from": accounts[0]})
 
+    lixir_vault.approve(vault_gauge, 10*18, {"from": accounts[0]})
+    vault_gauge.deposit(10**18, {"from": accounts[0]})
+    assert vault_gauge.balanceOf(accounts[0]) == 10**18
+
 
 def test_sender_balance_decreases(accounts, vault_gauge):
     sender_balance = vault_gauge.balanceOf(accounts[0])
