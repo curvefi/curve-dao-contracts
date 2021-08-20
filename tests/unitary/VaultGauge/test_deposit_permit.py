@@ -27,7 +27,7 @@ def test_permit(local, lixir_vault, vault_gauge, web3, chain):
 
         owner=local.address,
         spender=vault_gauge.address,
-        value=10**6,
+        value=10**18,
         nonce=0,
         deadline=deadline
     )
