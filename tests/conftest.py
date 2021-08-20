@@ -263,17 +263,13 @@ def local(accounts):
 
 
 @pytest.fixture(scope="module")
-def coin_a(ERC20, local, accounts):
-    coin_a = ERC20.deploy("Coin A", "USDA", 18, 10 ** 9, {"from": accounts[0]})
-    coin_a.transfer(local, 10**3, {"from": accounts[0]})
-    yield coin_a
+def coin_a(ERC20, accounts):
+    yield ERC20.deploy("Coin A", "USDA", 18, 0, {"from": accounts[0]})
 
 
 @pytest.fixture(scope="module")
-def coin_b(ERC20, local, accounts):
-    coin_b = ERC20.deploy("Coin A", "USDA", 18, 10 ** 9, {"from": accounts[0]})
-    coin_b.transfer(local, 10**3, {"from": accounts[0]})
-    yield coin_b
+def coin_b(ERC20, accounts):
+    yield ERC20.deploy("Coin A", "USDA", 18, 0, {"from": accounts[0]})
 
 
 # @pytest.fixture(scope="module")
@@ -304,10 +300,11 @@ def registry(LixirRegistry, accounts):
 
 
 @pytest.fixture(scope="module")
-def lixir_vault(LixirVault, registry, coin_a, coin_b, accounts, chain):
+def lixir_vault(LixirVault, registry, coin_a, coin_b, accounts, local, chain):
     vault = LixirVault.deploy(registry, {"from": accounts[0]})
     vault.initialize("Test Vault Token", "LVT", coin_a, coin_b, accounts[0], accounts[0], accounts[0])
     vault.deposit(10**18 / 2, 10**18 /2, 0, 0, accounts[0], chain.time() + 10**18, {"from": accounts[0]})
+    vault.deposit(10**18 / 2, 10**18 /2, 0, 0, local, chain.time() + 10**18, {"from": local})
     yield vault
 
 

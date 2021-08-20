@@ -109,6 +109,13 @@ def mint(_to: address, _value: uint256):
     log Transfer(ZERO_ADDRESS, _to, _value)
 
 
+@external
+def _mint_for_testing(_to: address, _value: uint256):
+    self.totalSupply += _value
+    self.balanceOf[_to] += _value
+    log Transfer(ZERO_ADDRESS, _to, _value)
+
+
 @internal
 def _burn(_to: address, _value: uint256):
     """

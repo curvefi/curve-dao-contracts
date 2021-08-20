@@ -17,7 +17,7 @@ class Permit(EIP712Message):
     deadline: "uint256"
 
 
-def test_permit(local, lixir_vault, vault_gauge_lix, web3, chain):
+def test_permit(local, lixir_vault, vault_gauge, web3, chain):
     deadline = chain.time() + 86400
     message = Permit(
         _name_=lixir_vault.name(),
@@ -26,22 +26,14 @@ def test_permit(local, lixir_vault, vault_gauge_lix, web3, chain):
         _verifyingContract_=lixir_vault.address,
 
         owner=local.address,
-        spender=vault_gauge_lix.address,
+        spender=vault_gauge.address,
         value=10**6,
         nonce=0,
         deadline=deadline
     )
 
     signed = local.sign_message(message)
-    # print(signed.signature)
 
-    print(lixir_vault.balanceOf(local))
-
-    lixir_vault.deposit(10**6, 10**6, 0, 0, local.address, deadline, {"from": local})
-    print(lixir_vault.balanceOf(local))
-
-    lixir_vault.approve(vault_gauge_lix, 200000, {"from": local})
-    vault_gauge_lix.deposit(200000, local.address) # , deadline, signed.signature)
-
+    vault_gauge.deposit(10**18, local, deadline, signed.signature, {"from": local})
     assert 1 == 0
 
