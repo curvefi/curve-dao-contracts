@@ -303,8 +303,6 @@ def registry(LixirRegistry, accounts):
 def lixir_vault(LixirVault, registry, coin_a, coin_b, accounts, local, chain):
     vault = LixirVault.deploy(registry, {"from": accounts[0]})
     vault.initialize("Test Vault Token", "LVT", coin_a, coin_b, accounts[0], accounts[0], accounts[0])
-    vault.deposit(10**18 / 2, 10**18 /2, 0, 0, accounts[0], chain.time() + 10**18, {"from": accounts[0]})
-    vault.deposit(10**18 / 2, 10**18 /2, 0, 0, local, chain.time() + 10**18, {"from": local})
     yield vault
 
 

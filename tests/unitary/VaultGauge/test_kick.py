@@ -10,7 +10,8 @@ def test_kick(chain, accounts, vault_gauge, voting_escrow, token, lixir_vault):
 
     token.approve(voting_escrow, MAX_UINT256, {"from": alice})
     voting_escrow.create_lock(10 ** 20, chain.time() + 4 * WEEK, {"from": alice})
-
+    
+    lixir_vault.deposit(10**18 / 2, 10**18 /2, 0, 0, accounts[0], chain.time() + 10**18, {"from": accounts[0]})
     lixir_vault.approve(vault_gauge.address, MAX_UINT256, {"from": alice})
     vault_gauge.deposit(10 ** 18, {"from": alice})
 

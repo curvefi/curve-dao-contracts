@@ -3,7 +3,8 @@ import pytest
 
 
 @pytest.fixture(scope="module", autouse=True)
-def deposit_setup(accounts, vault_gauge, lixir_vault):
+def deposit_setup(accounts, vault_gauge, lixir_vault, chain):
+    lixir_vault.deposit(10**18 / 2, 10**18 /2, 0, 0, accounts[0], chain.time() + 10**18, {"from": accounts[0]})
     lixir_vault.approve(vault_gauge, 2 ** 256 - 1, {"from": accounts[0]})
 
 
