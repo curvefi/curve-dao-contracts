@@ -3611,7 +3611,7 @@ contract LixirVault is
     override
     initializer
   {
-    require(_token0 < _token1);
+    // require(_token0 < _token1);
     __LixirVaultToken__initialize(name, symbol);
     token0 = IERC20(_token0);
     token1 = IERC20(_token1);

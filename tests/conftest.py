@@ -152,8 +152,11 @@ def distributor(LixDistributor, accounts, gauge_controller, token):
 
 
 @pytest.fixture(scope="module")
-def vault_gauge(VaultGauge, alice, mock_lp_token, distributor):
-    yield VaultGauge.deploy(mock_lp_token, distributor, alice, {"from": alice})
+def vault_gauge(VaultGauge, alice, lixir_vault, distributor, accounts, chain):
+    gauge = VaultGauge.deploy(lixir_vault, distributor, alice, {"from": alice})
+    lixir_vault.deposit(10**9, 10**9, 0, 0, accounts[0], chain.time() + 10**18, {"from": accounts[0]})
+    lixir_vault.approve(gauge, 2 ** 256 - 1, {"from": accounts[0]})
+    yield gauge
 
 # @pytest.fixture(scope="module")
 # def rewards_only_gauge(RewardsOnlyGauge, alice, mock_lp_token):
@@ -193,10 +196,10 @@ def vault_gauge(VaultGauge, alice, mock_lp_token, distributor):
 
 
 @pytest.fixture(scope="module")
-def three_gauges(VaultGauge, accounts, mock_lp_token, distributor):
+def three_gauges(VaultGauge, accounts, lixir_vault, distributor):
     contracts = [
         VaultGauge.deploy(
-            mock_lp_token,
+            lixir_vault,
             distributor,
             accounts[0],
             {"from": accounts[0]}
@@ -263,13 +266,17 @@ def local(accounts):
 
 
 @pytest.fixture(scope="module")
-def coin_a(ERC20, local):
-    yield ERC20.deploy("Coin A", "USDA", 18, 10 ** 9, {"from": local})
+def coin_a(ERC20, local, accounts):
+    coin_a = ERC20.deploy("Coin A", "USDA", 18, 10 ** 9, {"from": accounts[0]})
+    coin_a.transfer(local, 10**3, {"from": accounts[0]})
+    yield coin_a
 
 
 @pytest.fixture(scope="module")
-def coin_b(ERC20, local):
-    yield ERC20.deploy("Coin B", "USDB", 18, 10 ** 9, {"from": local})
+def coin_b(ERC20, local, accounts):
+    coin_b = ERC20.deploy("Coin A", "USDA", 18, 10 ** 9, {"from": accounts[0]})
+    coin_b.transfer(local, 10**3, {"from": accounts[0]})
+    yield coin_b
 
 
 # @pytest.fixture(scope="module")
@@ -277,9 +284,9 @@ def coin_b(ERC20, local):
 #     yield ERC20("Coin C", "mWBTC", 8)
 
 
-@pytest.fixture(scope="module")
-def mock_lp_token(ERC20LP, accounts):  # Not using the actual Curve contract
-    yield ERC20LP.deploy("Curve LP token", "usdCrv", 18, 10 ** 9, {"from": accounts[0]})
+# @pytest.fixture(scope="module")
+# def mock_lp_token(ERC20LP, accounts):  # Not using the actual Curve contract
+#     yield ERC20LP.deploy("Curve LP token", "usdCrv", 18, 10 ** 9, {"from": accounts[0]})
 
 
 # @pytest.fixture(scope="module")

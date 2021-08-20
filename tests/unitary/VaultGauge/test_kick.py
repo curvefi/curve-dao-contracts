@@ -4,14 +4,14 @@ MAX_UINT256 = 2 ** 256 - 1
 WEEK = 7 * 86400
 
 
-def test_kick(chain, accounts, vault_gauge, voting_escrow, token, mock_lp_token):
+def test_kick(chain, accounts, vault_gauge, voting_escrow, token, lixir_vault):
     alice, bob = accounts[:2]
     chain.sleep(2 * WEEK + 5)
 
     token.approve(voting_escrow, MAX_UINT256, {"from": alice})
     voting_escrow.create_lock(10 ** 20, chain.time() + 4 * WEEK, {"from": alice})
 
-    mock_lp_token.approve(vault_gauge.address, MAX_UINT256, {"from": alice})
+    lixir_vault.approve(vault_gauge.address, MAX_UINT256, {"from": alice})
     vault_gauge.deposit(10 ** 21, {"from": alice})
 
     assert vault_gauge.working_balances(alice) == 10 ** 21
