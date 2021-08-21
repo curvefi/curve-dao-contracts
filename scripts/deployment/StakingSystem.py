@@ -1,4 +1,5 @@
 from collections import namedtuple
+import json
 from brownie import (
     GaugeController,
     VaultGauge,
@@ -11,6 +12,7 @@ from brownie import (
     chain,
     web3,
 )
+from brownie.network.contract import Contract
 from .helpers.chain_to_name import chain_to_name
 
 StakingDependenciesConfig = namedtuple("LixirDependenciesConfig", ["lix", "registry"])
@@ -35,16 +37,20 @@ class StakingSystem:
 
     def __init__(
         self,
+        create_key,
         staking_accounts: StakingAccounts,
         dep_config: StakingDependenciesConfig,
         system_config: StakingSystemConfig
     ):
+        assert create_key == self.__create_key
+
         # dep_config
         # idk if we need self.registry = dep_config.registry
         self.lix = dep_config.lix
         
         # accounts
-        self.admin = staking_accounts.admin
+        self.fee_dist_admin = staking_accounts.fee_dist_admin
+        self.gauge_admin = staking_accounts.gauge_admin
         self.emergency_return = staking_accounts.emergency_return
         self.deployer = staking_accounts.deployer
 
@@ -100,3 +106,17 @@ def get_accounts():
     deployer = deploy_config["deployer"]
     return StakingAccounts(fee_dist_admin, gauge_admin, emergency_return, deployer)
 
+def connect_dependencies(dep_config: StakingDependenciesConfig):
+    lix_address, registry_address = dep_config
+    f = open("build/contracts/ERC20.json", "r")
+    lix_artifact = json.loads(f.read())
+    f.close()
+    lix = Contract.from_abi("LIX", lix_address, lix_artifact["abi"])
+    
+    f = open("build/contracts/LixirRegistry.json", "r")
+    registry_artifact = json.loads(f.read())
+    f.close()
+    registry = Contract.from_abi(
+        "LixirRegistry", registry_address, registry_artifact["abi"]
+    )
+    return StakingDependenciesConfig(lix, registry)
