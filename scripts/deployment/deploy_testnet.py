@@ -46,7 +46,7 @@ def repeat(f, *args):
         except KeyError:
             continue
 
-def deploy_erc20s_and_vault(deployer):
+def brownie_deploy_setup(deployer):
     coin_a = ERC20.deploy("Coin A", "USDA", 18, 10 ** 9 * 10 ** 18, {"from": deployer, "required_confs": CONFS})
     coin_b = ERC20.deploy("Coin B", "USDB", 18, 10 ** 9 * 10 ** 18, {"from": deployer, "required_confs": CONFS})
 
@@ -67,14 +67,12 @@ def deploy_erc20s_and_vault(deployer):
             {"from": deployer, "required_confs": CONFS},
         )
 
-
-
     return [vault, coin_a, coin_b]
 
 
 def main():
     deployer = accounts.at(DEPLOYER, force=True)
-    [lp_token, coin_a, coin_b] = deploy_erc20s_and_vault(deployer)
+    [lp_token, coin_a, coin_b] = brownie_deploy_setup(deployer)
     lix = ERC20.deploy("Lixir Token", "LIX", 18, 10000000, {"from": deployer, "required_confs": CONFS})
     
 
