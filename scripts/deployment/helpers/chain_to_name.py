@@ -1,0 +1,1 @@
+chain_to_name = {5: "goerli", 1337: "ganache", 4: 'rinkeby', 1: 'mainnet'}

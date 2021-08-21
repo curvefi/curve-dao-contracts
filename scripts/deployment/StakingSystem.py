@@ -11,6 +11,7 @@ from brownie import (
     chain,
     web3,
 )
+from .helpers.chain_to_name import chain_to_name
 
 StakingDependenciesConfig = namedtuple("LixirDependenciesConfig", ["lix", "registry"])
 
@@ -28,8 +29,6 @@ StakingAccounts = namedtuple(
     "LixirAccounts",
     ["fee_dist_admin", "gauge_admin", "emergency_return", "deployer"],
 )
-
-chain_to_name = {5: "goerli", 1337: "ganache", 4: 'rinkeby', 1: 'mainnet'}
 
 class StakingSystem:
     __create_key = object()
