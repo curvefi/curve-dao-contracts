@@ -3,6 +3,7 @@ from brownie import chain
 from ..StakingSystem import StakingSystem, get_accounts, connect_dependencies, StakingDependenciesConfig
 import json
 
+
 def deploy_system():
     network = chain_to_name[chain.id]
     staking_accounts = get_accounts()

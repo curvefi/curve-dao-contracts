@@ -6,11 +6,6 @@ from brownie import (
 )
 
 
-
-def load_dependencies():
-    print('TODO')
-
-
 def deploy_dependencies():
     accounts = get_accounts()
     registry = LixirRegistry.deploy(accounts[0], accounts[0], accounts[0], accounts[0], {"from": accounts.deployer})

@@ -1,2 +1,0 @@
-def deploy_gauge():
-    
