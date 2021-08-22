@@ -61,8 +61,8 @@ class StakingSystem:
         self.lix_distributor = system_config.lix_distributor
 
 
-    def deploy_gauge(self, lp_token, ):
-        return VaultGauge.deploy(lp_token, self.lix_distributor, self.gauge_admin, {"from": self.deployer, "gas": 2000000})
+    def deploy_gauge(self, lp_token):
+        return VaultGauge.deploy(lp_token, self.lix_distributor, self.gauge_admin, {"from": self.deployer, "gas": 5000000})
 
 
     @classmethod
@@ -88,6 +88,44 @@ class StakingSystem:
 
         return StakingSystem(cls.__create_key, staking_accounts, dep_config, staking_config)
 
+
+    @classmethod
+    def connect(
+        cls,
+        lixir_accounts: StakingAccounts,
+        dep_config: StakingDependenciesConfig,
+        config: StakingSystemConfig,
+    ):
+        return StakingSystem(
+            cls.__create_key,
+            lixir_accounts,
+            dep_config,
+            StakingSystemConfig(
+                escrow=VotingEscrow.at(config.escrow),
+                fee_distributor=FeeDistributor.at(config.fee_distributor),
+                gauge_controller=GaugeController.at(config.gauge_controller),
+                lix_distributor=LixDistributor.at(config.lix_distributor),
+            ),
+        )
+
+
+    @classmethod
+    def load(
+        cls, staking_accounts: StakingAccounts, dependencies_file_path, system_file_path
+    ):
+        deps = load_dependencies(dependencies_file_path)
+        f = open(system_file_path, "r")
+        system_config = json.loads(f.read())
+        f.close()
+        system = StakingSystemConfig(
+            escrow=system_config["escrow"],
+            fee_distributor=system_config["fee_distributor"],
+            gauge_controller=system_config["gauge_controller"],
+            lix_distributor=system_config["lix_distributor"],
+        )
+        return cls.connect(staking_accounts, deps, system)
+
+
 def get_accounts():
     network = chain_to_name[chain.id]
     if network == "ganache":
@@ -106,6 +144,7 @@ def get_accounts():
     deployer = deploy_config["deployer"]
     return StakingAccounts(fee_dist_admin, gauge_admin, emergency_return, deployer)
 
+
 def connect_dependencies(dep_config: StakingDependenciesConfig):
     lix_address, registry_address = dep_config
     f = open("build/contracts/ERC20.json", "r")
@@ -120,3 +159,12 @@ def connect_dependencies(dep_config: StakingDependenciesConfig):
         "LixirRegistry", registry_address, registry_artifact["abi"]
     )
     return StakingDependenciesConfig(lix, registry)
+
+
+def load_dependencies(file_path):
+    f = open(file_path, "r")
+    dependencies = json.loads(f.read())
+    f.close()
+    return connect_dependencies(
+        StakingDependenciesConfig(dependencies["lix"], dependencies["registry"])
+    )
