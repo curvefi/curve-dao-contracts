@@ -1,0 +1,6 @@
+{
+  "fee_dist_admin": "0x1C430A9347136381e4Ec63aAf4751bbaEC79549c",
+  "gauge_admin": "0x257f16f68434e10623ADA3998082252e54878B9F",
+  "emergency_return": "0x105d6a3b381399A438A1c5D11e239c6eF62F01F6",
+  "deployer": "0xBa92fBeAe51d062D12f92AaD6c38e9eE121FB610"
+}

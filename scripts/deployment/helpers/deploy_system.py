@@ -18,12 +18,12 @@ def deploy_system():
     f.write(
         json.dumps(
             {
-                "lix": lix.address,
-                "registry": registry.address,
-                "escrow": staking_system.escrow.address,
-                "fee_distributor": staking_system.fee_distributor.address,
-                "gauge_controller": staking_system.gauge_controller.address,
-                "lix_distributor": staking_system.lix_distributor.address,
+                "lix": str(lix),
+                "registry": str(registry),
+                "escrow": str(staking_system.escrow),
+                "fee_distributor": str(staking_system.fee_distributor),
+                "gauge_controller": str(staking_system.gauge_controller),
+                "lix_distributor": str(staking_system.lix_distributor),
             },
             indent=2,
         )

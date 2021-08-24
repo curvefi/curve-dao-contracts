@@ -1,0 +1,10 @@
+{
+  "USDT-USDC": {
+    "vault": "0xad0f31ead94803be02b48d153a803b871ef91f94",
+    "gauge": "0x4C122de217973FcEC7e66f610E58a54258cAadfc"
+  },
+  "LIX-WETH": {
+    "vault": "0x3968f7dcc019a7940600e70ae5b5ad685c871ed3",
+    "gauge": "0x1458DeAA175760e7C1C4452A00DEe50Bdf4EEfB4"
+  }
+}

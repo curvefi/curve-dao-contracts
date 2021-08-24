@@ -13,6 +13,7 @@ from brownie import (
     web3,
 )
 from brownie.network.contract import Contract
+from brownie.network import accounts
 from .helpers.chain_to_name import chain_to_name
 
 StakingDependenciesConfig = namedtuple("LixirDependenciesConfig", ["lix", "registry"])
@@ -67,8 +68,7 @@ class StakingSystem:
 
     @classmethod
     def deploy(cls, lix, registry, staking_accounts: StakingAccounts):
-        deployer, fee_dist_admin, emergency_return, gauge_admin = staking_accounts
-
+        fee_dist_admin, gauge_admin, emergency_return, deployer = staking_accounts
         escrow = VotingEscrow.deploy(lix, "Vote-escrowed LIX", "veLIX", "veLIX_0.99", {"from": deployer})
         fee_distributor = FeeDistributor.deploy(escrow, 0, lix, fee_dist_admin, emergency_return, {"from": deployer})
         gauge_controller = GaugeController.deploy(lix, escrow, {"from": deployer})
@@ -85,7 +85,7 @@ class StakingSystem:
             gauge_controller,
             lix_distributor
         )
-
+        
         return StakingSystem(cls.__create_key, staking_accounts, dep_config, staking_config)
 
 
@@ -141,7 +141,7 @@ def get_accounts():
     fee_dist_admin = deploy_config["fee_dist_admin"]
     gauge_admin = deploy_config["gauge_admin"]
     emergency_return = deploy_config["emergency_return"]
-    deployer = deploy_config["deployer"]
+    deployer = accounts.load(f"lix-{network}")
     return StakingAccounts(fee_dist_admin, gauge_admin, emergency_return, deployer)
 
 
@@ -152,12 +152,16 @@ def connect_dependencies(dep_config: StakingDependenciesConfig):
     f.close()
     lix = Contract.from_abi("LIX", lix_address, lix_artifact["abi"])
     
-    f = open("build/contracts/LixirRegistry.json", "r")
-    registry_artifact = json.loads(f.read())
-    f.close()
-    registry = Contract.from_abi(
-        "LixirRegistry", registry_address, registry_artifact["abi"]
-    )
+    if registry_address:
+        f = open("build/contracts/LixirRegistry.json", "r")
+        registry_artifact = json.loads(f.read())
+        f.close()
+        registry = Contract.from_abi(
+            "LixirRegistry", registry_address, registry_artifact["abi"]
+        )
+    else:
+        registry = None
+    
     return StakingDependenciesConfig(lix, registry)
 
 
