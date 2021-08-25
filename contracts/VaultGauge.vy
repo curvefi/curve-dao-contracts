@@ -140,6 +140,7 @@ def __init__(_lp_token: address, _distributor: address, _admin: address):
     self.distribution_rate = Distributor(_distributor).rate()
     self.future_epoch_time = Distributor(_distributor).future_epoch_time_write()
 
+
 @view
 @external
 def decimals() -> uint256:
@@ -175,7 +176,7 @@ def _update_liquidity_limit(addr: address, l: uint256, L: uint256):
     if voting_total > 0:
         lim += L * voting_balance / voting_total * (100 - TOKENLESS_PRODUCTION) / 100
 
-    lim = min(l, lim) # TODO shouldn't this be max for boosts?
+    lim = min(l, lim)
     old_bal: uint256 = self.working_balances[addr]
     self.working_balances[addr] = lim
     _working_supply: uint256 = self.working_supply + lim - old_bal
@@ -193,7 +194,7 @@ def _checkpoint(addr: address):
     _period: int128 = self.period
     _period_time: uint256 = self.period_timestamp[_period]
     _integrate_inv_supply: uint256 = self.integrate_inv_supply[_period]
-    rate: uint256 = self.distribution_rate # rate: uint256 = self.inflation_rate
+    rate: uint256 = self.distribution_rate
     new_rate: uint256 = rate
     prev_future_epoch: uint256 = self.future_epoch_time
     if prev_future_epoch >= _period_time:

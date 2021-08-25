@@ -31,9 +31,9 @@ def test_mining_epoch(accounts, chain, distributor):
 
 
 def test_available_to_distribute(accounts, chain, distributor):
-    assert distributor.avaialable_to_distribute() == 0
+    assert distributor.avaialable_to_distribute() == 6000000 * 10 ** 18
 
     chain.sleep(86401)
     distributor.update_mining_parameters({"from": accounts[0]})
 
-    assert distributor.avaialable_to_distribute() > 0 # 1_303_030_303 * 10 ** 18
+    assert distributor.avaialable_to_distribute() > 6000000 * 10 ** 18

@@ -103,7 +103,7 @@ def gauge_controller(GaugeController, accounts, token, voting_escrow):
 
 @pytest.fixture(scope="module")
 def distributor(LixDistributor, accounts, gauge_controller, token):
-    dist = LixDistributor.deploy(token, gauge_controller, {"from": accounts[0]})
+    dist = LixDistributor.deploy(token, gauge_controller, accounts[0], {"from": accounts[0]})
     token.approve(dist, 6000000 * 10 ** 18, {"from":accounts[0]})
     dist.set_initial_params(6000000 * 10 ** 18, {"from": accounts[0]})
     yield dist

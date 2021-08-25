@@ -67,6 +67,7 @@ def test_avaialable_to_distribute(chain, web3, distributor):
 
     epoch_0_start = distributor.start_epoch_time_write().return_value
     rate = distributor.rate()
-    
-    expected = (chain[-1].timestamp - epoch_0_start) * rate
+    initial_supply = 6000000 * 10 ** 18
+
+    expected = initial_supply + (chain[-1].timestamp - epoch_0_start) * rate
     assert distributor.avaialable_to_distribute() == expected

@@ -33,10 +33,11 @@ YEAR: constant(uint256) = 86400 * 365
 
 
 # Supply parameters
+INITIAL_RATE: constant(uint256) = 759720 * 10 ** 18 / YEAR # .32LIX/block
 RATE_REDUCTION_TIME: constant(uint256) = YEAR
-RATE_REDUCTION_COEFFICIENT: constant(uint256) = 2 #1298701298701298700 # (1 / .77) * 10 ** 18
+RATE_REDUCTION_COEFFICIENT: constant(uint256) = 1153846153846153846 # 15/13 * 10 ** 18
+RATE_DENOMINATOR: constant(uint256) = 10 ** 18
 DISTRIBUTION_DELAY: constant(uint256) = 86400
-initial_rate: public(uint256) # not public needed
 
 # Supply variables
 initial_supply: public(uint256)
@@ -50,26 +51,29 @@ start_epoch_supply: uint256
 # LIX
 lix: public(address)
 controller: public(address)
+admin: public(address)
 
 # user -> gauge -> value
 distributed: public(HashMap[address, HashMap[address, uint256]])
 
 @external
-def __init__(_lix: address, _controller: address):
+def __init__(_lix: address, _controller: address, _admin: address):
     self.lix = _lix
     self.controller = _controller
+    self.admin = _admin
 
 
 @external
 def set_initial_params(_init_supply: uint256):
+    assert(self.admin == msg.sender) # dev: only admin can initialize
     assert(ERC20(self.lix).transferFrom(msg.sender, self, _init_supply)) # dev: token failed to transfer
     self.initial_supply = _init_supply
 
     self.start_epoch_time = block.timestamp + DISTRIBUTION_DELAY - RATE_REDUCTION_TIME
     self.mining_epoch = -1
-    self.initial_rate = _init_supply / RATE_REDUCTION_COEFFICIENT / RATE_REDUCTION_TIME
     self.rate = 0
-    self.start_epoch_supply = 0
+    self.start_epoch_supply = _init_supply
+
 
 @internal
 def _update_mining_parameters():
@@ -85,12 +89,11 @@ def _update_mining_parameters():
     self.mining_epoch += 1
 
     if _rate == 0:
-        _rate = self.initial_rate
+        _rate = INITIAL_RATE
     else:
-        # TODO test this code. Might be something up with like ofsetting and messing things up
-        _start_epoch_supply += _rate / RATE_REDUCTION_COEFFICIENT * RATE_REDUCTION_TIME
+        _start_epoch_supply += _rate * RATE_REDUCTION_TIME
         self.start_epoch_supply = _start_epoch_supply
-        _rate = _rate / RATE_REDUCTION_COEFFICIENT
+        _rate = _rate * RATE_DENOMINATOR / RATE_REDUCTION_COEFFICIENT
 
     self.rate = _rate
 
@@ -153,8 +156,6 @@ def future_epoch_time_write() -> uint256:
         return _start_epoch_time + RATE_REDUCTION_TIME
 
 
-# TODO : check this function works properly...I think since I changed around the
-# way that mining params get updated, it could fuck up calculations
 @external
 @view
 def distributable_in_timeframe(start: uint256, end: uint256) -> uint256:
@@ -172,7 +173,7 @@ def distributable_in_timeframe(start: uint256, end: uint256) -> uint256:
     # Special case if end is in future (not yet minted) epoch
     if end > current_epoch_time + RATE_REDUCTION_TIME:
         current_epoch_time += RATE_REDUCTION_TIME
-        current_rate = current_rate / RATE_REDUCTION_COEFFICIENT
+        current_rate = current_rate * RATE_DENOMINATOR / RATE_REDUCTION_COEFFICIENT
 
     assert end <= current_epoch_time + RATE_REDUCTION_TIME  # dev: too far in future
 
@@ -194,8 +195,8 @@ def distributable_in_timeframe(start: uint256, end: uint256) -> uint256:
                 break
 
         current_epoch_time -= RATE_REDUCTION_TIME
-        current_rate = current_rate / RATE_REDUCTION_COEFFICIENT # TODO this line might mess up, test it later
-        assert current_rate <= self.initial_rate  # This should never happen
+        current_rate = current_rate * RATE_REDUCTION_COEFFICIENT / RATE_DENOMINATOR  # double-division with rounding made rate a bit less => good
+        assert current_rate <= INITIAL_RATE  # This should never happen
 
     return to_mint
 
@@ -239,4 +240,30 @@ def dist_many(gauge_addrs: address[8]):
         if gauge_addrs[i] == ZERO_ADDRESS:
             break
         self._distribute_for(gauge_addrs[i], msg.sender)
+
+
+@external
+def recover_balance() -> bool:
+    """
+    @notice Recover ERC20 tokens from this contract
+    @dev Tokens are sent to the admin address.
+    @return bool success
+    """
+    assert msg.sender == self.admin
+    _lix: address = self.lix
+
+    amount: uint256 = ERC20(_lix).balanceOf(self)
+    response: Bytes[32] = raw_call(
+        _lix,
+        concat(
+            method_id("transfer(address,uint256)"),
+            convert(self.admin, bytes32),
+            convert(amount, bytes32),
+        ),
+        max_outsize=32,
+    )
+    if len(response) != 0:
+        assert convert(response, bool)
+
+    return True
 
