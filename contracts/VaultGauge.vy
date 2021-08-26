@@ -301,7 +301,7 @@ def kick(addr: address):
 
 @external
 @nonreentrant('lock')
-def deposit(_value: uint256, _addr: address, args: Bytes[128]):
+def deposit(_value: uint256, _addr: address = msg.sender, args: Bytes[128] = b""):
     """
     @notice Deposit `_value` LP tokens
     @param _value Number of tokens to deposit
