@@ -32,9 +32,6 @@ interface VotingEscrow:
 interface ERC20Extended:
     def symbol() -> String[26]: view
 
-interface LixirVault:
-    def permit(owner: address, spender: address, _value: uint256, deadline: uint256, v: uint256, r: bytes32, s: bytes32): nonpayable
-
 
 event Deposit:
     provider: indexed(address)
@@ -304,7 +301,7 @@ def kick(addr: address):
 
 @external
 @nonreentrant('lock')
-def deposit(_value: uint256, _addr: address = msg.sender, _deadline: uint256 = 0, sig: Bytes[65] = b"0x0"):
+def deposit(_value: uint256, _addr: address, args: Bytes[128]):
     """
     @notice Deposit `_value` LP tokens
     @param _value Number of tokens to deposit
@@ -323,11 +320,18 @@ def deposit(_value: uint256, _addr: address = msg.sender, _deadline: uint256 = 0
 
         self._update_liquidity_limit(_addr, new_balance, total_supply)
 
-        if _deadline > block.timestamp:
-            r: bytes32 = convert(slice(sig, 0, 32), bytes32)
-            s: bytes32 = convert(slice(sig, 32, 32), bytes32)
-            v: uint256 = convert(slice(sig, 64, 1), uint256)
-            LixirVault(self.lp_token).permit(msg.sender, self, _value, _deadline, v, r, s)
+        if len(args) != 0:
+            raw_call(
+                self.lp_token,
+                concat(
+                    method_id("permit(address,address,uint256,uint256,uint8,bytes32,bytes32)"),
+                    convert(_addr, bytes32),
+                    convert(self, bytes32),
+                    convert(_value, bytes32),
+                    args
+                )
+            )
+
 
         ERC20(self.lp_token).transferFrom(msg.sender, self, _value)
 

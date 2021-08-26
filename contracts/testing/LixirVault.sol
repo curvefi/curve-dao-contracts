@@ -2311,7 +2311,7 @@ contract LixirVaultToken is ILixirVaultToken, EIP712Initializable {
     bytes32 s
   ) public virtual override {
     // solhint-disable-next-line not-rely-on-time
-    LixirErrors.require_PERMIT_EXPIRED(block.timestamp <= deadline);
+    require(block.timestamp <= deadline, "deadline expired");
 
     uint256 nonce = _nonces[owner];
 
@@ -2323,7 +2323,7 @@ contract LixirVaultToken is ILixirVaultToken, EIP712Initializable {
     bytes32 hash = _hashTypedDataV4(structHash);
 
     address signer = ecrecover(hash, v, r, s);
-    LixirErrors.require_INVALID_SIGNATURE(signer != address(0));
+    require(signer != address(0), "sig failed to recover");
 
     _nonces[owner] = nonce + 1;
     _setAllowance(owner, spender, value);
@@ -2403,6 +2403,18 @@ contract LixirVaultToken is ILixirVaultToken, EIP712Initializable {
   ) internal {
     _allowance[owner][spender] = amount;
     emit Approval(owner, spender, amount);
+  }
+
+  function getChainId() external view returns (uint256 chainId) {
+      // Silence state mutability warning without generating bytecode.
+  // See https://github.com/ethereum/solidity/issues/10090#issuecomment-741789128 and
+  // https://github.com/ethereum/solidity/issues/2691
+  this;
+
+  // solhint-disable-next-line no-inline-assembly
+  assembly {
+    chainId := chainid()
+  }
   }
 }
 
