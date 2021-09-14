@@ -67,7 +67,6 @@ future_admin: public(address)  # Can and will be a smart contract
 is_killed: public(bool)
 
 checkpoint_admin: public(address)
-anyswap_bridge: public(address)
 
 # L2 transaction costs `max_submission_cost + (gas_limit * gas_price)`
 gas_limit: public(uint256)
@@ -78,14 +77,12 @@ max_submission_cost: public(uint256)
 def __init__(
     _minter: address,
     _admin: address,
-    _anyswap_bridge: address,
     _checkpoint_admin: address,
 ):
     """
     @notice Contract constructor
     @param _minter Minter contract address
     @param _admin Admin who can kill the gauge
-    @param _anyswap_bridge Address of the AnySwap bridge where CRV is transferred
     @param _checkpoint_admin Address of the checkpoint admin
     """
 
@@ -95,7 +92,6 @@ def __init__(
     self.admin = _admin
     self.crv_token = crv_token
     self.controller = Minter(_minter).controller()
-    self.anyswap_bridge = _anyswap_bridge
     self.checkpoint_admin = _checkpoint_admin
 
     # because we calculate the rate locally, this gauge cannot
@@ -194,7 +190,7 @@ def checkpoint() -> bool:
                     new_emissions,
                     gas_limit,
                     gas_price,
-                    concat(convert(max_submission_cost, bytes32), b""),
+                    _abi_encode(max_submission_cost, b""),
                     method_id=method_id("outboundTransfer(address,address,uint256,uint256,uint256,bytes)")
                 ),
                 value=gas_price * gas_limit + max_submission_cost
