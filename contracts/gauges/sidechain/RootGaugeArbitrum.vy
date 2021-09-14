@@ -77,13 +77,14 @@ max_submission_cost: public(uint256)
 def __init__(
     _minter: address,
     _admin: address,
-    _checkpoint_admin: address,
+    _gas_limit: uint256,
+    _gas_price: uint256,
+    _max_submission_cost: uint256
 ):
     """
     @notice Contract constructor
     @param _minter Minter contract address
     @param _admin Admin who can kill the gauge
-    @param _checkpoint_admin Address of the checkpoint admin
     """
 
     crv_token: address = Minter(_minter).token()
@@ -92,7 +93,6 @@ def __init__(
     self.admin = _admin
     self.crv_token = crv_token
     self.controller = Minter(_minter).controller()
-    self.checkpoint_admin = _checkpoint_admin
 
     # because we calculate the rate locally, this gauge cannot
     # be used prior to the start of the first emission period
@@ -102,6 +102,10 @@ def __init__(
 
     self.period = block.timestamp / WEEK - 1
     self.start_epoch_time = CRV20(crv_token).start_epoch_time_write()
+
+    self.gas_limit = _gas_limit
+    self.gas_price = _gas_price
+    self.max_submission_cost = _max_submission_cost
 
     ERC20(crv_token).approve(GATEWAY, MAX_UINT256)
 
