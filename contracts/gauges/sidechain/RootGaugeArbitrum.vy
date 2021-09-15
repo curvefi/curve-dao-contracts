@@ -85,6 +85,9 @@ def __init__(
     @notice Contract constructor
     @param _minter Minter contract address
     @param _admin Admin who can kill the gauge
+    @param _gas_limit Gas limit for L2 bridge tx (recommended 1000000)
+    @param _gas_price Gas price for L2 bridge tx (recommended 990000000)
+    @param _max_submission_cost Max submission cost for L2 bridge tx (recommended 10000000000000)
     """
 
     crv_token: address = Minter(_minter).token()
