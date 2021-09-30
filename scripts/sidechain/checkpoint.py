@@ -17,6 +17,12 @@ XDAI = [
     "0x6C09F6727113543Fd061a721da512B7eFCDD0267",  # x3pool
 ]
 
+ARBITRUM = [
+    "0xFf17560d746F85674FE7629cE986E949602EF948",  # 2pool
+    "0x9F86c5142369B1Ffd4223E5A2F2005FC66807894",  # ren
+    "0x9044E12fB1732f88ed0c93cfa5E9bB9bD2990cE5",  # tricrypto
+]
+
 
 def main():
     acct = accounts.load("curve-deploy")
@@ -24,6 +30,14 @@ def main():
     # xdai/polygon bridge takes longer so we do it first
     for addr in POLYGON + XDAI:
         Contract(addr).checkpoint({"from": acct, "priority_fee": "2 gwei", "required_confs": 0})
+
+    # for abritrum, the L1 transaction must include ETH to pay for the L2 transaction
+    for addr in ARBITRUM:
+        gauge = Contract(addr)
+        value = gauge.get_total_bridge_cost()
+        gauge.checkpoint(
+            {"from": acct, "priority_fee": "2 gwei", "required_confs": 0, "value": value}
+        )
 
     # for fantom we must call the gauge through the checkpoint
     # contract in order for the bridge to recognize the transaction
@@ -47,12 +61,20 @@ def polygon():
     for addr in POLYGON:
         streamer = Contract(addr)
         token = streamer.reward_tokens(0)
-        streamer.notify_reward_amount(token, {"from": acct, "gas_price": "30 gwei"})
+        streamer.notify_reward_amount(token, {"from": acct, "gas_price": "50 gwei"})
 
 
 def xdai():
     acct = accounts.load("curve-deploy")
     for addr in XDAI:
+        streamer = Contract(addr)
+        token = streamer.reward_tokens(0)
+        streamer.notify_reward_amount(token, {"from": acct})
+
+
+def arbitrum():
+    acct = accounts.load("curve-deploy")
+    for addr in ARBITRUM:
         streamer = Contract(addr)
         token = streamer.reward_tokens(0)
         streamer.notify_reward_amount(token, {"from": acct})
