@@ -65,11 +65,12 @@ is_killed: public(bool)
 
 
 @external
-def __init__(_minter: address, _admin: address):
+def __init__(_minter: address, _admin: address, _checkpoint_admin: address):
     """
     @notice Contract constructor
     @param _minter Minter contract address
     @param _admin Admin who can kill the gauge
+    @param _checkpoint_admin Address of the checkpoint admin
     """
 
     crv_token: address = Minter(_minter).token()
@@ -78,6 +79,7 @@ def __init__(_minter: address, _admin: address):
     self.admin = _admin
     self.crv_token = crv_token
     self.controller = Minter(_minter).controller()
+    self.checkpoint_admin = _checkpoint_admin
 
     # because we calculate the rate locally, this gauge cannot
     # be used prior to the start of the first emission period
