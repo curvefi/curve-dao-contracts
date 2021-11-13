@@ -107,11 +107,7 @@ def _set_burner(_coin: address, _burner: address):
             # revoke approval on previous burner
             response: Bytes[32] = raw_call(
                 _coin,
-                concat(
-                    method_id("approve(address,uint256)"),
-                    convert(old_burner, bytes32),
-                    convert(0, bytes32),
-                ),
+                _abi_encode(old_burner, EMPTY_BYTES32, method_id=method_id("approve(address,uint256)")),
                 max_outsize=32,
             )
             if len(response) != 0:
@@ -121,11 +117,7 @@ def _set_burner(_coin: address, _burner: address):
             # infinite approval for current burner
             response: Bytes[32] = raw_call(
                 _coin,
-                concat(
-                    method_id("approve(address,uint256)"),
-                    convert(_burner, bytes32),
-                    convert(MAX_UINT256, bytes32),
-                ),
+                _abi_encode(_burner, MAX_UINT256, method_id=method_id("approve(address,uint256)")),
                 max_outsize=32,
             )
             if len(response) != 0:
@@ -450,11 +442,7 @@ def bridge(_coin: address):
     if amount > 0:
         response: Bytes[32] = raw_call(
             _coin,
-            concat(
-                method_id("transfer(address,uint256)"),
-                convert(bridging_contract, bytes32),
-                convert(amount, bytes32),
-            ),
+            _abi_encode(bridging_contract, amount, method_id=method_id("transfer(address,uint256)")),
             max_outsize=32,
         )
 
