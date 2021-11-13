@@ -27,11 +27,10 @@ future_admin: public(address)
 
 
 @external
-def __init__(_admin: address, _receiver: address):
+def __init__(_admin: address):
     """
     @param _admin Contract owner. Should be the `PoolProxy` contract
                   used to handle fee burns.
-    @param _receiver Receiver address on the root chain.
     """
     self.admin = _admin
 
