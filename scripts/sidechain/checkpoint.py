@@ -1,4 +1,6 @@
-from brownie import Contract, accounts, history
+import datetime
+
+from brownie import Contract, accounts, history, network
 
 # this script is used for bridging CRV rewards to sidechains
 # it should be run once per week, just after the start of the epoch week
@@ -105,3 +107,22 @@ def avax():
         streamer = Contract(addr)
         token = streamer.reward_tokens(0)
         streamer.notify_reward_amount(token, {"from": acct})
+
+
+def get_checkpoint_delta():
+    networks = {f"{k.lower()}-main": v for k, v in globals().items() if k.isupper()}
+
+    for network_id, streamers in networks.items():
+        # connect to appropritate network
+        now = datetime.datetime.now()
+        network.disconnect()
+        network.connect(network_id)
+        print(network_id)
+        # reward token 0 is CRV
+        crv_token = Contract(streamers[-1]).reward_tokens(0)
+        for streamer_addr in streamers:
+            streamer = Contract(streamer_addr)
+            period_finish = datetime.datetime.fromtimestamp(
+                int(streamer.reward_data(crv_token)["period_finish"])
+            )
+            print(streamer.address, "dt:", str(period_finish - now))
