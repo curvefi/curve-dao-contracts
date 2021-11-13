@@ -1,4 +1,4 @@
-# @version 0.2.12
+# @version 0.3.0
 """
 @title amToken Burner
 @notice Converts amToken lending coins to USDC and transfers to `ChildBurner`
@@ -77,11 +77,7 @@ def burn(_coin: address) -> bool:
         if not self.is_approved[registry_swap][underlying]:
             response: Bytes[32] = raw_call(
                 underlying,
-                concat(
-                    method_id("approve(address,uint256)"),
-                    convert(registry_swap, bytes32),
-                    convert(MAX_UINT256, bytes32),
-                ),
+                _abi_encode(registry_swap, MAX_UINT256, method_id=method_id("approve(address,uint256)")),
                 max_outsize=32,
             )
             if len(response) != 0:
@@ -107,17 +103,19 @@ def recover_balance(_coin: address) -> bool:
     amount: uint256 = ERC20(_coin).balanceOf(self)
     response: Bytes[32] = raw_call(
         _coin,
-        concat(
-            method_id("transfer(address,uint256)"),
-            convert(msg.sender, bytes32),
-            convert(amount, bytes32),
-        ),
+        _abi_encode(msg.sender, amount, method_id=method_id("transfer(address,uint256)")),
         max_outsize=32,
     )
     if len(response) != 0:
         assert convert(response, bool)
 
     return True
+
+
+@external
+def set_receiver(_receiver: address):
+    assert msg.sender == self.owner
+    self.receiver = _receiver
 
 
 @external

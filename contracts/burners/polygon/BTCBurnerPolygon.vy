@@ -1,4 +1,4 @@
-# @version 0.2.15
+# @version 0.3.0
 """
 @title BTC Burner
 @notice Converts BTC lending coins to USDC and transfers to `ChildBurner`
@@ -66,11 +66,7 @@ def _approve(_coin: address, _spender: address):
     if not self.is_approved[_spender][_coin]:
         response: Bytes[32] = raw_call(
             _coin,
-            concat(
-                method_id("approve(address,uint256)"),
-                convert(_spender, bytes32),
-                convert(MAX_UINT256, bytes32),
-            ),
+            _abi_encode(_spender, MAX_UINT256, method_id=method_id("approve(address,uint256)")),
             max_outsize=32,
         )
         if len(response) != 0:
@@ -129,17 +125,19 @@ def recover_balance(_coin: address) -> bool:
     amount: uint256 = ERC20(_coin).balanceOf(self)
     response: Bytes[32] = raw_call(
         _coin,
-        concat(
-            method_id("transfer(address,uint256)"),
-            convert(msg.sender, bytes32),
-            convert(amount, bytes32),
-        ),
+        _abi_encode(msg.sender, amount, method_id=method_id("transfer(address,uint256)")),
         max_outsize=32,
     )
     if len(response) != 0:
         assert convert(response, bool)
 
     return True
+
+
+@external
+def set_receiver(_receiver: address):
+    assert msg.sender == self.owner
+    self.receiver = _receiver
 
 
 @external
