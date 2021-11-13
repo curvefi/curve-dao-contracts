@@ -64,8 +64,9 @@ future_admin: public(address)
 
 
 @external
-def __init__(_admin: address):
+def __init__(_admin: address, _bridging_contract: address):
     self.admin = _admin
+    self.bridging_contract = _bridging_contract
 
 
 @payable
@@ -411,6 +412,13 @@ def set_admin_fee_receiver(_pool: address, _receiver: address):
     assert msg.sender == self.admin, "Access denied"
 
     Curve(_pool).set_admin_fee_receiver(_receiver)
+
+
+@external
+def set_bridging_contract(_bridging_contract: address):
+    assert msg.sender == self.admin, "Access denied"
+
+    self.bridging_contract = _bridging_contract
 
 
 @external
