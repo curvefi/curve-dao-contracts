@@ -1,34 +1,37 @@
-# @version 0.2.12
+# @version 0.3.0
 """
 @title Crypto LP Burner
-@notice Converts Crypto Pool LP tokens to a single asset and forwards to another burner
+@notice Withdraws Crypto LP tokens
 """
 
 from vyper.interfaces import ERC20
 
 
 interface AddressProvider:
-    def get_registry() -> address: view
+    def get_address(i: uint256) -> address: view
 
 interface Registry:
     def get_pool_from_lp_token(_lp_token: address) -> address: view
     def get_coins(_pool: address) -> address[8]: view
 
-interface StableSwap:
-    def remove_liquidity_one_coin(_amount: uint256, i: uint256, _min_amount: uint256): nonpayable
+interface CryptoSwap2:
+    def remove_liquidity(_amount: uint256, _min_amounts: uint256[2]): nonpayable
+
+interface CryptoSwap3:
+    def remove_liquidity(_amount: uint256, _min_amounts: uint256[3]): nonpayable
+
+interface CryptoSwap4:
+    def remove_liquidity(_amount: uint256, _min_amounts: uint256[4]): nonpayable
+
+interface Weth:
+    def withdraw(_amount: uint256): nonpayable
 
 
-struct SwapData:
-    pool: address
-    coin: address
-    burner: address
-    i: uint256
-
-
+WETH: constant(address) = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2
 ADDRESS_PROVIDER: constant(address) = 0x0000000022D53366457F9d5E68Ec105046FC4383
 
 
-swap_data: public(HashMap[address, SwapData])
+receiver: public(address)
 recovery: public(address)
 is_killed: public(bool)
 
@@ -39,7 +42,7 @@ future_emergency_owner: public(address)
 
 
 @external
-def __init__(_recovery: address, _owner: address, _emergency_owner: address):
+def __init__(_receiver: address, _recovery: address, _owner: address, _emergency_owner: address):
     """
     @notice Contract constructor
     @dev Unlike other burners, this contract may transfer tokens to
@@ -53,10 +56,17 @@ def __init__(_recovery: address, _owner: address, _emergency_owner: address):
     @param _emergency_owner Emergency owner address. Can kill the contract
                             and recover tokens.
     """
+    self.receiver = _receiver
     self.recovery = _recovery
     self.owner = _owner
     self.emergency_owner = _emergency_owner
 
+
+@payable
+@external
+def __default__():
+    # required to receive ether
+    pass
 
 
 @external
@@ -77,53 +87,38 @@ def burn(_coin: address) -> bool:
     amount = ERC20(_coin).balanceOf(self)
 
     if amount != 0:
-        # remove liquidity and pass to the next burner
-        swap_data: SwapData = self.swap_data[_coin]
-        StableSwap(swap_data.pool).remove_liquidity_one_coin(amount, swap_data.i, 0)
+        registry: address = AddressProvider(ADDRESS_PROVIDER).get_address(5)
+        swap: address = Registry(registry).get_pool_from_lp_token(_coin)
 
-        amount = ERC20(swap_data.coin).balanceOf(self)
-        response: Bytes[32] = raw_call(
-            swap_data.coin,
-            concat(
-                method_id("transfer(address,uint256)"),
-                convert(swap_data.burner, bytes32),
-                convert(amount, bytes32),
-            ),
-            max_outsize=32,
-        )
-        if len(response) != 0:
-            assert convert(response, bool)
+        coins: address[8] = Registry(registry).get_coins(swap)
+        # remove liquidity and pass to the next burner
+
+        if coins[3] == ZERO_ADDRESS:
+            CryptoSwap2(swap).remove_liquidity(amount, [0, 0])
+        elif coins[4] == ZERO_ADDRESS:
+            CryptoSwap3(swap).remove_liquidity(amount, [0, 0, 0])
+        else:
+            CryptoSwap4(swap).remove_liquidity(amount, [0, 0, 0, 0])
+
+        receiver: address = self.receiver
+        for coin in coins:
+            if coin == ZERO_ADDRESS:
+                break
+
+            amount = ERC20(coin).balanceOf(self)
+            if coin == WETH:
+                Weth(WETH).withdraw(amount)
+                raw_call(receiver, b"", value=self.balance)
+            else:
+                response: Bytes[32] = raw_call(
+                    coin,
+                    _abi_encode(receiver, amount, method_id=method_id("transfer(address,uint256)")),
+                    max_outsize=32,
+                )
+                if len(response) != 0:
+                    assert convert(response, bool)
 
     return True
-
-
-@external
-def set_swap_data(_lp_token: address, _coin: address, _burner: address) -> bool:
-    """
-    @notice Set conversion and transfer data for `_lp_token`
-    @param _lp_token LP token address
-    @param _coin Underlying coin to remove liquidity in
-    @param _burner Burner to transfer `_coin` to
-    @return bool success
-    """
-    assert msg.sender in [self.owner, self.emergency_owner]  # dev: only owner
-
-    # find `i` for `_coin` within the pool
-    registry: address = AddressProvider(ADDRESS_PROVIDER).get_registry()
-    pool: address = Registry(registry).get_pool_from_lp_token(_lp_token)
-    coins: address[8] = Registry(registry).get_coins(pool)
-    for i in range(8):
-        if coins[i] == ZERO_ADDRESS:
-            raise
-        if coins[i] == _coin:
-            self.swap_data[_lp_token] = SwapData({
-                pool: pool,
-                coin: _coin,
-                burner: _burner,
-                i: i
-            })
-            return True
-    raise
 
 
 @external
@@ -139,11 +134,7 @@ def recover_balance(_coin: address) -> bool:
     amount: uint256 = ERC20(_coin).balanceOf(self)
     response: Bytes[32] = raw_call(
         _coin,
-        concat(
-            method_id("transfer(address,uint256)"),
-            convert(self.recovery, bytes32),
-            convert(amount, bytes32),
-        ),
+        _abi_encode(self.recovery, amount, method_id=method_id("transfer(address,uint256)")),
         max_outsize=32,
     )
     if len(response) != 0:
