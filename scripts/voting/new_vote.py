@@ -3,7 +3,6 @@ import warnings
 
 import requests
 from brownie import Contract, accounts, chain
-from brownie.convert import to_address
 
 warnings.filterwarnings("ignore")
 
@@ -53,7 +52,7 @@ SENDER = accounts.at("0x9B44473E223f8a3c047AD86f387B80402536B029", force=True)
 # GaugeController - 0x2F50D538606Fa9EDD2B11E2446BEb18C9D5846bB
 # GaugeProxy - 0x519AFB566c05E00cfB9af73496D00217A630e4D5
 # PoolProxy - 0xeCb456EA5365865EbAb8a2661B0c503410e9B347
-
+# FactoryPoolProxy - 0x2EF1Bc1961d3209E5743C91cd3fBfa0d08656bC3
 
 ACTIONS = [
     # ("target", "fn_name", *args),
@@ -96,7 +95,13 @@ def make_vote(sender=SENDER):
         tx = Contract(TARGET["forwarder"]).forward(evm_script, {"from": sender})
     else:
         print(f"Target: {aragon.address}\nEVM script: {evm_script}")
-        tx = aragon.newVote(evm_script, f"ipfs:{ipfs_hash}", False, False, {"from": sender})
+        tx = aragon.newVote(
+            evm_script,
+            f"ipfs:{ipfs_hash}",
+            False,
+            False,
+            {"from": sender, "priority_fee": "2 gwei"},
+        )
 
     vote_id = tx.events["StartVote"]["voteId"]
 
@@ -105,31 +110,16 @@ def make_vote(sender=SENDER):
 
 
 def simulate():
-    # fetch the top holders so we can pass the vote
-    data = requests.get(
-        f"https://api.ethplorer.io/getTopTokenHolders/{TARGET['token']}",
-        params={"apiKey": "freekey", "limit": 50},
-    ).json()["holders"][::-1]
-
-    # create a list of top holders that will be sufficient to make quorum
-    holders = []
-    weight = 0
-    while weight < TARGET["quorum"] + 5:
-        row = data.pop()
-        holders.append(to_address(row["address"]))
-        weight += row["share"]
-
     # make the new vote
-    top_holder = holders[0]
-    vote_id = make_vote(top_holder)
+    convex = "0x989aeb4d175e16225e39e87d0d97a3360524ad80"
+    vote_id = make_vote(convex)
 
     # vote
     aragon = Contract(TARGET["voting"])
-    for acct in holders:
-        aragon.vote(vote_id, True, False, {"from": acct})
+    aragon.vote(vote_id, True, False, {"from": convex})
 
     # sleep for a week so it has time to pass
     chain.sleep(86400 * 7)
 
     # moment of truth - execute the vote!
-    aragon.executeVote(vote_id, {"from": top_holder})
+    aragon.executeVote(vote_id, {"from": accounts[0]})
