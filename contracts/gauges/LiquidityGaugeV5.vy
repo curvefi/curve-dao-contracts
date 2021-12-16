@@ -37,6 +37,17 @@ interface VotingEscrowBoost:
 interface ERC20Extended:
     def symbol() -> String[26]: view
 
+interface ERC2612:
+    def permit(
+        _owner: address,
+        _spender: address,
+        _value: uint256,
+        _deadline: uint256,
+        _v: uint8,
+        _r: bytes32,
+        _s: bytes32
+    ): nonpayable
+
 interface ERC1271:
     def isValidSignature(_hash: bytes32, _signature: Bytes[65]) -> bytes32: view
 
@@ -341,6 +352,36 @@ def _checkpoint(addr: address):
     self.integrate_checkpoint_of[addr] = block.timestamp
 
 
+@internal
+def _deposit(_value: uint256, _addr: address, _claim_rewards: bool, _user: address):
+    """
+    @notice Deposit `_value` LP tokens
+    @dev Depositting also claims pending reward tokens
+    @param _value Number of tokens to deposit
+    @param _addr Address to deposit for
+    """
+
+    self._checkpoint(_addr)
+
+    if _value != 0:
+        is_rewards: bool = self.reward_count != 0
+        total_supply: uint256 = self.totalSupply
+        if is_rewards:
+            self._checkpoint_rewards(_addr, total_supply, _claim_rewards, ZERO_ADDRESS)
+
+        total_supply += _value
+        new_balance: uint256 = self.balanceOf[_addr] + _value
+        self.balanceOf[_addr] = new_balance
+        self.totalSupply = total_supply
+
+        self._update_liquidity_limit(_addr, new_balance, total_supply)
+
+        ERC20(self.lp_token).transferFrom(_user, self, _value)
+
+    log Deposit(_addr, _value)
+    log Transfer(ZERO_ADDRESS, _addr, _value)
+
+
 @external
 def user_checkpoint(addr: address) -> bool:
     """
@@ -453,26 +494,28 @@ def deposit(_value: uint256, _addr: address = msg.sender, _claim_rewards: bool =
     @param _value Number of tokens to deposit
     @param _addr Address to deposit for
     """
+    self._deposit(_value, _addr, _claim_rewards, msg.sender)
 
-    self._checkpoint(_addr)
 
-    if _value != 0:
-        is_rewards: bool = self.reward_count != 0
-        total_supply: uint256 = self.totalSupply
-        if is_rewards:
-            self._checkpoint_rewards(_addr, total_supply, _claim_rewards, ZERO_ADDRESS)
-
-        total_supply += _value
-        new_balance: uint256 = self.balanceOf[_addr] + _value
-        self.balanceOf[_addr] = new_balance
-        self.totalSupply = total_supply
-
-        self._update_liquidity_limit(_addr, new_balance, total_supply)
-
-        ERC20(self.lp_token).transferFrom(msg.sender, self, _value)
-
-    log Deposit(_addr, _value)
-    log Transfer(ZERO_ADDRESS, _addr, _value)
+@external
+@nonreentrant('lock')
+def deposit_with_permit(
+    _value: uint256,
+    _deadline: uint256,
+    _v: uint8,
+    _r: bytes32,
+    _s: bytes32,
+    _addr: address = msg.sender,
+    _claim_rewards: bool = False
+):
+    """
+    @notice Deposit `_value` LP tokens with permit
+    @dev Depositting also claims pending reward tokens
+    @param _value Number of tokens to deposit
+    @param _addr Address to deposit for
+    """
+    ERC2612(self.lp_token).permit(msg.sender, self, _value, _deadline, _v, _r, _s)
+    self._deposit(_value, _addr, _claim_rewards, msg.sender)
 
 
 @external
