@@ -1,10 +1,9 @@
-# @version 0.2.16
+# @version 0.3.1
 """
-@title Liquidity Gauge v4
+@title Liquidity Gauge v5
 @author Curve Finance
 @license MIT
 """
-
 from vyper.interfaces import ERC20
 
 implements: ERC20
@@ -80,6 +79,8 @@ struct Reward:
     integral: uint256
 
 
+VERSION: constant(String[8]) = "v5.0.0"
+
 MAX_REWARDS: constant(uint256) = 8
 TOKENLESS_PRODUCTION: constant(uint256) = 40
 WEEK: constant(uint256) = 604800
@@ -91,15 +92,16 @@ GAUGE_CONTROLLER: constant(address) = 0x2F50D538606Fa9EDD2B11E2446BEb18C9D5846bB
 VEBOOST_PROXY: constant(address) = 0x8E0c00ed546602fD9927DF742bbAbF726D5B0d16
 
 
+NAME: immutable(String[64])
+SYMBOL: immutable(String[32])
+
+
 lp_token: public(address)
 future_epoch_time: public(uint256)
 
 balanceOf: public(HashMap[address, uint256])
 totalSupply: public(uint256)
 allowance: public(HashMap[address, HashMap[address, uint256]])
-
-name: public(String[64])
-symbol: public(String[32])
 
 working_balances: public(HashMap[address, uint256])
 working_supply: public(uint256)
@@ -153,24 +155,14 @@ def __init__(_lp_token: address, _admin: address):
     self.lp_token = _lp_token
     self.admin = _admin
 
-    symbol: String[26] = ERC20Extended(_lp_token).symbol()
-    self.name = concat("Curve.fi ", symbol, " Gauge Deposit")
-    self.symbol = concat(symbol, "-gauge")
-
     self.period_timestamp[0] = block.timestamp
     self.inflation_rate = CRV20(CRV).rate()
     self.future_epoch_time = CRV20(CRV).future_epoch_time_write()
 
+    lp_symbol: String[26] = ERC20Extended(_lp_token).symbol()
 
-@view
-@external
-def decimals() -> uint256:
-    """
-    @notice Get the number of decimals for this token
-    @dev Implemented as a view method to reduce gas costs
-    @return uint256 decimal places
-    """
-    return 18
+    NAME = concat("Curve.fi ", lp_symbol, " Gauge Deposit")
+    SYMBOL = concat(lp_symbol, "-gauge")
 
 
 @view
@@ -703,3 +695,41 @@ def accept_transfer_ownership():
 
     self.admin = _admin
     log ApplyOwnership(_admin)
+
+
+@view
+@external
+def name() -> String[64]:
+    """
+    @notice Get the name for this gauge token
+    """
+    return NAME
+
+
+@view
+@external
+def symbol() -> String[32]:
+    """
+    @notice Get the symbol for this gauge token
+    """
+    return SYMBOL
+
+
+@view
+@external
+def decimals() -> uint256:
+    """
+    @notice Get the number of decimals for this token
+    @dev Implemented as a view method to reduce gas costs
+    @return uint256 decimal places
+    """
+    return 18
+
+
+@view
+@external
+def version() -> String[8]:
+    """
+    @notice Get the version of this gauge
+    """
+    return VERSION
