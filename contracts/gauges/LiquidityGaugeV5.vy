@@ -37,6 +37,9 @@ interface VotingEscrowBoost:
 interface ERC20Extended:
     def symbol() -> String[26]: view
 
+interface ERC1271:
+    def isValidSignature(_hash: bytes32, _signature: Bytes[65]) -> bytes32: view
+
 
 event Deposit:
     provider: indexed(address)
@@ -79,6 +82,10 @@ struct Reward:
     integral: uint256
 
 
+# keccak256("isValidSignature(bytes32,bytes)")[:4] << 224
+ERC1271_MAGIC_VAL: constant(bytes32) = 0x1626ba7e00000000000000000000000000000000000000000000000000000000
+EIP712_TYPEHASH: constant(bytes32) = keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)")
+PERMIT_TYPEHASH: constant(bytes32) = keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)")
 VERSION: constant(String[8]) = "v5.0.0"
 
 MAX_REWARDS: constant(uint256) = 8
@@ -94,7 +101,10 @@ VEBOOST_PROXY: constant(address) = 0x8E0c00ed546602fD9927DF742bbAbF726D5B0d16
 
 NAME: immutable(String[64])
 SYMBOL: immutable(String[32])
+DOMAIN_SEPARATOR: immutable(bytes32)
 
+
+nonces: public(HashMap[address, uint256])
 
 lp_token: public(address)
 future_epoch_time: public(uint256)
@@ -105,24 +115,6 @@ allowance: public(HashMap[address, HashMap[address, uint256]])
 
 working_balances: public(HashMap[address, uint256])
 working_supply: public(uint256)
-
-# The goal is to be able to calculate ∫(rate * balance / totalSupply dt) from 0 till checkpoint
-# All values are kept in units of being multiplied by 1e18
-period: public(int128)
-period_timestamp: public(uint256[100000000000000000000000000000])
-
-# 1e18 * ∫(rate(t) / totalSupply(t) dt) from 0 till checkpoint
-integrate_inv_supply: public(uint256[100000000000000000000000000000])  # bump epoch when rate() changes
-
-# 1e18 * ∫(rate(t) / totalSupply(t) dt) from (last_action) till checkpoint
-integrate_inv_supply_of: public(HashMap[address, uint256])
-integrate_checkpoint_of: public(HashMap[address, uint256])
-
-# ∫(balance * rate(t) / totalSupply(t) dt) from 0 till checkpoint
-# Units: rate * t = already number of coins per address to issue
-integrate_fraction: public(HashMap[address, uint256])
-
-inflation_rate: public(uint256)
 
 # For tracking external rewards
 reward_count: public(uint256)
@@ -143,6 +135,24 @@ admin: public(address)
 future_admin: public(address)
 is_killed: public(bool)
 
+# 1e18 * ∫(rate(t) / totalSupply(t) dt) from (last_action) till checkpoint
+integrate_inv_supply_of: public(HashMap[address, uint256])
+integrate_checkpoint_of: public(HashMap[address, uint256])
+
+# ∫(balance * rate(t) / totalSupply(t) dt) from 0 till checkpoint
+# Units: rate * t = already number of coins per address to issue
+integrate_fraction: public(HashMap[address, uint256])
+
+inflation_rate: public(uint256)
+
+# The goal is to be able to calculate ∫(rate * balance / totalSupply dt) from 0 till checkpoint
+# All values are kept in units of being multiplied by 1e18
+period: public(int128)
+period_timestamp: public(uint256[100000000000000000000000000000])
+
+# 1e18 * ∫(rate(t) / totalSupply(t) dt) from 0 till checkpoint
+integrate_inv_supply: public(uint256[100000000000000000000000000000])  # bump epoch when rate() changes
+
 
 @external
 def __init__(_lp_token: address, _admin: address):
@@ -160,9 +170,13 @@ def __init__(_lp_token: address, _admin: address):
     self.future_epoch_time = CRV20(CRV).future_epoch_time_write()
 
     lp_symbol: String[26] = ERC20Extended(_lp_token).symbol()
+    name: String[64] = concat("Curve.fi ", lp_symbol, " Gauge Deposit")
 
-    NAME = concat("Curve.fi ", lp_symbol, " Gauge Deposit")
+    NAME = name
     SYMBOL = concat(lp_symbol, "-gauge")
+    DOMAIN_SEPARATOR = keccak256(
+        _abi_encode(EIP712_TYPEHASH, keccak256(name), keccak256(VERSION), chain.id, self)
+    )
 
 
 @view
@@ -567,6 +581,56 @@ def approve(_spender : address, _value : uint256) -> bool:
 
 
 @external
+def permit(
+    _owner: address,
+    _spender: address,
+    _value: uint256,
+    _deadline: uint256,
+    _v: uint8,
+    _r: bytes32,
+    _s: bytes32
+) -> bool:
+    """
+    @notice Approves spender by owner's signature to expend owner's tokens.
+        See https://eips.ethereum.org/EIPS/eip-2612.
+    @dev Inspired by https://github.com/yearn/yearn-vaults/blob/main/contracts/Vault.vy#L753-L793
+    @dev Supports smart contract wallets which implement ERC1271
+        https://eips.ethereum.org/EIPS/eip-1271
+    @param _owner The address which is a source of funds and has signed the Permit.
+    @param _spender The address which is allowed to spend the funds.
+    @param _value The amount of tokens to be spent.
+    @param _deadline The timestamp after which the Permit is no longer valid.
+    @param _v The bytes[64] of the valid secp256k1 signature of permit by owner
+    @param _r The bytes[0:32] of the valid secp256k1 signature of permit by owner
+    @param _s The bytes[32:64] of the valid secp256k1 signature of permit by owner
+    @return True, if transaction completes successfully
+    """
+    assert _owner != ZERO_ADDRESS
+    assert block.timestamp <= _deadline
+
+    nonce: uint256 = self.nonces[_owner]
+    digest: bytes32 = keccak256(
+        concat(
+            b"\x19\x01",
+            DOMAIN_SEPARATOR,
+            keccak256(_abi_encode(PERMIT_TYPEHASH, _owner, _spender, _value, nonce, _deadline))
+        )
+    )
+
+    if _owner.is_contract:
+        sig: Bytes[65] = concat(_abi_encode(_r, _s), slice(convert(_v, bytes32), 31, 1))
+        assert ERC1271(_owner).isValidSignature(digest, sig) == ERC1271_MAGIC_VAL
+    else:
+        assert ecrecover(digest, convert(_v, uint256), convert(_r, uint256), convert(_s, uint256)) == _owner
+
+    self.allowance[_owner][_spender] = _value
+    self.nonces[_owner] = nonce + 1
+
+    log Approval(_owner, _spender, _value)
+    return True
+
+
+@external
 def increaseAllowance(_spender: address, _added_value: uint256) -> bool:
     """
     @notice Increase the allowance granted to `_spender` by the caller
@@ -733,3 +797,12 @@ def version() -> String[8]:
     @notice Get the version of this gauge
     """
     return VERSION
+
+
+@view
+@external
+def DOMAIN_SEPARATOR() -> bytes32:
+    """
+    @notice Domain separator for this contract
+    """
+    return DOMAIN_SEPARATOR
