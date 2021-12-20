@@ -114,10 +114,11 @@ NAME: immutable(String[64])
 SYMBOL: immutable(String[32])
 DOMAIN_SEPARATOR: immutable(bytes32)
 
+LP_TOKEN: immutable(address)
+
 
 nonces: public(HashMap[address, uint256])
 
-lp_token: public(address)
 future_epoch_time: public(uint256)
 
 balanceOf: public(HashMap[address, uint256])
@@ -173,7 +174,6 @@ def __init__(_lp_token: address, _admin: address):
     @param _admin Admin who can kill the gauge
     """
 
-    self.lp_token = _lp_token
     self.admin = _admin
 
     self.period_timestamp[0] = block.timestamp
@@ -188,6 +188,8 @@ def __init__(_lp_token: address, _admin: address):
     DOMAIN_SEPARATOR = keccak256(
         _abi_encode(EIP712_TYPEHASH, keccak256(name), keccak256(VERSION), chain.id, self)
     )
+
+    LP_TOKEN = _lp_token
 
 
 @view
@@ -376,7 +378,7 @@ def _deposit(_value: uint256, _addr: address, _claim_rewards: bool, _user: addre
 
         self._update_liquidity_limit(_addr, new_balance, total_supply)
 
-        ERC20(self.lp_token).transferFrom(_user, self, _value)
+        ERC20(LP_TOKEN).transferFrom(_user, self, _value)
 
     log Deposit(_addr, _value)
     log Transfer(ZERO_ADDRESS, _addr, _value)
@@ -514,7 +516,7 @@ def deposit_with_permit(
     @param _value Number of tokens to deposit
     @param _addr Address to deposit for
     """
-    ERC2612(self.lp_token).permit(msg.sender, self, _value, _deadline, _v, _r, _s)
+    ERC2612(LP_TOKEN).permit(msg.sender, self, _value, _deadline, _v, _r, _s)
     self._deposit(_value, _addr, _claim_rewards, msg.sender)
 
 
@@ -541,7 +543,7 @@ def withdraw(_value: uint256, _claim_rewards: bool = False):
 
         self._update_liquidity_limit(msg.sender, new_balance, total_supply)
 
-        ERC20(self.lp_token).transfer(msg.sender, _value)
+        ERC20(LP_TOKEN).transfer(msg.sender, _value)
 
     log Withdraw(msg.sender, _value)
     log Transfer(msg.sender, ZERO_ADDRESS, _value)
@@ -831,6 +833,15 @@ def decimals() -> uint256:
     @return uint256 decimal places
     """
     return 18
+
+
+@view
+@external
+def lp_token() -> address:
+    """
+    @notice Query the lp token used for this gauge
+    """
+    return LP_TOKEN
 
 
 @view
