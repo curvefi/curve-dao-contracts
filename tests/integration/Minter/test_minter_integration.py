@@ -12,6 +12,7 @@ def test_mint(accounts, chain, mock_lp_token, gauge_controller, three_gauges, mi
     admin, bob, charlie, dan = accounts[:4]
 
     token.set_minter(minter, {"from": admin})
+    token.transfer(minter, 1_303_030_303 * 10 ** 18, {"from": accounts[0]})
 
     W = 10 ** 18
     amount = 10 ** 18
