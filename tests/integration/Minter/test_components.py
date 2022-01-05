@@ -4,6 +4,7 @@ from hypothesis import settings
 
 from tests.conftest import approx
 
+DAY = 86400
 WEEK = 86400 * 7
 MONTH = 86400 * 30
 
@@ -11,6 +12,7 @@ MONTH = 86400 * 30
 @pytest.fixture(scope="module", autouse=True)
 def minter_setup(accounts, mock_lp_token, token, minter, gauge_controller, liquidity_gauge):
     token.set_minter(minter, {"from": accounts[0]})
+    token.transfer(minter, 1_303_030_303 * 10 ** 18, {"from": accounts[0]})
 
     # set type
     gauge_controller.add_type(b"Liquidity", 10 ** 18, {"from": accounts[0]})
@@ -24,7 +26,7 @@ def minter_setup(accounts, mock_lp_token, token, minter, gauge_controller, liqui
         mock_lp_token.approve(liquidity_gauge, 1e18, {"from": acct})
 
 
-@given(st_duration=strategy("uint[3]", min_value=WEEK, max_value=MONTH, unique=True))
+@given(st_duration=strategy("uint[3]", min_value=DAY, max_value=DAY*3, unique=True))
 @settings(max_examples=30)
 def test_duration(accounts, chain, liquidity_gauge, minter, token, st_duration):
     accts = accounts[1:]
