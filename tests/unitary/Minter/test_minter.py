@@ -14,6 +14,7 @@ WEEK = 7 * 86400
 @pytest.fixture(scope="module", autouse=True)
 def minter_setup(accounts, mock_lp_token, token, minter, gauge_controller, three_gauges, chain):
     token.set_minter(minter, {"from": accounts[0]})
+    token.transfer(minter, 1_303_030_303 * 10 ** 18, {"from": accounts[0]})
 
     # ensure the tests all begin at the start of the epoch week
     chain.mine(timestamp=(chain.time() / WEEK + 1) * WEEK)
@@ -38,6 +39,7 @@ def minter_setup(accounts, mock_lp_token, token, minter, gauge_controller, three
 
 
 def test_mint(accounts, chain, three_gauges, minter, token):
+
     three_gauges[0].deposit(1e18, {"from": accounts[1]})
 
     chain.sleep(MONTH)
@@ -152,3 +154,22 @@ def test_mint_before_inflation_begins(accounts, chain, three_gauges, minter, tok
 
     assert token.balanceOf(accounts[1]) == 0
     assert minter.minted(accounts[1], three_gauges[0]) == 0
+
+def test_recover_balance(accounts, chain, three_gauges, minter, token):
+    assert token.balanceOf(accounts[0]) == 0
+    minter.recover_balance(token, {"from": accounts[0]})
+    assert token.balanceOf(accounts[0]) == 1_303_030_303 * 10 ** 18
+
+def test_set_minter_admin_only(accounts, chain, three_gauges, minter, token):
+    with brownie.reverts("dev: admin only"):
+        minter.change_emergency_return(accounts[2], {"from": accounts[1]})
+    with brownie.reverts("dev: admin only"):
+        minter.change_admin(accounts[2], {"from": accounts[1]})
+    with brownie.reverts("dev: admin only"):
+        minter.commit_new_rate(100, {"from": accounts[1]})
+    with brownie.reverts("dev: admin only"):
+        minter.recover_balance(token, {"from": accounts[1]})
+
+def test_prevent_fatfinger(accounts, chain, three_gauges, minter, token):
+    with brownie.reverts("dev: preventing fatfinger"):
+        minter.commit_new_rate(10_000_001, {"from": accounts[0]})

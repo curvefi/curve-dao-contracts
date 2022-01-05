@@ -100,7 +100,7 @@ def gauge_controller(GaugeController, accounts, token, voting_escrow):
 
 @pytest.fixture(scope="module")
 def minter(Minter, accounts, gauge_controller, token):
-    yield Minter.deploy(token, gauge_controller, {"from": accounts[0]})
+    yield Minter.deploy(token, gauge_controller, accounts[0], accounts[0], {"from": accounts[0]})
 
 
 @pytest.fixture(scope="module")
