@@ -185,7 +185,7 @@ def _checkpoint(addr: address):
             w: uint256 = Controller(_controller).gauge_relative_weight(self, prev_week_time / WEEK * WEEK)
 
             if _working_supply > 0:
-                if prev_future_epoch >= prev_week_time and prev_future_epoch < week_time:
+                if prev_future_epoch >= prev_week_time and prev_future_epoch < week_time and rate != new_rate:
                     # If we went across one or multiple epochs, apply the rate
                     # of the first epoch until it ends, and then the rate of
                     # the last epoch.
