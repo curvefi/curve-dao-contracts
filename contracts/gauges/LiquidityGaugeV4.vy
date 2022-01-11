@@ -1,4 +1,4 @@
-# @version 0.2.16
+# @version 0.2.8
 """
 @title Liquidity Gauge v4
 @author Curve Finance
@@ -9,17 +9,13 @@ from vyper.interfaces import ERC20
 
 implements: ERC20
 
-
-interface CRV20:
-    def future_epoch_time_write() -> uint256: nonpayable
-    def rate() -> uint256: view
-
 interface Controller:
     def period() -> int128: view
     def period_write() -> int128: nonpayable
     def period_timestamp(p: int128) -> uint256: view
     def gauge_relative_weight(addr: address, time: uint256) -> uint256: view
     def voting_escrow() -> address: view
+    def veboost_proxy() -> address: view
     def checkpoint(): nonpayable
     def checkpoint_gauge(addr: address): nonpayable
 
@@ -27,6 +23,8 @@ interface Minter:
     def token() -> address: view
     def controller() -> address: view
     def minted(user: address, gauge: address) -> uint256: view
+    def future_epoch_time_write() -> uint256: nonpayable
+    def rate() -> uint256: view
 
 interface VotingEscrow:
     def user_point_epoch(addr: address) -> uint256: view
@@ -84,12 +82,11 @@ MAX_REWARDS: constant(uint256) = 8
 TOKENLESS_PRODUCTION: constant(uint256) = 40
 WEEK: constant(uint256) = 604800
 
-MINTER: constant(address) = 0xd061D61a4d941c39E5453435B6345Dc261C2fcE0
-CRV: constant(address) = 0xD533a949740bb3306d119CC777fa900bA034cd52
-VOTING_ESCROW: constant(address) = 0x5f3b5DfEb7B28CDbD7FAba78963EE202a494e2A2
-GAUGE_CONTROLLER: constant(address) = 0x2F50D538606Fa9EDD2B11E2446BEb18C9D5846bB
-VEBOOST_PROXY: constant(address) = 0x8E0c00ed546602fD9927DF742bbAbF726D5B0d16
-
+minter: public(address)
+crv_token: public(address)
+controller: public(address)
+voting_escrow: public(address)
+veboost_proxy: public(address)
 
 lp_token: public(address)
 future_epoch_time: public(uint256)
@@ -143,23 +140,32 @@ is_killed: public(bool)
 
 
 @external
-def __init__(_lp_token: address, _admin: address):
+def __init__(_lp_token: address, _minter: address, _admin: address):
     """
     @notice Contract constructor
     @param _lp_token Liquidity Pool contract address
+    @param _minter Minter contract address
     @param _admin Admin who can kill the gauge
     """
 
+    crv_token: address = Minter(_minter).token()
+    controller: address = Minter(_minter).controller()
+
     self.lp_token = _lp_token
+    self.minter = _minter
     self.admin = _admin
+    self.crv_token = crv_token
+    self.controller = controller
+    self.voting_escrow = Controller(controller).voting_escrow()
+    self.veboost_proxy = Controller(controller).veboost_proxy()
 
     symbol: String[26] = ERC20Extended(_lp_token).symbol()
-    self.name = concat("Curve.fi ", symbol, " Gauge Deposit")
+    self.name = concat("Ribbon.fi ", symbol, " Gauge Deposit")
     self.symbol = concat(symbol, "-gauge")
 
     self.period_timestamp[0] = block.timestamp
-    self.inflation_rate = CRV20(CRV).rate()
-    self.future_epoch_time = CRV20(CRV).future_epoch_time_write()
+    self.inflation_rate = Minter(_minter).rate()
+    self.future_epoch_time = Minter(_minter).future_epoch_time_write()
 
 
 @view
@@ -190,8 +196,8 @@ def _update_liquidity_limit(addr: address, l: uint256, L: uint256):
     @param L Total amount of liquidity (LP tokens)
     """
     # To be called after totalSupply is updated
-    voting_balance: uint256 = VotingEscrowBoost(VEBOOST_PROXY).adjusted_balance_of(addr)
-    voting_total: uint256 = ERC20(VOTING_ESCROW).totalSupply()
+    voting_balance: uint256 = VotingEscrowBoost(self.veboost_proxy).adjusted_balance_of(addr)
+    voting_total: uint256 = ERC20(self.voting_escrow).totalSupply()
 
     lim: uint256 = l * TOKENLESS_PRODUCTION / 100
     if voting_total > 0:
@@ -280,8 +286,9 @@ def _checkpoint(addr: address):
     new_rate: uint256 = rate
     prev_future_epoch: uint256 = self.future_epoch_time
     if prev_future_epoch >= _period_time:
-        self.future_epoch_time = CRV20(CRV).future_epoch_time_write()
-        new_rate = CRV20(CRV).rate()
+        _minter: address = self.minter
+        self.future_epoch_time = Minter(_minter).future_epoch_time_write()
+        new_rate = Minter(_minter).rate()
         self.inflation_rate = new_rate
 
     if self.is_killed:
@@ -292,16 +299,16 @@ def _checkpoint(addr: address):
     # Update integral of 1/supply
     if block.timestamp > _period_time:
         _working_supply: uint256 = self.working_supply
-        Controller(GAUGE_CONTROLLER).checkpoint_gauge(self)
+        Controller(self.controller).checkpoint_gauge(self)
         prev_week_time: uint256 = _period_time
         week_time: uint256 = min((_period_time + WEEK) / WEEK * WEEK, block.timestamp)
 
         for i in range(500):
             dt: uint256 = week_time - prev_week_time
-            w: uint256 = Controller(GAUGE_CONTROLLER).gauge_relative_weight(self, prev_week_time / WEEK * WEEK)
+            w: uint256 = Controller(self.controller).gauge_relative_weight(self, prev_week_time / WEEK * WEEK)
 
             if _working_supply > 0:
-                if prev_future_epoch >= prev_week_time and prev_future_epoch < week_time:
+                if prev_future_epoch >= prev_week_time and prev_future_epoch < week_time and rate != new_rate:
                     # If we went across one or multiple epochs, apply the rate
                     # of the first epoch until it ends, and then the rate of
                     # the last epoch.
@@ -343,7 +350,7 @@ def user_checkpoint(addr: address) -> bool:
     @param addr User address
     @return bool success
     """
-    assert msg.sender in [addr, MINTER]  # dev: unauthorized
+    assert msg.sender in [addr, self.minter]  # dev: unauthorized
     self._checkpoint(addr)
     self._update_liquidity_limit(addr, self.balanceOf[addr], self.totalSupply)
     return True
@@ -357,7 +364,7 @@ def claimable_tokens(addr: address) -> uint256:
     @return uint256 number of claimable tokens per user
     """
     self._checkpoint(addr)
-    return self.integrate_fraction[addr] - Minter(MINTER).minted(addr, self)
+    return self.integrate_fraction[addr] - Minter(self.minter).minted(addr, self)
 
 
 @view
@@ -426,13 +433,14 @@ def kick(addr: address):
     @dev Only if either they had another voting event, or their voting escrow lock expired
     @param addr Address to kick
     """
+    _voting_escrow: address = self.voting_escrow
     t_last: uint256 = self.integrate_checkpoint_of[addr]
-    t_ve: uint256 = VotingEscrow(VOTING_ESCROW).user_point_history__ts(
-        addr, VotingEscrow(VOTING_ESCROW).user_point_epoch(addr)
+    t_ve: uint256 = VotingEscrow(_voting_escrow).user_point_history__ts(
+        addr, VotingEscrow(_voting_escrow).user_point_epoch(addr)
     )
     _balance: uint256 = self.balanceOf[addr]
 
-    assert ERC20(VOTING_ESCROW).balanceOf(addr) == 0 or t_ve > t_last # dev: kick not allowed
+    assert ERC20(_voting_escrow).balanceOf(addr) == 0 or t_ve > t_last # dev: kick not allowed
     assert self.working_balances[addr] > _balance * TOKENLESS_PRODUCTION / 100  # dev: kick not needed
 
     self._checkpoint(addr)

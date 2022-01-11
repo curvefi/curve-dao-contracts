@@ -1,4 +1,4 @@
-# @version 0.2.12
+# @version 0.2.8
 """
 @title Liquidity Gauge v3
 @author Curve Finance
@@ -8,11 +8,6 @@
 from vyper.interfaces import ERC20
 
 implements: ERC20
-
-
-interface CRV20:
-    def future_epoch_time_write() -> uint256: nonpayable
-    def rate() -> uint256: view
 
 interface Controller:
     def period() -> int128: view
@@ -27,6 +22,8 @@ interface Minter:
     def token() -> address: view
     def controller() -> address: view
     def minted(user: address, gauge: address) -> uint256: view
+    def future_epoch_time_write() -> uint256: nonpayable
+    def rate() -> uint256: view
 
 interface VotingEscrow:
     def user_point_epoch(addr: address) -> uint256: view
@@ -142,7 +139,7 @@ def __init__(_lp_token: address, _minter: address, _admin: address):
     """
 
     symbol: String[26] = ERC20Extended(_lp_token).symbol()
-    self.name = concat("Curve.fi ", symbol, " Gauge Deposit")
+    self.name = concat("Ribbon.fi ", symbol, " Gauge Deposit")
     self.symbol = concat(symbol, "-gauge")
 
     crv_token: address = Minter(_minter).token()
@@ -156,9 +153,8 @@ def __init__(_lp_token: address, _minter: address, _admin: address):
     self.voting_escrow = Controller(controller).voting_escrow()
 
     self.period_timestamp[0] = block.timestamp
-    self.inflation_rate = CRV20(crv_token).rate()
-    self.future_epoch_time = CRV20(crv_token).future_epoch_time_write()
-
+    self.inflation_rate = Minter(_minter).rate()
+    self.future_epoch_time = Minter(_minter).future_epoch_time_write()
 
 @view
 @external
@@ -305,9 +301,9 @@ def _checkpoint(addr: address):
     new_rate: uint256 = rate
     prev_future_epoch: uint256 = self.future_epoch_time
     if prev_future_epoch >= _period_time:
-        _token: address = self.crv_token
-        self.future_epoch_time = CRV20(_token).future_epoch_time_write()
-        new_rate = CRV20(_token).rate()
+        _minter: address = self.minter
+        self.future_epoch_time = Minter(_minter).future_epoch_time_write()
+        new_rate = Minter(_minter).rate()
         self.inflation_rate = new_rate
 
     if self.is_killed:
