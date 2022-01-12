@@ -286,10 +286,10 @@ def _checkpoint(addr: address):
     new_rate: uint256 = rate
     prev_future_epoch: uint256 = self.future_epoch_time
 
-    _minter: address = self.minter
-    self.future_epoch_time = Minter(_minter).future_epoch_time_write()
-    new_rate = Minter(_minter).rate()
-    if(rate != new_rate):
+    if(block.timestamp >= prev_future_epoch):
+      _minter: address = self.minter
+      self.future_epoch_time = Minter(_minter).future_epoch_time_write()
+      new_rate = Minter(_minter).rate()
       self.inflation_rate = new_rate
 
     if self.is_killed:

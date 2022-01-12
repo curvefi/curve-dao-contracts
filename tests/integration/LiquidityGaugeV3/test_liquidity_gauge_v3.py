@@ -106,8 +106,6 @@ def test_gauge_integral(accounts, chain, mock_lp_token, token, gauge_v3, minter,
         update_integral()
         print(i, dt / 86400, integral, gauge_v3.integrate_fraction(alice))
         assert approx(gauge_v3.integrate_fraction(alice), integral, 1e-12)
-        if(i == 39):
-            gauge_v3.user_checkpoint(alice, {"from": bob})
 
 def test_gauge_integral_extra(accounts, chain, mock_lp_token, token, gauge_v3, minter, gauge_controller):
     alice, bob = accounts[:2]
@@ -133,7 +131,7 @@ def test_gauge_integral_extra(accounts, chain, mock_lp_token, token, gauge_v3, m
         nonlocal checkpoint, checkpoint_rate, integral, checkpoint_balance, checkpoint_supply
 
         t1 = chain[-1].timestamp
-        rate1 = minter.committed_rate() if minter.committed_rate() < 10000000000000000000000000 else minter.rate()
+        rate1 = minter.rate()
         t_epoch = minter.start_epoch_time()
         if checkpoint >= t_epoch:
             rate_x_time = (t1 - checkpoint) * rate1
@@ -149,16 +147,16 @@ def test_gauge_integral_extra(accounts, chain, mock_lp_token, token, gauge_v3, m
     # Now let's have a loop where Bob always deposit or withdraws,
     # and Alice does so more rarely
     for i in range(40):
-        is_alice = random() < 0.2
+        is_alice = 0 #random() < 1
 
         # new
-        if(i % 10 == 0 and i > 0):
+        if(i % 5 == 0 and i > 0):
             minter.commit_new_rate(10_000 * (40-i), {"from": accounts[0]})
             chain.sleep(minter.start_epoch_time() + WEEK - chain[-1].timestamp + 100)
             chain.mine()
 
-        # #####
-        dt = randrange(1, WEEK-1)
+        # # #####
+        dt = randrange(1, WEEK//2)
         chain.sleep(dt)
         chain.mine()
 
@@ -206,29 +204,14 @@ def test_gauge_integral_extra(accounts, chain, mock_lp_token, token, gauge_v3, m
 
         assert gauge_v3.totalSupply() == alice_staked + bob_staked
 
-        minter.commit_new_rate(5 * (i+1), {"from": accounts[0]})
-        chain.sleep(WEEK+1)
-        chain.mine()
-
-        gauge_v3.user_checkpoint(bob, {"from": bob})
-        update_integral()
-
-        minter.commit_new_rate(2 * (i+1), {"from": accounts[0]})
-        chain.sleep(WEEK+1)
-        chain.mine()
-
-        update_integral()
-        gauge_v3.user_checkpoint(bob, {"from": bob})
-
         if (i % 10 == 0 and i > 1):
             gauge_v3.user_checkpoint(alice, {"from": alice})
             update_integral()
             print(i, dt / 86400, integral, gauge_v3.integrate_fraction(alice))
             assert approx(gauge_v3.integrate_fraction(alice), integral, 1e-15)
-
-        if(i == 39):
-            gauge_v3.user_checkpoint(alice, {"from": bob})
-
+        else:
+            update_integral()
+            gauge_v3.user_checkpoint(bob, {"from": bob})
 
 def test_mining_with_votelock(
     accounts,
