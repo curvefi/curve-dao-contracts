@@ -89,7 +89,7 @@ def token(ERC20CRV, accounts):
 @pytest.fixture(scope="module")
 def voting_escrow(VotingEscrow, accounts, token):
     yield VotingEscrow.deploy(
-        token, "Voting-escrowed CRV", "veCRV", "veCRV_0.99", {"from": accounts[0]}
+        token, "Voting-escrowed CRV", "veCRV", accounts[0], {"from": accounts[0]}
     )
 
 
@@ -143,6 +143,10 @@ def gauge_v2(LiquidityGaugeV2, alice, mock_lp_token, minter):
 @pytest.fixture(scope="module")
 def gauge_v3(LiquidityGaugeV3, alice, mock_lp_token, minter):
     yield LiquidityGaugeV3.deploy(mock_lp_token, minter, alice, {"from": alice})
+
+@pytest.fixture(scope="module")
+def gauge_v3_test(LiquidityGaugeV3_test, alice, mock_lp_token, minter):
+    yield LiquidityGaugeV3_test.deploy(mock_lp_token, minter, alice, {"from": alice})
 
 
 @pytest.fixture(scope="module")

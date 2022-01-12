@@ -300,11 +300,12 @@ def _checkpoint(addr: address):
     rate: uint256 = self.inflation_rate
     new_rate: uint256 = rate
     prev_future_epoch: uint256 = self.future_epoch_time
-    if prev_future_epoch >= _period_time:
-        _minter: address = self.minter
-        self.future_epoch_time = Minter(_minter).future_epoch_time_write()
-        new_rate = Minter(_minter).rate()
-        self.inflation_rate = new_rate
+
+    _minter: address = self.minter
+    self.future_epoch_time = Minter(_minter).future_epoch_time_write()
+    new_rate = Minter(_minter).rate()
+    if(rate != new_rate):
+      self.inflation_rate = new_rate
 
     if self.is_killed:
         # Stop distributing inflation as soon as killed
@@ -334,7 +335,9 @@ def _checkpoint(addr: address):
                     rate = new_rate
                     _integrate_inv_supply += rate * w * (week_time - prev_future_epoch) / _working_supply
                 else:
+                    #_integrate_inv_supply += rate * w * dt / _working_supply
                     _integrate_inv_supply += new_rate * w * dt / _working_supply
+
                 # On precisions of the calculation
                 # rate ~= 10e18
                 # last_weight > 0.01 * 1e18 = 1e16 (if pool weight is 1%)
