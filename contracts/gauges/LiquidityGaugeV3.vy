@@ -335,9 +335,7 @@ def _checkpoint(addr: address):
                     rate = new_rate
                     _integrate_inv_supply += rate * w * (week_time - prev_future_epoch) / _working_supply
                 else:
-                    #_integrate_inv_supply += rate * w * dt / _working_supply
                     _integrate_inv_supply += new_rate * w * dt / _working_supply
-
                 # On precisions of the calculation
                 # rate ~= 10e18
                 # last_weight > 0.01 * 1e18 = 1e16 (if pool weight is 1%)

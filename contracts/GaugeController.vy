@@ -1,4 +1,4 @@
-# @version 0.2.4
+# @version 0.2.8
 
 """
 @title Gauge Controller
@@ -70,6 +70,7 @@ future_admin: public(address)  # Can and will be a smart contract
 
 token: public(address)  # CRV token
 voting_escrow: public(address)  # Voting escrow
+veboost_proxy: public(address)  # Boosting delegation
 
 # Gauge parameters
 # All numbers are "fixed point" on the basis of 1e18
@@ -110,18 +111,22 @@ time_type_weight: public(uint256[1000000000])  # type_id -> last scheduled time 
 
 
 @external
-def __init__(_token: address, _voting_escrow: address):
+def __init__(_token: address, _voting_escrow: address, _veboost_proxy: address, _admin: address):
     """
     @notice Contract constructor
     @param _token `ERC20CRV` contract address
     @param _voting_escrow `VotingEscrow` contract address
+    @param _admin Admin of contract
     """
     assert _token != ZERO_ADDRESS
     assert _voting_escrow != ZERO_ADDRESS
+    assert _veboost_proxy != ZERO_ADDRESS
+    assert _admin != ZERO_ADDRESS
 
-    self.admin = msg.sender
+    self.admin = _admin
     self.token = _token
     self.voting_escrow = _voting_escrow
+    self.veboost_proxy = _veboost_proxy
     self.time_total = block.timestamp / WEEK * WEEK
 
 

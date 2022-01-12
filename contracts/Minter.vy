@@ -50,9 +50,6 @@ controller: public(address)
 # user -> gauge -> value
 minted: public(HashMap[address, HashMap[address, uint256]])
 
-# mining_epoch -> rate
-# rates: public(HashMap[int128, uint256])
-
 # minter -> user -> can mint?
 allowed_to_mint_for: public(HashMap[address, HashMap[address, bool]])
 
@@ -94,7 +91,6 @@ def _update_mining_parameters():
           self.committed_rate = MAX_UINT256
 
     self.rate = _rate
-    # self.rates[self.mining_epoch] = _rate
 
     log UpdateMiningParameters(block.timestamp, _rate)
 

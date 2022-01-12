@@ -1,4 +1,4 @@
-# @version 0.2.7
+# @version 0.2.8
 """
 @title Curve Fee Distribution
 @author Curve Finance
@@ -372,20 +372,20 @@ def claim_many(_receivers: address[20]) -> bool:
 
 
 @external
-def burn(_coin: address) -> bool:
+def burn(_coin: address, _amount: uint256) -> bool:
     """
     @notice Receive 3CRV into the contract and trigger a token checkpoint
     @param _coin Address of the coin being received (must be 3CRV)
+    @param _amount Amount to transfer
     @return bool success
     """
     assert _coin == self.token
+    assert _amount != 0
     assert not self.is_killed
 
-    amount: uint256 = ERC20(_coin).balanceOf(msg.sender)
-    if amount != 0:
-        ERC20(_coin).transferFrom(msg.sender, self, amount)
-        if self.can_checkpoint_token and (block.timestamp > self.last_token_time + TOKEN_CHECKPOINT_DEADLINE):
-            self._checkpoint_token()
+    ERC20(_coin).transferFrom(msg.sender, self, _amount)
+    if self.can_checkpoint_token and (block.timestamp > self.last_token_time + TOKEN_CHECKPOINT_DEADLINE):
+        self._checkpoint_token()
 
     return True
 
