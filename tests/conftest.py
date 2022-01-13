@@ -95,7 +95,7 @@ def voting_escrow(VotingEscrow, accounts, token):
 
 @pytest.fixture(scope="module")
 def gauge_controller(GaugeController, accounts, token, voting_escrow):
-    yield GaugeController.deploy(token, voting_escrow, {"from": accounts[0]})
+    yield GaugeController.deploy(token, voting_escrow, accounts[0], accounts[0], {"from": accounts[0]})
 
 
 @pytest.fixture(scope="module")
