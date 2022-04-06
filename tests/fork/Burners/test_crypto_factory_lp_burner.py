@@ -50,7 +50,8 @@ def test_set_receivers(burner, alice, bob):
     coins_with_custom_receiver = [coins["weth"], coins["usdc"]]
     burner.set_many_receivers(
         coins_with_custom_receiver + [ZERO_ADDRESS] * (8 - len(coins_with_custom_receiver)),
-        [bob] * len(coins_with_custom_receiver) + [ZERO_ADDRESS] * (8 - len(coins_with_custom_receiver)),
+        [bob] * len(coins_with_custom_receiver)
+        + [ZERO_ADDRESS] * (8 - len(coins_with_custom_receiver)),
         {"from": alice},
     )
     for coin in coins_with_custom_receiver:
