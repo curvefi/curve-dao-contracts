@@ -23,7 +23,8 @@ interface CryptoSwap:
     def lp_price() -> uint256: view
 
 
-priority: public(HashMap[address, uint256])
+priority_of: public(HashMap[address, uint256])
+receiver_of: public(HashMap[address, address])
 
 receiver: public(address)
 recovery: public(address)
@@ -83,7 +84,7 @@ def burn(_coin: address) -> bool:
     if amount != 0:
         swap: address = CurveToken(_coin).minter()
         coins: address[2] = [CryptoSwap(swap).coins(0), CryptoSwap(swap).coins(1)]
-        priorities: uint256[2] = [self.priority[coins[0]], self.priority[coins[1]]]
+        priorities: uint256[2] = [self.priority_of[coins[0]], self.priority_of[coins[1]]]
         assert priorities[0] > 0 or priorities[1] > 0  # dev: unknown coins
 
         i: uint256 = 2
@@ -102,7 +103,10 @@ def burn(_coin: address) -> bool:
             min_amount /= 10 ** (18 - ERC20(coins[i]).decimals())
             min_amount = min_amount * 98 / 100
 
-            CryptoSwap(swap).remove_liquidity_one_coin(amount, i, min_amount, True, self.receiver)
+            receiver: address = self.receiver_of[coins[i]]
+            if receiver == ZERO_ADDRESS:
+                receiver = self.receiver
+            CryptoSwap(swap).remove_liquidity_one_coin(amount, i, min_amount, True, receiver)
 
     return True
 
@@ -116,7 +120,7 @@ def set_priority(_coin: address, _priority: uint256):
     @param _priority Token priority
     """
     assert msg.sender in [self.owner, self.emergency_owner]  # dev: only owner
-    self.priority[_coin] = _priority
+    self.priority_of[_coin] = _priority
 
 
 @external
@@ -132,7 +136,35 @@ def set_many_priorities(_coins: address[8], _priorities: uint256[8]):
         coin: address = _coins[i]
         if coin == ZERO_ADDRESS:
             break
-        self.priority[coin] = _priorities[i]
+        self.priority_of[coin] = _priorities[i]
+
+
+@external
+def set_receiver(_coin: address, _receiver: address):
+    """
+    @notice Set receiver of a coin
+    @dev Using self.receiver by default
+    @param _coin Token address
+    @param _receiver Receiver of a token
+    """
+    assert msg.sender in [self.owner, self.emergency_owner]  # dev: only owner
+    self.receiver_of[_coin] = _receiver
+
+
+@external
+def set_many_receivers(_coins: address[8], _receivers: address[8]):
+    """
+    @notice Set receivers of many coins
+    @dev Using self.receiver by default
+    @param _coins Token addresses
+    @param _receivers Receivers of each token
+    """
+    assert msg.sender in [self.owner, self.emergency_owner]  # dev: only owner
+    for i in range(8):
+        coin: address = _coins[i]
+        if coin == ZERO_ADDRESS:
+            break
+        self.receiver_of[coin] = _receivers[i]
 
 
 @external

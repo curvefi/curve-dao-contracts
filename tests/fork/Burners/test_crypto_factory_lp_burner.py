@@ -35,17 +35,49 @@ def setup(burner, alice):
     )
 
 
-def test_first_coin(burner, alice, receiver):
+def test_set_priority(burner, alice):
+    coin = coins["weth"]
+    assert burner.priority_of(coin) == 10
+    burner.set_priority(coin, 0, {"from": alice})
+    assert burner.priority_of(coin) == 0
+
+
+def test_set_receivers(burner, alice, bob):
+    assert burner.receiver_of(coins["weth"]) == ZERO_ADDRESS
+    burner.set_receiver(coins["weth"], bob)
+    assert burner.receiver_of(coins["weth"]) == bob.address
+
+    coins_with_custom_receiver = [coins["weth"], coins["usdc"]]
+    burner.set_many_receivers(
+        coins_with_custom_receiver + [ZERO_ADDRESS] * (8 - len(coins_with_custom_receiver)),
+        [bob] * len(coins_with_custom_receiver) + [ZERO_ADDRESS] * (8 - len(coins_with_custom_receiver)),
+        {"from": alice},
+    )
+    for coin in coins_with_custom_receiver:
+        assert burner.receiver_of(coin) == bob.address
+
+
+@pytest.mark.parametrize("final_receiver", ["receiver", "bob"])
+def test_first_coin(burner, alice, bob, receiver, final_receiver):
+    initial_bob_balance = bob.balance()
     token = MintableForkToken(tokens["yfieth"])
     token.approve(burner, 2 ** 256 - 1, {"from": alice})
     token._mint_for_testing(alice, 10 * 10 ** 18, {"from": alice})
 
+    first, second = MintableForkToken(coins["weth"]), MintableForkToken(coins["yfi"])
+    if final_receiver == "bob":
+        burner.set_receiver(first, bob, {"from": alice})
     burner.burn(token, {"from": alice})
 
-    first, second = MintableForkToken(coins["weth"]), MintableForkToken(coins["yfi"])
-    assert first.balanceOf(receiver) == 0
-    assert receiver.balance() > 0
-    assert second.balanceOf(receiver) == 0
+    for acc in [bob, receiver]:
+        assert first.balanceOf(acc) == 0
+        assert second.balanceOf(acc) == 0
+    if final_receiver == "bob":
+        assert receiver.balance() == 0
+        assert bob.balance() > initial_bob_balance
+    else:
+        assert receiver.balance() > 0
+        assert bob.balance() == initial_bob_balance
 
 
 def test_second_coin(burner, alice, receiver):
@@ -71,13 +103,6 @@ def test_both_coins(burner, alice, receiver):
     assert first.balanceOf(receiver) == 0
     assert receiver.balance() > 0
     assert second.balanceOf(receiver) > 0
-
-
-def test_set_priority(burner, alice):
-    coin = coins["weth"]
-    assert burner.priority(coin) == 10
-    burner.set_priority(coin, 0, {"from": alice})
-    assert burner.priority(coin) == 0
 
 
 @pytest.mark.parametrize("i", [0, 1])
