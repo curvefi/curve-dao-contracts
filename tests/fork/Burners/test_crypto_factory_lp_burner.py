@@ -133,3 +133,41 @@ def test_unkown_priorities(burner, alice):
 
     with brownie.reverts():
         burner.burn(token, {"from": alice})
+
+
+def test_manager(burner, alice, bob, charlie):
+    # Initial
+    assert burner.manager() == alice
+    assert burner.future_manager() == ZERO_ADDRESS
+
+    burner.commit_new_manager(bob, {"from": alice})
+    assert burner.manager() == alice
+    assert burner.future_manager() == bob
+
+    burner.accept_new_manager({"from": bob})
+    assert burner.manager() == bob
+    assert burner.future_manager() == bob
+
+    # Manager has access
+    burner.set_priority(coins["weth"], 0, {"from": bob})
+    assert burner.priority_of(coins["weth"]) == 0
+    burner.set_many_priorities(
+        [coins["weth"], coins["usdc"]] + [ZERO_ADDRESS] * 6,
+        [1, 2] + [0] * 6,
+        {"from": bob},
+    )
+    assert burner.priority_of(coins["weth"]) == 1
+    assert burner.priority_of(coins["usdc"]) == 2
+
+    burner.commit_new_manager(charlie, {"from": bob})
+    burner.accept_new_manager({"from": charlie})
+
+    # Old manager does not have access
+    with brownie.reverts():
+        burner.set_priority(coins["weth"], 0, {"from": bob})
+    with brownie.reverts():
+        burner.set_many_priorities(
+            [coins["weth"], coins["usdc"]] + [ZERO_ADDRESS] * 6,
+            [1, 2] + [0] * 6,
+            {"from": bob},
+        )

@@ -32,8 +32,10 @@ is_killed: public(bool)
 
 owner: public(address)
 emergency_owner: public(address)
+manager: public(address)
 future_owner: public(address)
 future_emergency_owner: public(address)
+future_manager: public(address)
 
 
 @external
@@ -55,13 +57,7 @@ def __init__(_receiver: address, _recovery: address, _owner: address, _emergency
     self.recovery = _recovery
     self.owner = _owner
     self.emergency_owner = _emergency_owner
-
-
-@payable
-@external
-def __default__():
-    # required to receive ether
-    pass
+    self.manager = msg.sender
 
 
 @external
@@ -119,7 +115,7 @@ def set_priority(_coin: address, _priority: uint256):
     @param _coin Token address
     @param _priority Token priority
     """
-    assert msg.sender in [self.owner, self.emergency_owner]  # dev: only owner
+    assert msg.sender == self.manager  # dev: only owner
     self.priority_of[_coin] = _priority
 
 
@@ -131,7 +127,7 @@ def set_many_priorities(_coins: address[8], _priorities: uint256[8]):
     @param _coins Token addresses
     @param _priorities Token priorities
     """
-    assert msg.sender in [self.owner, self.emergency_owner]  # dev: only owner
+    assert msg.sender == self.manager  # dev: only owner
     for i in range(8):
         coin: address = _coins[i]
         if coin == ZERO_ADDRESS:
@@ -265,5 +261,31 @@ def accept_transfer_emergency_ownership() -> bool:
     """
     assert msg.sender == self.future_emergency_owner  # dev: only owner
     self.emergency_owner = msg.sender
+
+    return True
+
+
+@external
+def commit_new_manager(_future_manager: address) -> bool:
+    """
+    @notice Commit a transfer of manager's role
+    @dev Must be accepted by the new manager via `accept_new_manager`
+    @param _future_manager New manager address
+    @return bool success
+    """
+    assert msg.sender in [self.owner, self.emergency_owner, self.manager]  # dev: only owner
+    self.future_manager = _future_manager
+
+    return True
+
+
+@external
+def accept_new_manager() -> bool:
+    """
+    @notice Accept a transfer of manager's role
+    @return bool success
+    """
+    assert msg.sender == self.future_manager  # dev: only owner
+    self.manager = msg.sender
 
     return True
