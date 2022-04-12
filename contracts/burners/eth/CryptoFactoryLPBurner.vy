@@ -69,32 +69,31 @@ def __init__(_pool_proxy: address, _receiver: address, _recovery: address, _owne
 
 @internal
 def _burn(_coin: address, _amount: uint256):
-    if _amount != 0:
-        swap: address = CurveToken(_coin).minter()
-        coins: address[2] = [CryptoSwap(swap).coins(0), CryptoSwap(swap).coins(1)]
-        priorities: uint256[2] = [self.priority_of[coins[0]], self.priority_of[coins[1]]]
-        assert priorities[0] > 0 or priorities[1] > 0  # dev: unknown coins
+    swap: address = CurveToken(_coin).minter()
+    coins: address[2] = [CryptoSwap(swap).coins(0), CryptoSwap(swap).coins(1)]
+    priorities: uint256[2] = [self.priority_of[coins[0]], self.priority_of[coins[1]]]
+    assert priorities[0] > 0 or priorities[1] > 0  # dev: unknown coins
 
-        i: uint256 = 2
-        if priorities[0] > priorities[1]:
-            i = 0
-        elif priorities[0] < priorities[1]:
-            i = 1
+    i: uint256 = 2
+    if priorities[0] > priorities[1]:
+        i = 0
+    elif priorities[0] < priorities[1]:
+        i = 1
 
-        if i == 2:
-            # If both are equally prioritized, then remove both of them
-            CryptoSwap(swap).remove_liquidity(_amount, [0, 0], True, self.receiver)
-        else:
-            min_amount: uint256 = _amount * CryptoSwap(swap).lp_price() / 10 ** 18
-            if i == 1:
-                min_amount = min_amount * CryptoSwap(swap).price_oracle() / 10 ** 18
-            min_amount /= 10 ** (18 - ERC20(coins[i]).decimals())
-            min_amount = min_amount * 98 / 100
+    if i == 2:
+        # If both are equally prioritized, then remove both of them
+        CryptoSwap(swap).remove_liquidity(_amount, [0, 0], True, self.receiver)
+    else:
+        min_amount: uint256 = _amount * CryptoSwap(swap).lp_price() / 10 ** 18
+        if i == 1:
+            min_amount = min_amount * CryptoSwap(swap).price_oracle() / 10 ** 18
+        min_amount /= 10 ** (18 - ERC20(coins[i]).decimals())
+        min_amount = min_amount * 98 / 100
 
-            receiver: address = self.receiver_of[coins[i]]
-            if receiver == ZERO_ADDRESS:
-                receiver = self.receiver
-            CryptoSwap(swap).remove_liquidity_one_coin(_amount, i, min_amount, True, receiver)
+        receiver: address = self.receiver_of[coins[i]]
+        if receiver == ZERO_ADDRESS:
+            receiver = self.receiver
+        CryptoSwap(swap).remove_liquidity_one_coin(_amount, i, min_amount, True, receiver)
 
 
 @external
@@ -114,7 +113,8 @@ def burn(_coin: address) -> bool:
     # get actual balance in case of transfer fee or pre-existing balance
     amount = ERC20(_coin).balanceOf(self)
 
-    self._burn(_coin, amount)
+    if amount != 0:
+        self._burn(_coin, amount)
 
     return True
 
