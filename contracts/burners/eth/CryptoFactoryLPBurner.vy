@@ -23,9 +23,14 @@ interface CryptoSwap:
     def lp_price() -> uint256: view
 
 
+interface PoolProxy:
+    def burners(_coin: address) -> address: view
+
+
 priority_of: public(HashMap[address, uint256])
 receiver_of: public(HashMap[address, address])
 
+pool_proxy: public(address)
 receiver: public(address)
 recovery: public(address)
 is_killed: public(bool)
@@ -39,13 +44,14 @@ future_manager: public(address)
 
 
 @external
-def __init__(_receiver: address, _recovery: address, _owner: address, _emergency_owner: address):
+def __init__(_pool_proxy: address, _receiver: address, _recovery: address, _owner: address, _emergency_owner: address):
     """
     @notice Contract constructor
     @dev Unlike other burners, this contract may transfer tokens to
          multiple addresses after the swap. Receiver addresses are
          set by calling `set_swap_data` instead of setting it
          within the constructor.
+    @param _pool_proxy Address of pool owner proxy
     @param _recovery Address that tokens are transferred to during an
                      emergency token recovery.
     @param _owner Owner address. Can kill the contract, recover tokens
@@ -53,11 +59,42 @@ def __init__(_receiver: address, _recovery: address, _owner: address, _emergency
     @param _emergency_owner Emergency owner address. Can kill the contract
                             and recover tokens.
     """
+    self.pool_proxy = _pool_proxy
     self.receiver = _receiver
     self.recovery = _recovery
     self.owner = _owner
     self.emergency_owner = _emergency_owner
     self.manager = msg.sender
+
+
+@internal
+def _burn(_coin: address, _amount: uint256):
+    if _amount != 0:
+        swap: address = CurveToken(_coin).minter()
+        coins: address[2] = [CryptoSwap(swap).coins(0), CryptoSwap(swap).coins(1)]
+        priorities: uint256[2] = [self.priority_of[coins[0]], self.priority_of[coins[1]]]
+        assert priorities[0] > 0 or priorities[1] > 0  # dev: unknown coins
+
+        i: uint256 = 2
+        if priorities[0] > priorities[1]:
+            i = 0
+        elif priorities[0] < priorities[1]:
+            i = 1
+
+        if i == 2:
+            # If both are equally prioritized, then remove both of them
+            CryptoSwap(swap).remove_liquidity(_amount, [0, 0], True, self.receiver)
+        else:
+            min_amount: uint256 = _amount * CryptoSwap(swap).lp_price() / 10 ** 18
+            if i == 1:
+                min_amount = min_amount * CryptoSwap(swap).price_oracle() / 10 ** 18
+            min_amount /= 10 ** (18 - ERC20(coins[i]).decimals())
+            min_amount = min_amount * 98 / 100
+
+            receiver: address = self.receiver_of[coins[i]]
+            if receiver == ZERO_ADDRESS:
+                receiver = self.receiver
+            CryptoSwap(swap).remove_liquidity_one_coin(_amount, i, min_amount, True, receiver)
 
 
 @external
@@ -77,34 +114,28 @@ def burn(_coin: address) -> bool:
     # get actual balance in case of transfer fee or pre-existing balance
     amount = ERC20(_coin).balanceOf(self)
 
-    if amount != 0:
-        swap: address = CurveToken(_coin).minter()
-        coins: address[2] = [CryptoSwap(swap).coins(0), CryptoSwap(swap).coins(1)]
-        priorities: uint256[2] = [self.priority_of[coins[0]], self.priority_of[coins[1]]]
-        assert priorities[0] > 0 or priorities[1] > 0  # dev: unknown coins
-
-        i: uint256 = 2
-        if priorities[0] > priorities[1]:
-            i = 0
-        elif priorities[0] < priorities[1]:
-            i = 1
-
-        if i == 2:
-            # If both are equally prioritized, then remove both of them
-            CryptoSwap(swap).remove_liquidity(amount, [0, 0], True, self.receiver)
-        else:
-            min_amount: uint256 = amount * CryptoSwap(swap).lp_price() / 10 ** 18
-            if i == 1:
-                min_amount = min_amount * CryptoSwap(swap).price_oracle() / 10 ** 18
-            min_amount /= 10 ** (18 - ERC20(coins[i]).decimals())
-            min_amount = min_amount * 98 / 100
-
-            receiver: address = self.receiver_of[coins[i]]
-            if receiver == ZERO_ADDRESS:
-                receiver = self.receiver
-            CryptoSwap(swap).remove_liquidity_one_coin(amount, i, min_amount, True, receiver)
+    self._burn(_coin, amount)
 
     return True
+
+
+@external
+def burn_amount(_coin: address, _amount_to_burn: uint256):
+    """
+    @notice Burn a specific quantity of `_coin`
+    @dev Useful when the total amount to burn is so large that it fails from slippage
+    @param _coin Address of the coin being converted
+    @param _amount_to_burn Amount of the coin to burn
+    """
+    pool_proxy: address = self.pool_proxy
+    amount: uint256 = ERC20(_coin).balanceOf(pool_proxy)
+    if PoolProxy(pool_proxy).burners(_coin) == self and amount != 0:
+        ERC20(_coin).transferFrom(pool_proxy, self, amount)
+
+    amount = ERC20(_coin).balanceOf(self)
+    assert amount >= _amount_to_burn, "Insufficient balance"
+
+    self._burn(_coin, _amount_to_burn)
 
 
 @external

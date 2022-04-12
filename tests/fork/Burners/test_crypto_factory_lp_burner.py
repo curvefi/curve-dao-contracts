@@ -1,6 +1,6 @@
 import brownie
 import pytest
-from brownie import ZERO_ADDRESS
+from brownie import ZERO_ADDRESS, Contract
 from brownie_tokens import MintableForkToken
 
 coins = {
@@ -20,8 +20,20 @@ tokens = {
 
 
 @pytest.fixture(scope="module")
-def burner(CryptoFactoryLPBurner, alice, receiver):
-    yield CryptoFactoryLPBurner.deploy(receiver, alice, alice, alice, {"from": alice})
+def pool_proxy():
+    yield Contract("0xeCb456EA5365865EbAb8a2661B0c503410e9B347")
+
+
+@pytest.fixture(scope="module")
+def burner(CryptoFactoryLPBurner, pool_proxy, alice, receiver):
+    yield CryptoFactoryLPBurner.deploy(
+        pool_proxy,  # pool_proxy
+        receiver,  # receiver
+        alice,  # recovery
+        alice,  # owner
+        alice,  # emergency_owner
+        {"from": alice},
+    )
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -124,6 +136,22 @@ def test_more_prioritized(burner, alice, receiver, i):
     else:
         assert receiver.balance() == 0
         assert second.balanceOf(receiver) > 0
+
+
+def test_burn_amount(burner, pool_proxy, alice, receiver):
+    token = MintableForkToken(tokens["stgusdc"])
+    amount = 10 * 10 ** 18
+
+    pool_proxy.set_burner(token, burner, {"from": pool_proxy.ownership_admin()})
+    token._mint_for_testing(pool_proxy, amount, {"from": alice})
+    amount = token.balanceOf(pool_proxy)
+
+    burner.burn_amount(token, amount // 2, {"from": alice})
+    assert token.balanceOf(burner) == amount // 2
+
+    first, second = MintableForkToken(coins["stg"]), MintableForkToken(coins["usdc"])
+    assert first.balanceOf(receiver) == 0
+    assert second.balanceOf(receiver) > 0
 
 
 def test_unkown_priorities(burner, alice):
