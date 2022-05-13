@@ -1,0 +1,5 @@
+black
+eth-brownie
+flake8
+isort
+brownie-token-tester
