@@ -47,7 +47,6 @@ def burn(_coin: address) -> bool:
     amount: uint256 = WETH.balanceOf(msg.sender)
     WETH.transferFrom(msg.sender, self, amount)
     amount = WETH.balanceOf(self)
-
     WETH.withdraw(amount)
-    raw_call(RECEIVER, b"", value=amount)
+    raw_call(RECEIVER, b"", value=self.balance)
     return True
