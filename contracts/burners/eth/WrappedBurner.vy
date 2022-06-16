@@ -32,6 +32,7 @@ def __default__():
     pass
 
 
+@view
 @external
 def receiver() -> address:
     return RECEIVER
