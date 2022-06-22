@@ -2,6 +2,7 @@
 """
 @title Crypto LP Burner
 @notice Withdraws Crypto LP tokens
+@dev Fixed indexes
 """
 
 from vyper.interfaces import ERC20
@@ -93,9 +94,9 @@ def burn(_coin: address) -> bool:
         coins: address[8] = Registry(registry).get_coins(swap)
         # remove liquidity and pass to the next burner
 
-        if coins[3] == ZERO_ADDRESS:
+        if coins[2] == ZERO_ADDRESS:
             CryptoSwap2(swap).remove_liquidity(amount, [0, 0])
-        elif coins[4] == ZERO_ADDRESS:
+        elif coins[3] == ZERO_ADDRESS:
             CryptoSwap3(swap).remove_liquidity(amount, [0, 0, 0])
         else:
             CryptoSwap4(swap).remove_liquidity(amount, [0, 0, 0, 0])
