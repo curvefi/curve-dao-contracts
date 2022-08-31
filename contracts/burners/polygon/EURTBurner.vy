@@ -11,7 +11,6 @@ POOL: constant(address) = 0xB446BF7b8D6D4276d0c75eC0e3ee8dD7Fe15783A  # EURT/am3
 LP_TOKEN: constant(address) = 0x600743B1d8A96438bD46836fD34977a00293f6Aa  # crvEURTUSD
 
 
-recovery: public(address)
 receiver: public(address)
 
 owner: public(address)
@@ -19,10 +18,9 @@ future_owner: public(address)
 
 
 @external
-def __init__(recovery: address, receiver: address):
+def __init__(receiver: address):
     ERC20(EURT).approve(POOL, MAX_UINT256)
 
-    self.recovery = recovery
     self.receiver = receiver
     self.owner = msg.sender
 
@@ -51,26 +49,13 @@ def recover_balance(_coin: address) -> bool:
         _coin,
         concat(
             method_id("transfer(address,uint256)"),
-            convert(self.recovery, bytes32),
+            convert(msg.sender, bytes32),
             convert(amount, bytes32),
         ),
         max_outsize=32,
     )
     if len(response) != 0:
         assert convert(response, bool)
-
-    return True
-
-
-@external
-def set_recovery(_recovery: address) -> bool:
-    """
-    @notice Set the token recovery address
-    @param _recovery Token recovery address
-    @return bool success
-    """
-    assert msg.sender == self.owner  # dev: only owner
-    self.recovery = _recovery
 
     return True
 
