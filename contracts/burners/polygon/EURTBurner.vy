@@ -6,6 +6,10 @@
 from vyper.interfaces import ERC20
 
 
+interface ECrypto:
+    def add_liquidity(_amounts: uint256[2], _min_dy: uint256) -> uint256: nonpayable
+
+
 EURT: constant(address) = 0x7BDF330f423Ea880FF95fC41A280fD5eCFD3D09f  # EURT
 POOL: constant(address) = 0xB446BF7b8D6D4276d0c75eC0e3ee8dD7Fe15783A  # EURT/am3CRV
 LP_TOKEN: constant(address) = 0x600743B1d8A96438bD46836fD34977a00293f6Aa  # crvEURTUSD
@@ -26,12 +30,14 @@ def __init__(receiver: address):
 
 
 @external
-def burn(_coin: address):
+def burn(_coin: address) -> bool:
     amount: uint256 = ERC20(_coin).balanceOf(msg.sender)
     ERC20(_coin).transferFrom(msg.sender, self, amount)
 
-    ECrypto(POOL).add_liquidity([amount, 0], 0)
-    ERC20(LP_TOKEN).transfer(self.receiver, ERC20(_coin).balanceOf(self))
+    amount = ECrypto(POOL).add_liquidity([amount, 0], 0)
+    ERC20(LP_TOKEN).transfer(self.receiver, amount)
+
+    return True
 
 
 @external
