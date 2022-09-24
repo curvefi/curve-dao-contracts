@@ -1,4 +1,5 @@
 import json
+import os
 import warnings
 
 import requests
@@ -79,7 +80,12 @@ def prepare_evm_script():
 
 def make_vote(sender=SENDER):
     text = json.dumps({"text": DESCRIPTION})
-    response = requests.post("https://ipfs.infura.io:5001/api/v0/add", files={"file": text})
+    # https://docs.infura.io/infura/networks/ipfs/how-to/authenticate-requests
+    response = requests.post(
+        "https://ipfs.infura.io:5001/api/v0/add",
+        files={"file": text},
+        auth=(os.getenv("IPFS_PROJECT_ID"), os.getenv("IPFS_PROJECT_SECRET")),
+    )
     ipfs_hash = response.json()["Hash"]
     print(f"ipfs hash: {ipfs_hash}")
 
@@ -112,7 +118,7 @@ def make_vote(sender=SENDER):
 def simulate():
     # make the new vote
     convex = "0x989aeb4d175e16225e39e87d0d97a3360524ad80"
-    vote_id = make_vote(convex)
+    vote_id = make_vote()
 
     # vote
     aragon = Contract(TARGET["voting"])
