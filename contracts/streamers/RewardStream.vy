@@ -87,16 +87,16 @@ def remove_receiver(_receiver: address):
 
 
 @external
-def get_reward():
+def get_reward(_receiver: address = msg.sender):
     """
     @notice Claim pending rewards
     """
-    assert self.reward_receivers[msg.sender]  # dev: caller is not receiver
+    assert self.reward_receivers[_receiver]  # dev: caller is not receiver
     total: uint256 = self._update_per_receiver_total()
-    amount: uint256 = total - self.reward_paid[msg.sender]
+    amount: uint256 = total - self.reward_paid[_receiver]
     if amount > 0:
-        assert ERC20(self.reward_token).transfer(msg.sender, amount)  # dev: invalid response
-        self.reward_paid[msg.sender] = total
+        assert ERC20(self.reward_token).transfer(_receiver, amount)  # dev: invalid response
+        self.reward_paid[_receiver] = total
 
 
 @external
