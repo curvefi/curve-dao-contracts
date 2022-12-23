@@ -86,7 +86,7 @@ def _burn(_coin: address, _amount: uint256):
     else:
         min_amount: uint256 = _amount * CryptoSwap(swap).lp_price() / 10 ** 18
         if i == 1:
-            min_amount = min_amount * CryptoSwap(swap).price_oracle() / 10 ** 18
+            min_amount = min_amount * 10 ** 18 / CryptoSwap(swap).price_oracle()
         min_amount /= 10 ** (18 - ERC20(coins[i]).decimals())
         min_amount = min_amount * 98 / 100
 
