@@ -1,14 +1,20 @@
-# @version 0.3.0
+# @version 0.3.7
 """
-@title 2Crypto Swap Burner
-@notice Performs a swap using a 2 asset Crypto pool, with slippage protection via price oracle
+@title Crypto Swap Burner
+@notice Performs a swap using a 2 or 3 asset Crypto pool, with slippage protection via price oracle
 """
 
-from vyper.interfaces import ERC20
+interface ERC20:
+    def transferFrom(_from: address, _to: address, _value: uint256) -> bool: nonpayable
+    def balanceOf(_owner: address) -> uint256: view
+    def decimals() -> uint256: view
 
 interface CryptoPool:
     def exchange(i: uint256, j: uint256, dx: uint256, min_dy: uint256): payable
     def price_oracle() -> uint256: view
+
+interface TricryptoPool:
+    def price_oracle(_i: uint256) -> uint256: view
 
 interface CryptoPoolETH:
     def exchange(i: uint256, j: uint256, dx: uint256, min_dy: uint256, use_eth: bool): payable
@@ -22,6 +28,8 @@ struct SwapData:
     coin: address
     receiver: address
     i: uint256
+    j: uint256
+    is_tricrypto: bool
 
 
 ETH_ADDRESS: constant(address) = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
@@ -95,22 +103,28 @@ def _transfer_from(_coin: address, _from: address) -> (uint256, uint256):
 def _burn(_coin: address, _amount: uint256, _eth_amount: uint256):
     initial_balance: uint256 = 0
     min_dy: uint256 = 0
-    i: uint256 = 0
-    j: uint256 = 0
 
     swap_data: SwapData = self.swap_data[_coin]
     if swap_data.coin == ETH_ADDRESS:
         initial_balance = self.balance
     else:
         initial_balance = ERC20(swap_data.coin).balanceOf(self)
+    i: uint256 = swap_data.i
+    j: uint256 = swap_data.j
 
-    oracle_price: uint256 = CryptoPool(swap_data.pool).price_oracle()
-    if swap_data.i == 1:
-        i = 1
-        min_dy = oracle_price * _amount / 10**18 * 98 / 100
-    else:
-        j = 1
-        min_dy = _amount * 10**18 / oracle_price * 98 / 100
+    mul_: uint256 = 10**18
+    div_: uint256 = 10**18
+    if i > 0:
+        if swap_data.is_tricrypto:
+            mul_ = TricryptoPool(swap_data.pool).price_oracle(i - 1)
+        else:
+            mul_ = CryptoPool(swap_data.pool).price_oracle()
+    if j > 0:
+        if swap_data.is_tricrypto:
+            div_ = TricryptoPool(swap_data.pool).price_oracle(j - 1)
+        else:
+            div_ = CryptoPool(swap_data.pool).price_oracle()
+    min_dy = _amount * mul_ * 98 / (div_ * 100)
 
     if _coin == ETH_ADDRESS or swap_data.coin == ETH_ADDRESS:
         CryptoPoolETH(swap_data.pool).exchange(i, j, _amount, 0, True, value=_eth_amount)
@@ -118,11 +132,15 @@ def _burn(_coin: address, _amount: uint256, _eth_amount: uint256):
         CryptoPool(swap_data.pool).exchange(i, j, _amount, 0)
 
     if swap_data.coin == ETH_ADDRESS:
-        assert self.balance - initial_balance >= min_dy, "Slippage"
+        assert self.balance - initial_balance >= min_dy * 10 ** (18 - ERC20(_coin).decimals()), "Slippage"
         if swap_data.receiver != ZERO_ADDRESS:
             raw_call(swap_data.receiver, b"", value=self.balance)
     else:
-        assert ERC20(swap_data.coin).balanceOf(self) - initial_balance >= min_dy, "Slippage"
+        received: uint256 = (ERC20(swap_data.coin).balanceOf(self) - initial_balance)\
+            * 10 ** (18 - ERC20(swap_data.coin).decimals())
+        if _coin != ETH_ADDRESS:
+            min_dy *= 10 ** (18 - ERC20(_coin).decimals())
+        assert received >= min_dy, "Slippage"
         if swap_data.receiver != ZERO_ADDRESS:
             amount: uint256 = ERC20(swap_data.coin).balanceOf(self)
             response: Bytes[32] = raw_call(
@@ -183,7 +201,9 @@ def set_swap_data(
     _to: address,
     _pool: address,
     _receiver: address,
-    i: uint256,
+    _i: uint256,
+    _j: uint256,
+    _is_tricrypto: bool,
 ) -> bool:
     """
     @notice Set conversion and transfer data for `_from`
@@ -195,7 +215,9 @@ def set_swap_data(
         pool: _pool,
         coin: _to,
         receiver: _receiver,
-        i: i
+        i: _i,
+        j: _j,
+        is_tricrypto: _is_tricrypto,
     })
 
     if _from != ETH_ADDRESS:
@@ -221,14 +243,17 @@ def recover_balance(_coin: address) -> bool:
     """
     assert msg.sender in [self.owner, self.emergency_owner]  # dev: only owner
 
-    amount: uint256 = ERC20(_coin).balanceOf(self)
-    response: Bytes[32] = raw_call(
-        _coin,
-        _abi_encode(self.recovery, amount, method_id=method_id("transfer(address,uint256)")),
-        max_outsize=32,
-    )
-    if len(response) != 0:
-        assert convert(response, bool)
+    if _coin == ETH_ADDRESS:
+        raw_call(self.recovery, b"", value=self.balance)
+    else:
+        amount: uint256 = ERC20(_coin).balanceOf(self)
+        response: Bytes[32] = raw_call(
+            _coin,
+            _abi_encode(self.recovery, amount, method_id=method_id("transfer(address,uint256)")),
+            max_outsize=32,
+        )
+        if len(response) != 0:
+            assert convert(response, bool)
 
     return True
 
