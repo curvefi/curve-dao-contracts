@@ -1,4 +1,4 @@
-# @version 0.3.0
+# @version 0.3.7
 """
 @title Swap Burner
 @notice Swaps an asset into another asset using a specific pool, and forwards to another burner
@@ -7,23 +7,16 @@
 from vyper.interfaces import ERC20
 
 interface StableSwap:
-    def exchange(i: int128, j: int128, dx: uint256, min_dy: uint256): nonpayable
-
-interface CryptoPool:
-    def exchange(i: uint256, j: uint256, dx: uint256, min_dy: uint256): payable
-    def get_dy(i: uint256, j: uint256, amount: uint256) -> uint256: view
-
-interface CryptoPoolETH:
-    def exchange(i: uint256, j: uint256, dx: uint256, min_dy: uint256, use_eth: bool): payable
+    def exchange(i: int128, j: int128, dx: uint256, min_dy: uint256): payable
+    def coins(_i: uint256) -> address: view
 
 
 struct SwapData:
     pool: address
     coin: address
     receiver: address
-    i: uint256
-    j: uint256
-    is_cryptoswap: bool
+    i: int128
+    j: int128
 
 
 ETH_ADDRESS: constant(address) = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
@@ -104,22 +97,20 @@ def burn(_coin: address) -> bool:
 
     if amount != 0:
         swap_data: SwapData = self.swap_data[_coin]
-        if not swap_data.is_cryptoswap:
-            StableSwap(swap_data.pool).exchange(convert(swap_data.i, int128), convert(swap_data.j, int128), amount, 0)
-        elif _coin == ETH_ADDRESS or swap_data.coin == ETH_ADDRESS:
-            CryptoPoolETH(swap_data.pool).exchange(swap_data.i, swap_data.j, amount, 0, True, value=eth_amount)
-        else:
-            CryptoPool(swap_data.pool).exchange(swap_data.i, swap_data.j, amount, 0)
+        StableSwap(swap_data.pool).exchange(swap_data.i, swap_data.j, amount, 0, value=eth_amount)
 
         if swap_data.receiver != ZERO_ADDRESS:
-            amount = ERC20(swap_data.coin).balanceOf(self)
-            response: Bytes[32] = raw_call(
-                swap_data.coin,
-                _abi_encode(swap_data.receiver, amount, method_id=method_id("transfer(address,uint256)")),
-                max_outsize=32,
-            )
-            if len(response) != 0:
-                assert convert(response, bool)
+            if swap_data.coin == ETH_ADDRESS:
+                raw_call(swap_data.receiver, b"", value=self.balance)
+            else:
+                amount = ERC20(swap_data.coin).balanceOf(self)
+                response: Bytes[32] = raw_call(
+                    swap_data.coin,
+                    _abi_encode(swap_data.receiver, amount, method_id=method_id("transfer(address,uint256)")),
+                    max_outsize=32,
+                )
+                if len(response) != 0:
+                    assert convert(response, bool)
 
     return True
 
@@ -130,23 +121,23 @@ def set_swap_data(
     _to: address,
     _pool: address,
     _receiver: address,
-    i: uint256,
-    j: uint256,
-    _is_cryptoswap: bool
+    _i: int128,
+    _j: int128,
 ) -> bool:
     """
     @notice Set conversion and transfer data for `_from`
     @return bool success
     """
     assert msg.sender in [self.owner, self.emergency_owner]  # dev: only owner
+    assert StableSwap(_pool).coins(convert(_i, uint256)) == _from
+    assert StableSwap(_pool).coins(convert(_j, uint256)) == _to
 
     self.swap_data[_from] = SwapData({
         pool: _pool,
         coin: _to,
         receiver: _receiver,
-        i: i,
-        j: j,
-        is_cryptoswap: _is_cryptoswap
+        i: _i,
+        j: _j,
     })
 
     if _from != ETH_ADDRESS:
@@ -172,14 +163,17 @@ def recover_balance(_coin: address) -> bool:
     """
     assert msg.sender in [self.owner, self.emergency_owner]  # dev: only owner
 
-    amount: uint256 = ERC20(_coin).balanceOf(self)
-    response: Bytes[32] = raw_call(
-        _coin,
-        _abi_encode(self.recovery, amount, method_id=method_id("transfer(address,uint256)")),
-        max_outsize=32,
-    )
-    if len(response) != 0:
-        assert convert(response, bool)
+    if _coin == ETH_ADDRESS:
+        raw_call(self.recovery, b"", value=self.balance)
+    else:
+        amount: uint256 = ERC20(_coin).balanceOf(self)
+        response: Bytes[32] = raw_call(
+            _coin,
+            _abi_encode(self.recovery, amount, method_id=method_id("transfer(address,uint256)")),
+            max_outsize=32,
+        )
+        if len(response) != 0:
+            assert convert(response, bool)
 
     return True
 
