@@ -1,7 +1,7 @@
 # @version 0.3.7
 """
-@title Swap Burner
-@notice Swaps an asset into another asset using a specific pool, and forwards to another burner
+@title Swap Stable Burner
+@notice Swaps an asset into another asset using a Stable pool, and forwards to another burner
 """
 
 from vyper.interfaces import ERC20
@@ -63,7 +63,7 @@ def __default__():
 @external
 def burn(_coin: address) -> bool:
     """
-    @notice Convert `_coin` by removing liquidity and transfer to another burner
+    @notice Convert `_coin` by swapping and transfer to another burner
     @param _coin Address of the coin being converted
     @return bool success
     """
@@ -156,7 +156,7 @@ def set_swap_data(
 @external
 def recover_balance(_coin: address) -> bool:
     """
-    @notice Recover ERC20 tokens from this contract
+    @notice Recover ERC20 tokens or Ether from this contract
     @dev Tokens are sent to the recovery address
     @param _coin Token address
     @return bool success

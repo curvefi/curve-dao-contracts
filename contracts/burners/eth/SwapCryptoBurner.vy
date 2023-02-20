@@ -1,7 +1,7 @@
 # @version 0.3.7
 """
 @title Crypto Swap Burner
-@notice Performs a swap using a 2 or 3 asset Crypto pool, with slippage protection via price oracle
+@notice Performs a swap using a Crypto pool, with slippage protection via price oracle
 """
 
 interface ERC20:
@@ -156,7 +156,7 @@ def _burn(_coin: address, _amount: uint256, _eth_amount: uint256):
 @external
 def burn(_coin: address) -> bool:
     """
-    @notice Convert `_coin` by removing liquidity and transfer to another burner
+    @notice Convert `_coin` by swapping and transfer to another burner
     @param _coin Address of the coin being converted
     @return bool success
     """
@@ -236,7 +236,7 @@ def set_swap_data(
 @external
 def recover_balance(_coin: address) -> bool:
     """
-    @notice Recover ERC20 tokens from this contract
+    @notice Recover ERC20 tokens or Ether from this contract
     @dev Tokens are sent to the recovery address
     @param _coin Token address
     @return bool success
