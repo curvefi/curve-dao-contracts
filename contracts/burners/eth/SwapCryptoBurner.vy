@@ -124,7 +124,7 @@ def _burn(_coin: address, _amount: uint256, _eth_amount: uint256):
             div_ = TricryptoPool(swap_data.pool).price_oracle(j - 1)
         else:
             div_ = CryptoPool(swap_data.pool).price_oracle()
-    min_dy = _amount * mul_ * 98 / (div_ * 100)
+    min_dy = _amount * mul_ * 99 / (div_ * 100)
 
     if _coin == ETH_ADDRESS or swap_data.coin == ETH_ADDRESS:
         CryptoPoolETH(swap_data.pool).exchange(i, j, _amount, 0, True, value=_eth_amount)
