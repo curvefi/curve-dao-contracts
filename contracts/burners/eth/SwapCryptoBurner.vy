@@ -192,7 +192,7 @@ def burn_amount(_coin: address, _amount_to_burn: uint256):
     amount, eth_amount = self._transfer_from(_coin, pool_proxy)
     assert amount >= _amount_to_burn, "Insufficient balance"
 
-    self._burn(_coin, _amount_to_burn, eth_amount)
+    self._burn(_coin, _amount_to_burn, min(eth_amount, _amount_to_burn))
 
 
 @external
