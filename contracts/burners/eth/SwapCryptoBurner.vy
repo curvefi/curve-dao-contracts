@@ -133,7 +133,7 @@ def _burn(_coin: address, _amount: uint256, _eth_amount: uint256):
 
     if swap_data.coin == ETH_ADDRESS:
         assert self.balance - initial_balance >= min_dy * 10 ** (18 - ERC20(_coin).decimals()), "Slippage"
-        if swap_data.receiver != ZERO_ADDRESS:
+        if swap_data.receiver != empty(address):
             raw_call(swap_data.receiver, b"", value=self.balance)
     else:
         received: uint256 = (ERC20(swap_data.coin).balanceOf(self) - initial_balance)\
@@ -141,7 +141,7 @@ def _burn(_coin: address, _amount: uint256, _eth_amount: uint256):
         if _coin != ETH_ADDRESS:
             min_dy *= 10 ** (18 - ERC20(_coin).decimals())
         assert received >= min_dy, "Slippage"
-        if swap_data.receiver != ZERO_ADDRESS:
+        if swap_data.receiver != empty(address):
             amount: uint256 = ERC20(swap_data.coin).balanceOf(self)
             response: Bytes[32] = raw_call(
                 swap_data.coin,
@@ -202,7 +202,7 @@ def _set_swap_data(_from: address, _swap_data: SwapData):
     if _from != ETH_ADDRESS:
         response: Bytes[32] = raw_call(
             _from,
-            _abi_encode(_swap_data.pool, MAX_UINT256, method_id=method_id("approve(address,uint256)")),
+            _abi_encode(_swap_data.pool, max_value(uint256), method_id=method_id("approve(address,uint256)")),
             max_outsize=32,
         )
         if len(response) != 0:

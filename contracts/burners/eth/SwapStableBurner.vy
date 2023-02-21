@@ -99,7 +99,7 @@ def burn(_coin: address) -> bool:
         swap_data: SwapData = self.swap_data[_coin]
         StableSwap(swap_data.pool).exchange(swap_data.i, swap_data.j, amount, 0, value=eth_amount)
 
-        if swap_data.receiver != ZERO_ADDRESS:
+        if swap_data.receiver != empty(address):
             if swap_data.coin == ETH_ADDRESS:
                 raw_call(swap_data.receiver, b"", value=self.balance)
             else:
@@ -125,7 +125,7 @@ def _set_swap_data(_from: address, _swap_data: SwapData):
     if _from != ETH_ADDRESS:
         response: Bytes[32] = raw_call(
             _from,
-            _abi_encode(_swap_data.pool, MAX_UINT256, method_id=method_id("approve(address,uint256)")),
+            _abi_encode(_swap_data.pool, max_value(uint256), method_id=method_id("approve(address,uint256)")),
             max_outsize=32,
         )
         if len(response) != 0:
