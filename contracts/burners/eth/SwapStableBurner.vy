@@ -115,11 +115,28 @@ def burn(_coin: address) -> bool:
     return True
 
 
+@internal
+def _set_swap_data(_from: address, _swap_data: SwapData):
+    assert StableSwap(_swap_data.pool).coins(convert(_swap_data.i, uint256)) == _from
+    assert StableSwap(_swap_data.pool).coins(convert(_swap_data.j, uint256)) == _swap_data.coin
+
+    self.swap_data[_from] = _swap_data
+
+    if _from != ETH_ADDRESS:
+        response: Bytes[32] = raw_call(
+            _from,
+            _abi_encode(_swap_data.pool, MAX_UINT256, method_id=method_id("approve(address,uint256)")),
+            max_outsize=32,
+        )
+        if len(response) != 0:
+            assert convert(response, bool)
+
+
 @external
 def set_swap_data(
     _from: address,
-    _to: address,
     _pool: address,
+    _to: address,
     _receiver: address,
     _i: int128,
     _j: int128,
@@ -129,27 +146,28 @@ def set_swap_data(
     @return bool success
     """
     assert msg.sender in [self.owner, self.emergency_owner]  # dev: only owner
-    assert StableSwap(_pool).coins(convert(_i, uint256)) == _from
-    assert StableSwap(_pool).coins(convert(_j, uint256)) == _to
 
-    self.swap_data[_from] = SwapData({
+    self._set_swap_data(_from, SwapData({
         pool: _pool,
         coin: _to,
         receiver: _receiver,
         i: _i,
         j: _j,
-    })
-
-    if _from != ETH_ADDRESS:
-        response: Bytes[32] = raw_call(
-            _from,
-            _abi_encode(_pool, MAX_UINT256, method_id=method_id("approve(address,uint256)")),
-            max_outsize=32,
-        )
-        if len(response) != 0:
-            assert convert(response, bool)
+    }))
 
     return True
+
+
+
+@external
+def set_many_swap_data(_from: DynArray[address, 20], _swap_datas: DynArray[SwapData, 20]):
+    assert msg.sender in [self.owner, self.emergency_owner]  # dev: only owner
+    assert len(_swap_datas) == len(_from), "Incorrect input"
+
+    i: uint256 = 0
+    for data in _swap_datas:
+        self._set_swap_data(_from[i], data)
+        i += 1
 
 
 

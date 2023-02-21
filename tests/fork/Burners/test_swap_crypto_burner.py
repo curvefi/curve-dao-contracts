@@ -87,8 +87,8 @@ def burner(SwapCryptoBurner, pool_proxy, alice, receiver):
 def _set_swap_data(burner, swap_data, pool_proxy, alice, receiver):
     burner.set_swap_data(
         swap_data["_from"],
-        swap_data["_to"],
         swap_data["_pool"],
+        swap_data["_to"],
         receiver,
         swap_data["_i"],
         swap_data["_j"],

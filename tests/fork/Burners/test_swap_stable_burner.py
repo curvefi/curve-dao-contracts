@@ -1,5 +1,5 @@
 import pytest
-from brownie import ETH_ADDRESS, Contract
+from brownie import ETH_ADDRESS, ZERO_ADDRESS, Contract
 from brownie_tokens import MintableForkToken, skip_holders
 
 WETH = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
@@ -53,19 +53,16 @@ def burner(SwapStableBurner, alice, receiver):
 
 @pytest.fixture(scope="module", autouse=True)
 def setup(burner, pool_proxy, alice, receiver):
+    froms = [data["_from"] for data in swap_datas]
+    datas = [(data["_pool"], data["_to"], receiver, data["_i"], data["_j"]) for data in swap_datas]
+    burner.set_many_swap_data(froms, datas)
+
+    to_pad = [ZERO_ADDRESS] * (20 - len(froms))
     ownership_admin = pool_proxy.ownership_admin()
-    for swap_data in swap_datas:
-        burner.set_swap_data(
-            swap_data["_from"],
-            swap_data["_to"],
-            swap_data["_pool"],
-            receiver,
-            swap_data["_i"],
-            swap_data["_j"],
-            {"from": alice},
-        )
-        pool_proxy.set_burner(swap_data["_from"], burner, {"from": ownership_admin})
-        skip_holders(swap_data["_pool"])
+    pool_proxy.set_many_burners(
+        froms + to_pad, [burner] * len(froms) + to_pad, {"from": ownership_admin}
+    )
+    skip_holders(*[swap_data["_pool"] for swap_data in swap_datas])
 
 
 def _get_balance(coin, of):
