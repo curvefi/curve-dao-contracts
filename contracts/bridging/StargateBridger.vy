@@ -80,9 +80,9 @@ def bridge(token: address):
     assert msg.sender == self.owner
 
     amount: uint256 = ERC20(token).balanceOf(self)
-    receiver: address = self.receiver
+    receiver: Bytes[20] = slice(_abi_encode(self.receiver), 12, 20)
     fee: uint256[2] = IStargateRouter(ROUTER).quoteLayerZeroFee(
-        101, 1, _abi_encode(receiver), b"", TxnParams({gas: 0, amount: 0, to: b""})
+        101, 1, receiver, b"", TxnParams({gas: 0, amount: 0, to: b""})
     )
     IStargateRouter(ROUTER).swap(
         101,
@@ -92,7 +92,7 @@ def bridge(token: address):
         amount,
         98 * amount / 100,
         TxnParams({gas: 0, amount: 0, to: b""}),
-        _abi_encode(receiver),
+        receiver,
         b"",
         value=fee[0],
     )
