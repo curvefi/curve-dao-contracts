@@ -45,6 +45,7 @@ struct TxnParams:
 
 
 ROUTER: public(immutable(address))
+TOKEN: public(immutable(address))
 
 
 receiver: public(address)
@@ -54,11 +55,14 @@ future_owner: public(address)
 
 
 @external
-def __init__(receiver: address, router: address):
+def __init__(receiver: address, router: address, token: address):
     ROUTER = router
+    TOKEN = token
     
     self.owner = msg.sender
     self.receiver = receiver
+
+    ERC20(TOKEN).approve(router, max_value(uint256))
 
     log SetRootReceiver(receiver)
 
@@ -69,14 +73,28 @@ def __default__():
     assert len(msg.data) == 0
 
 
+@payable
 @external
 def bridge(token: address):
+    assert token == TOKEN
     assert msg.sender == self.owner
 
     amount: uint256 = ERC20(token).balanceOf(self)
     receiver: address = self.receiver
     fee: uint256[2] = IStargateRouter(ROUTER).quoteLayerZeroFee(
         101, 1, _abi_encode(receiver), b"", TxnParams({gas: 0, amount: 0, to: b""})
+    )
+    IStargateRouter(ROUTER).swap(
+        101,
+        1,
+        1,
+        self,
+        amount,
+        98 * amount / 100,
+        TxnParams({gas: 0, amount: 0, to: b""}),
+        _abi_encode(receiver),
+        b"",
+        value=fee[0],
     )
 
 
