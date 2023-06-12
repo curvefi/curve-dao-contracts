@@ -129,6 +129,12 @@ def _burn(_coin: address, _amount: uint256) -> bool:
                 best_pool = pool
                 i = convert(info.i, int128)
 
+        price_oracle: uint256 = StableSwap(best_pool).price_oracle()
+        slippage: uint256 = self.slippage_of[_coin]
+        if slippage == 0:
+            slippage = SLIPPAGE
+        assert price_oracle - price_oracle * slippage / BPS <= best_dy * 10 ** 18 / _amount
+
         StableSwap(best_pool).exchange(i, 1 - i, _amount, 0, self.pool_proxy)  # best_dy is already counted
 
     return True
