@@ -115,6 +115,16 @@ def accept_transfer_ownership():
 
 
 @external
+def recover(coin: address):
+    assert msg.sender == self.owner
+    
+    if coin == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE:
+        raw_call(msg.sender, b"", value=self.balance)
+    else:
+        assert ERC20(coin).transfer(msg.sender, ERC20(coin).balanceOf(self))
+
+
+@external
 def set_root_receiver(receiver: address):
     assert msg.sender == self.owner
     assert receiver != empty(address)
