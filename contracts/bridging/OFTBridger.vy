@@ -5,6 +5,7 @@
 @license MIT
 """
 from vyper.interfaces import ERC20
+from vyper.interfaces import ERC20Detailed
 
 
 interface ProxyOFT:
@@ -48,6 +49,7 @@ PROXY_OFT: public(immutable(address))
 TOKEN: public(immutable(address))
 
 
+start: uint256
 receiver: public(address)
 
 owner: public(address)
@@ -75,10 +77,17 @@ def __default__():
 def bridge(coin: address) -> bool:
     assert msg.sender == self.owner and coin == TOKEN
 
+    start: uint256 = self.start
+    assert block.timestamp > start + 1800
+
     amount: uint256 = ERC20(coin).balanceOf(self)
     if amount == 0:
         amount = ERC20(coin).balanceOf(msg.sender)
         assert ERC20(coin).transferFrom(msg.sender, self, amount)
+    
+    if start == 0:
+        amount = 10 ** (convert(ERC20Detailed(coin).decimals(), uint256) + 1)
+        self.start = block.timestamp
     
     receiver: address = self.receiver
     adapter_params: Bytes[128] = concat(
