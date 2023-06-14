@@ -13,7 +13,7 @@ interface ProxyOFT:
         to: bytes32,
         amount: uint256,
         use_zero: bool,
-        adapter_params: Bytes[64],
+        adapter_params: Bytes[128],
     ) -> uint256: view
     def sendFrom(
         origin: address,
@@ -38,7 +38,7 @@ event AssetBridged:
 struct CallParams:
     refund: address
     zero_payer: address
-    adapter_params: Bytes[64]
+    adapter_params: Bytes[128]
 
 
 ETH_CHAIN_ID: constant(uint16) = 101
@@ -80,17 +80,29 @@ def bridge(coin: address) -> bool:
         amount = ERC20(coin).balanceOf(msg.sender)
         assert ERC20(coin).transferFrom(msg.sender, self, amount)
     
+    receiver: address = self.receiver
+    adapter_params: Bytes[128] = concat(
+        b"\x00\x02",
+        convert(100_000, bytes32),
+        b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00",
+        convert(receiver, bytes32)
+    )
+
     fee: uint256 = ProxyOFT(PROXY_OFT).estimateSendFee(
-        ETH_CHAIN_ID, convert(self.receiver, bytes32), amount, False, b"",
+        ETH_CHAIN_ID, convert(receiver, bytes32), amount, False, adapter_params,
     )
     assert ERC20(coin).approve(PROXY_OFT, amount)
 
     ProxyOFT(PROXY_OFT).sendFrom(
         self,
         ETH_CHAIN_ID,
-        convert(self.receiver, bytes32),
+        convert(receiver, bytes32),
         amount,
-        CallParams({refund: self, zero_payer: empty(address), adapter_params: b""}),
+        CallParams({
+            refund: self,
+            zero_payer: empty(address),
+            adapter_params: adapter_params,
+        }),
         value=fee
     )
 
