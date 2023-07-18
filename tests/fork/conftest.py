@@ -30,3 +30,8 @@ def SUSD():
 @pytest.fixture(scope="module")
 def SBTC():
     yield _MintableTestToken("0xfE18be6b3Bd88A2D2A7f928d00292E7a9963CfC6")
+
+
+@pytest.fixture(scope="module")
+def WETH():
+    yield _MintableTestToken("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2")
