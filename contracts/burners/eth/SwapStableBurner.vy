@@ -1,29 +1,22 @@
-# @version 0.3.0
+# @version 0.3.7
 """
-@title Swap Burner
-@notice Swaps an asset into another asset using a specific pool, and forwards to another burner
+@title Swap Stable Burner
+@notice Swaps an asset into another asset using a Stable pool, and forwards to another burner
 """
 
 from vyper.interfaces import ERC20
 
 interface StableSwap:
-    def exchange(i: int128, j: int128, dx: uint256, min_dy: uint256): nonpayable
-
-interface CryptoPool:
-    def exchange(i: uint256, j: uint256, dx: uint256, min_dy: uint256): payable
-    def get_dy(i: uint256, j: uint256, amount: uint256) -> uint256: view
-
-interface CryptoPoolETH:
-    def exchange(i: uint256, j: uint256, dx: uint256, min_dy: uint256, use_eth: bool): payable
+    def exchange(i: int128, j: int128, dx: uint256, min_dy: uint256): payable
+    def coins(_i: uint256) -> address: view
 
 
 struct SwapData:
     pool: address
     coin: address
     receiver: address
-    i: uint256
-    j: uint256
-    is_cryptoswap: bool
+    i: int128
+    j: int128
 
 
 ETH_ADDRESS: constant(address) = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
@@ -70,7 +63,7 @@ def __default__():
 @external
 def burn(_coin: address) -> bool:
     """
-    @notice Convert `_coin` by removing liquidity and transfer to another burner
+    @notice Convert `_coin` by swapping and transfer to another burner
     @param _coin Address of the coin being converted
     @return bool success
     """
@@ -104,35 +97,49 @@ def burn(_coin: address) -> bool:
 
     if amount != 0:
         swap_data: SwapData = self.swap_data[_coin]
-        if not swap_data.is_cryptoswap:
-            StableSwap(swap_data.pool).exchange(convert(swap_data.i, int128), convert(swap_data.j, int128), amount, 0)
-        elif _coin == ETH_ADDRESS or swap_data.coin == ETH_ADDRESS:
-            CryptoPoolETH(swap_data.pool).exchange(swap_data.i, swap_data.j, amount, 0, True, value=eth_amount)
-        else:
-            CryptoPool(swap_data.pool).exchange(swap_data.i, swap_data.j, amount, 0)
+        StableSwap(swap_data.pool).exchange(swap_data.i, swap_data.j, amount, 0, value=eth_amount)
 
-        if swap_data.receiver != ZERO_ADDRESS:
-            amount = ERC20(swap_data.coin).balanceOf(self)
-            response: Bytes[32] = raw_call(
-                swap_data.coin,
-                _abi_encode(swap_data.receiver, amount, method_id=method_id("transfer(address,uint256)")),
-                max_outsize=32,
-            )
-            if len(response) != 0:
-                assert convert(response, bool)
+        if swap_data.receiver != empty(address):
+            if swap_data.coin == ETH_ADDRESS:
+                raw_call(swap_data.receiver, b"", value=self.balance)
+            else:
+                amount = ERC20(swap_data.coin).balanceOf(self)
+                response: Bytes[32] = raw_call(
+                    swap_data.coin,
+                    _abi_encode(swap_data.receiver, amount, method_id=method_id("transfer(address,uint256)")),
+                    max_outsize=32,
+                )
+                if len(response) != 0:
+                    assert convert(response, bool)
 
     return True
+
+
+@internal
+def _set_swap_data(_from: address, _swap_data: SwapData):
+    assert StableSwap(_swap_data.pool).coins(convert(_swap_data.i, uint256)) == _from
+    assert StableSwap(_swap_data.pool).coins(convert(_swap_data.j, uint256)) == _swap_data.coin
+
+    self.swap_data[_from] = _swap_data
+
+    if _from != ETH_ADDRESS:
+        response: Bytes[32] = raw_call(
+            _from,
+            _abi_encode(_swap_data.pool, max_value(uint256), method_id=method_id("approve(address,uint256)")),
+            max_outsize=32,
+        )
+        if len(response) != 0:
+            assert convert(response, bool)
 
 
 @external
 def set_swap_data(
     _from: address,
-    _to: address,
     _pool: address,
+    _to: address,
     _receiver: address,
-    i: uint256,
-    j: uint256,
-    _is_cryptoswap: bool
+    _i: int128,
+    _j: int128,
 ) -> bool:
     """
     @notice Set conversion and transfer data for `_from`
@@ -140,46 +147,51 @@ def set_swap_data(
     """
     assert msg.sender in [self.owner, self.emergency_owner]  # dev: only owner
 
-    self.swap_data[_from] = SwapData({
+    self._set_swap_data(_from, SwapData({
         pool: _pool,
         coin: _to,
         receiver: _receiver,
-        i: i,
-        j: j,
-        is_cryptoswap: _is_cryptoswap
-    })
-
-    if _from != ETH_ADDRESS:
-        response: Bytes[32] = raw_call(
-            _from,
-            _abi_encode(_pool, MAX_UINT256, method_id=method_id("approve(address,uint256)")),
-            max_outsize=32,
-        )
-        if len(response) != 0:
-            assert convert(response, bool)
+        i: _i,
+        j: _j,
+    }))
 
     return True
 
 
 
 @external
+def set_many_swap_data(_from: DynArray[address, 20], _swap_datas: DynArray[SwapData, 20]):
+    assert msg.sender in [self.owner, self.emergency_owner]  # dev: only owner
+    assert len(_swap_datas) == len(_from), "Incorrect input"
+
+    i: uint256 = 0
+    for data in _swap_datas:
+        self._set_swap_data(_from[i], data)
+        i += 1
+
+
+
+@external
 def recover_balance(_coin: address) -> bool:
     """
-    @notice Recover ERC20 tokens from this contract
+    @notice Recover ERC20 tokens or Ether from this contract
     @dev Tokens are sent to the recovery address
     @param _coin Token address
     @return bool success
     """
     assert msg.sender in [self.owner, self.emergency_owner]  # dev: only owner
 
-    amount: uint256 = ERC20(_coin).balanceOf(self)
-    response: Bytes[32] = raw_call(
-        _coin,
-        _abi_encode(self.recovery, amount, method_id=method_id("transfer(address,uint256)")),
-        max_outsize=32,
-    )
-    if len(response) != 0:
-        assert convert(response, bool)
+    if _coin == ETH_ADDRESS:
+        raw_call(self.recovery, b"", value=self.balance)
+    else:
+        amount: uint256 = ERC20(_coin).balanceOf(self)
+        response: Bytes[32] = raw_call(
+            _coin,
+            _abi_encode(self.recovery, amount, method_id=method_id("transfer(address,uint256)")),
+            max_outsize=32,
+        )
+        if len(response) != 0:
+            assert convert(response, bool)
 
     return True
 
