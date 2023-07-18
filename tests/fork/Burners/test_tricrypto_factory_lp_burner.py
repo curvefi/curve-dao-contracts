@@ -6,7 +6,6 @@ coins = {
     "usdt": "0xdAC17F958D2ee523a2206206994597C13D831ec7",
     "wsteth": "0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0",
     "wbtc": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
-
     "usdc": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
     "weth": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
     "crvusd": "0xf939e0a03fb07f59a73314e73794be0e57ac1b4e",
