@@ -1,4 +1,4 @@
-# @version 0.3.1
+# @version 0.3.7
 """
 @title Crypto Factory LP Burner
 @notice Withdraws Crypto LP tokens
@@ -27,10 +27,14 @@ interface PoolProxy:
     def burners(_coin: address) -> address: view
 
 
+BPS: constant(uint256) = 10000
+
+slippage_of: public(HashMap[address, uint256])
 priority_of: public(HashMap[address, uint256])
 receiver_of: public(HashMap[address, address])
 
 pool_proxy: public(address)
+slippage: public(uint256)
 receiver: public(address)
 recovery: public(address)
 is_killed: public(bool)
@@ -66,6 +70,10 @@ def __init__(_pool_proxy: address, _receiver: address, _recovery: address, _owne
     self.emergency_owner = _emergency_owner
     self.manager = msg.sender
 
+    self.slippage = 100  # 1%
+    # 3crv to fee_distributor
+    self.receiver_of[0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490] = 0xA464e6DCda8AC41e03616F95f4BC98a13b8922Dc
+
 
 @internal
 def _burn(_coin: address, _amount: uint256):
@@ -80,15 +88,19 @@ def _burn(_coin: address, _amount: uint256):
     elif priorities[0] < priorities[1]:
         i = 1
 
+    slippage: uint256 = self.slippage_of[_coin]
+    if slippage == 0:
+        slippage = self.slippage
+
     if i == 2:
         # If both are equally prioritized, then remove both of them
         CryptoSwap(swap).remove_liquidity(_amount, [0, 0], True, self.receiver)
     else:
         min_amount: uint256 = _amount * CryptoSwap(swap).lp_price() / 10 ** 18
         if i == 1:
-            min_amount = min_amount * CryptoSwap(swap).price_oracle() / 10 ** 18
+            min_amount = min_amount * 10 ** 18 / CryptoSwap(swap).price_oracle()
         min_amount /= 10 ** (18 - ERC20(coins[i]).decimals())
-        min_amount = min_amount * 98 / 100
+        min_amount -= min_amount * slippage / BPS
 
         receiver: address = self.receiver_of[coins[i]]
         if receiver == ZERO_ADDRESS:
@@ -139,14 +151,14 @@ def burn_amount(_coin: address, _amount_to_burn: uint256):
 
 
 @external
-def set_priority(_coin: address, _priority: uint256):
+def set_priority_of(_coin: address, _priority: uint256):
     """
     @notice Set priority of a coin
     @dev Bigger value means higher priority
     @param _coin Token address
     @param _priority Token priority
     """
-    assert msg.sender == self.manager  # dev: only owner
+    assert msg.sender == self.manager  # dev: only manager
     self.priority_of[_coin] = _priority
 
 
@@ -158,7 +170,7 @@ def set_many_priorities(_coins: address[8], _priorities: uint256[8]):
     @param _coins Token addresses
     @param _priorities Token priorities
     """
-    assert msg.sender == self.manager  # dev: only owner
+    assert msg.sender == self.manager  # dev: only manager
     for i in range(8):
         coin: address = _coins[i]
         if coin == ZERO_ADDRESS:
@@ -167,7 +179,48 @@ def set_many_priorities(_coins: address[8], _priorities: uint256[8]):
 
 
 @external
-def set_receiver(_coin: address, _receiver: address):
+def set_slippage_of(_coin: address, _slippage: uint256):
+    """
+    @notice Set custom slippage limit of a coin
+    @dev Using self.slippage by default
+    @param _coin Token address
+    @param _slippage Slippage in bps for pool of token
+    """
+    assert msg.sender == self.manager  # dev: only manager
+    assert _slippage <= BPS  # dev: slippage too high
+    self.slippage_of[_coin] = _slippage
+
+
+@external
+def set_many_slippages(_coins: address[8], _slippages: uint256[8]):
+    """
+    @notice Set custom slippage limit of a coin
+    @dev Using self.slippage by default
+    @param _coins Token addresses
+    @param _slippages Slippages in bps for each pool of token
+    """
+    assert msg.sender == self.manager  # dev: only manager
+    for i in range(8):
+        coin: address = _coins[i]
+        if coin == ZERO_ADDRESS:
+            break
+        assert _slippages[i] <= BPS  # dev: slippage too high
+        self.slippage_of[coin] = _slippages[i]
+
+
+@external
+def set_slippage(_slippage: uint256):
+    """
+    @notice Set default slippage parameter
+    @param _slippage Slippage value in bps
+    """
+    assert msg.sender in [self.owner, self.emergency_owner]  # dev: only owner
+    assert _slippage <= BPS  # dev: slippage too high
+    self.slippage = _slippage
+
+
+@external
+def set_receiver_of(_coin: address, _receiver: address):
     """
     @notice Set receiver of a coin
     @dev Using self.receiver by default
@@ -192,6 +245,16 @@ def set_many_receivers(_coins: address[8], _receivers: address[8]):
         if coin == ZERO_ADDRESS:
             break
         self.receiver_of[coin] = _receivers[i]
+
+
+@external
+def set_receiver(_receiver: address):
+    """
+    @notice Set default receiver
+    @param _receiver Address of default receiver
+    """
+    assert msg.sender in [self.owner, self.emergency_owner]  # dev: only owner
+    self.receiver = _receiver
 
 
 @external

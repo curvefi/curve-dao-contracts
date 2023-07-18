@@ -8,13 +8,13 @@ coins = {
     "yfi": "0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e",
     "stg": "0xAf5191B0De278C7286d6C7CC6ab6BB8A73bA2Cd6",
     "usdc": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-    "btrfly": "0xC0d4Ceb216B3BA9C3701B291766fDCbA977ceC3A",
+    "btrfly": "0xc55126051B22eBb829D00368f4B12Bde432de5Da",
 }
 
 tokens = {
     "yfieth": "0x29059568bB40344487d62f7450E78b8E6C74e0e5",
     "stgusdc": "0xdf55670e27bE5cDE7228dD0A6849181891c9ebA1",
-    "ethbtrfly": "0xE160364FD8407FFc8b163e278300c6C5D18Ff61d",
+    "btrflyeth": "0x7483Dd57f6488b0e194A151C57Df6Ec85C00aCE9",
     "badgerwbtc": "0x137469B55D1f15651BA46A89D0588e97dD0B6562",
 }
 
@@ -47,27 +47,51 @@ def setup(burner, alice):
     )
 
 
-def test_set_priority(burner, alice):
+def test_set_slippage(burner, alice, bob):
+    assert burner.slippage() == 100
+    burner.set_slippage(200, {"from": alice})
+    assert burner.slippage() == 200
+    with brownie.reverts():  # only owner
+        burner.set_slippage(10, {"from": bob})
+
+
+def test_set_priority(burner, alice, bob):
     coin = coins["weth"]
     assert burner.priority_of(coin) == 10
-    burner.set_priority(coin, 0, {"from": alice})
+    burner.set_priority_of(coin, 0, {"from": alice})
     assert burner.priority_of(coin) == 0
+    with brownie.reverts():  # only manager
+        burner.set_priority_of(coin, 1, {"from": bob})
 
 
-def test_set_receivers(burner, alice, bob):
+def test_set_receivers(burner, alice, bob, pool_proxy, receiver):
     assert burner.receiver_of(coins["weth"]) == ZERO_ADDRESS
-    burner.set_receiver(coins["weth"], bob)
+    burner.set_receiver_of(coins["weth"], bob)
     assert burner.receiver_of(coins["weth"]) == bob.address
+    with brownie.reverts():  # only admin
+        burner.set_receiver_of(coins["weth"], bob, {"from": bob})
 
     coins_with_custom_receiver = [coins["weth"], coins["usdc"]]
     burner.set_many_receivers(
         coins_with_custom_receiver + [ZERO_ADDRESS] * (8 - len(coins_with_custom_receiver)),
-        [bob] * len(coins_with_custom_receiver)
+        [pool_proxy] * len(coins_with_custom_receiver)
         + [ZERO_ADDRESS] * (8 - len(coins_with_custom_receiver)),
         {"from": alice},
     )
     for coin in coins_with_custom_receiver:
-        assert burner.receiver_of(coin) == bob.address
+        assert burner.receiver_of(coin) == pool_proxy
+    with brownie.reverts():  # only admin
+        burner.set_many_receivers(
+            [coins["weth"]] + [ZERO_ADDRESS] * (8 - 1),
+            [bob] + [ZERO_ADDRESS] * (8 - 1),
+            {"from": bob},
+        )
+
+    assert burner.receiver() == receiver
+    burner.set_receiver(pool_proxy)
+    assert burner.receiver() == pool_proxy
+    with brownie.reverts():  # only admin
+        burner.set_receiver(bob, {"from": bob})
 
 
 @pytest.mark.parametrize("final_receiver", ["receiver", "bob"])
@@ -79,7 +103,7 @@ def test_first_coin(burner, alice, bob, receiver, final_receiver):
 
     first, second = MintableForkToken(coins["weth"]), MintableForkToken(coins["yfi"])
     if final_receiver == "bob":
-        burner.set_receiver(first, bob, {"from": alice})
+        burner.set_receiver_of(first, bob, {"from": alice})
     burner.burn(token, {"from": alice})
 
     for acc in [bob, receiver]:
@@ -106,7 +130,7 @@ def test_second_coin(burner, alice, receiver):
 
 
 def test_both_coins(burner, alice, receiver):
-    token = MintableForkToken(tokens["ethbtrfly"])
+    token = MintableForkToken(tokens["btrflyeth"])
     token.approve(burner, 2 ** 256 - 1, {"from": alice})
     token._mint_for_testing(alice, 10 * 10 ** 18, {"from": alice})
 
@@ -120,12 +144,12 @@ def test_both_coins(burner, alice, receiver):
 
 @pytest.mark.parametrize("i", [0, 1])
 def test_more_prioritized(burner, alice, receiver, i):
-    token = MintableForkToken(tokens["ethbtrfly"])
+    token = MintableForkToken(tokens["btrflyeth"])
     token.approve(burner, 2 ** 256 - 1, {"from": alice})
     token._mint_for_testing(alice, 10 * 10 ** 18, {"from": alice})
 
     first, second = MintableForkToken(coins["weth"]), MintableForkToken(coins["btrfly"])
-    burner.set_priority(first if i == 0 else second, 100, {"from": alice})
+    burner.set_priority_of(first if i == 0 else second, 100, {"from": alice})
 
     burner.burn(token, {"from": alice})
 
@@ -147,7 +171,7 @@ def test_burn_amount(burner, pool_proxy, alice, receiver):
     amount = token.balanceOf(pool_proxy)
 
     burner.burn_amount(token, amount // 2, {"from": alice})
-    assert token.balanceOf(burner) == amount // 2
+    assert token.balanceOf(burner) == amount - amount // 2
 
     first, second = MintableForkToken(coins["stg"]), MintableForkToken(coins["usdc"])
     assert first.balanceOf(receiver) == 0
@@ -177,7 +201,7 @@ def test_manager(burner, alice, bob, charlie):
     assert burner.future_manager() == bob
 
     # Manager has access
-    burner.set_priority(coins["weth"], 0, {"from": bob})
+    burner.set_priority_of(coins["weth"], 0, {"from": bob})
     assert burner.priority_of(coins["weth"]) == 0
     burner.set_many_priorities(
         [coins["weth"], coins["usdc"]] + [ZERO_ADDRESS] * 6,
@@ -192,9 +216,17 @@ def test_manager(burner, alice, bob, charlie):
 
     # Old manager does not have access
     with brownie.reverts():
-        burner.set_priority(coins["weth"], 0, {"from": bob})
+        burner.set_priority_of(coins["weth"], 0, {"from": bob})
     with brownie.reverts():
         burner.set_many_priorities(
+            [coins["weth"], coins["usdc"]] + [ZERO_ADDRESS] * 6,
+            [1, 2] + [0] * 6,
+            {"from": bob},
+        )
+    with brownie.reverts():
+        burner.set_slippage_of(coins["weth"], 0, {"from": bob})
+    with brownie.reverts():
+        burner.set_many_slippages(
             [coins["weth"], coins["usdc"]] + [ZERO_ADDRESS] * 6,
             [1, 2] + [0] * 6,
             {"from": bob},
