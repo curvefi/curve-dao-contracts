@@ -8,7 +8,7 @@ from brownie import Contract, accounts, chain
 warnings.filterwarnings("ignore")
 
 # this script is used to prepare, simulate and broadcast votes within Curve's DAO
-# modify the constants below according the the comments, and then use `simulate` in
+# modify the constants below according the comments, and then use `simulate` in
 # a forked mainnet to verify the result of the vote prior to broadcasting on mainnet
 
 # addresses related to the DAO - these should not need modification
