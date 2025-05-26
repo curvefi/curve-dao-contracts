@@ -1,4 +1,8 @@
-# @version 0.2.7
+# 3CRV Distributor
+rounded_timestamp: uint256 = block.timestamp / WEEK * WEEK
+
+# crvUSD Distributor
+rounded_timestamp: uint256 = (block.timestamp - 1) / WEEK * WEE# @version 0.2.7
 """
 @title Curve Fee Distribution
 @author Curve Finance
