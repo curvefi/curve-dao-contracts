@@ -1,3 +1,6 @@
+import pytest
+
+
 DAY = 86400
 WEEK = 7 * DAY
 
@@ -139,3 +142,25 @@ def test_deposited_parallel(web3, chain, accounts, voting_escrow, fee_distributo
     balance_bob = coin_a.balanceOf(bob)
     assert balance_alice == balance_bob
     assert abs(balance_alice + balance_bob - 10 ** 19) < 20
+
+
+def test_checkpoint_and_lock(CheckpointLock, accounts, chain, fee_distributor, voting_escrow, token, coin_a):
+    distributor = fee_distributor()
+    distributor.toggle_allow_checkpoint_token()
+    contract = CheckpointLock.deploy(distributor, voting_escrow, token, {"from": accounts[0]})
+    voting_escrow.commit_smart_wallet_checker(contract, {"from": voting_escrow.admin()})
+    voting_escrow.apply_smart_wallet_checker({"from": voting_escrow.admin()})
+
+    amount0, amount1 = 10 ** 18, 10 ** 18
+    token.approve(contract, amount0 + amount1, {"from": accounts[0]})
+
+    rounded_ts = (chain.time() + WEEK - 1) // WEEK * WEEK
+    chain.mine(timestamp=rounded_ts - 1)
+    contract.checkpoint_and_lock(amount0, amount1, {"from": accounts[0]})
+    distributor.checkpoint_token()
+
+    coin_a._mint_for_testing(distributor, 10 ** 18, {"from": accounts[0]})
+    chain.mine(timestamp=rounded_ts + WEEK)
+
+    amount = distributor.claim(contract, {"from": accounts[0]}).return_value
+    assert int(amount) == pytest.approx(10 ** 18, rel=1e-5)

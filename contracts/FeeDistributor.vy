@@ -1,4 +1,4 @@
-# @version 0.2.7
+# @version 0.3.7
 """
 @title Curve Fee Distribution
 @author Curve Finance
@@ -80,7 +80,7 @@ def __init__(
     @notice Contract constructor
     @param _voting_escrow VotingEscrow contract address
     @param _start_time Epoch time for fee distribution to start
-    @param _token Fee token address (3CRV)
+    @param _token Fee token address (crvUSD)
     @param _admin Admin address
     @param _emergency_return Address to transfer `_token` balance to
                              if this contract is killed
@@ -193,7 +193,7 @@ def ve_for_at(_user: address, _timestamp: uint256) -> uint256:
 def _checkpoint_total_supply():
     ve: address = self.voting_escrow
     t: uint256 = self.time_cursor
-    rounded_timestamp: uint256 = block.timestamp / WEEK * WEEK
+    rounded_timestamp: uint256 = (block.timestamp - 1) / WEEK * WEEK
     VotingEscrow(ve).checkpoint()
 
     for i in range(20):
@@ -374,8 +374,8 @@ def claim_many(_receivers: address[20]) -> bool:
 @external
 def burn(_coin: address) -> bool:
     """
-    @notice Receive 3CRV into the contract and trigger a token checkpoint
-    @param _coin Address of the coin being received (must be 3CRV)
+    @notice Receive crvUSD into the contract and trigger a token checkpoint
+    @param _coin Address of the coin being received (must be crvUSD)
     @return bool success
     """
     assert _coin == self.token
@@ -428,7 +428,7 @@ def toggle_allow_checkpoint_token():
 def kill_me():
     """
     @notice Kill the contract
-    @dev Killing transfers the entire 3CRV balance to the emergency return address
+    @dev Killing transfers the entire crvUSD balance to the emergency return address
          and blocks the ability to claim or burn. The contract cannot be unkilled.
     """
     assert msg.sender == self.admin
