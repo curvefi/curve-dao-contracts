@@ -124,7 +124,7 @@ to him.
 The user's balance <img src="https://render.githubusercontent.com/render/math?math=b_u"> changes every time user $u makes a deposit or withdrawal,
 and <img src="https://render.githubusercontent.com/render/math?math=S"> changes every time _any_ user makes a deposit or withdrawal (so $S
 can change many times in between two events for the user <img src="https://render.githubusercontent.com/render/math?math=u">).
-In _LiquidityGauge_ contract, the vaule of <img src="https://render.githubusercontent.com/render/math?math=I_u"> is recorded in the
+In _LiquidityGauge_ contract, the value of <img src="https://render.githubusercontent.com/render/math?math=I_u"> is recorded in the
 `integrate_fraction` map, per-user.
 
 In order to avoid all users to checkpoint periodically, we keep recording values
@@ -138,7 +138,7 @@ When a user deposits or withdraws, the change in <img src="https://render.github
 the current (before user's action) value of <img src="https://render.githubusercontent.com/render/math?math=I_{is}"> multiplied by the
 pre-action user's balance, and sumed up across user's balances:
 <img src="https://render.githubusercontent.com/render/math?math=$I_u(t_k) =\sum_k b_u(t_k) \left[I_{is}(t_k) - I_{is}(t_{k-1})\right].">
-The per-user integral is possible to repalce with this sum because <img src="https://render.githubusercontent.com/render/math?math=b_u(t)"> is
+The per-user integral is possible to replace with this sum because <img src="https://render.githubusercontent.com/render/math?math=b_u(t)"> is
 unchanged for all times between <img src="https://render.githubusercontent.com/render/math?math=t_{k-1}"> and <img src="https://render.githubusercontent.com/render/math?math=t_k">.
 
 In order to incentivize users to participate in governance, and additionally
@@ -164,7 +164,7 @@ creating a checkpoint for that user and, essentially, resetting the user to
 no boost if he/she has no voting power at that point already.
 
 Finally, the gauge is supposed to not miss a full year of inflation (e.g. if
-there were no interactions with the guage for the full year). If that ever
+there were no interactions with the gauge for the full year). If that ever
 happens, the abandoned gauge gets less CRV.
 
 ## Weight voting for gauges
